@@ -163,7 +163,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
     ]).start();
 
     Animated.timing(progressAnim, {
-      toValue: (currentStep + 1) / totalSteps,
+      toValue: totalSteps > 0 ? (currentStep + 1) / totalSteps : 0,
       duration: 300,
       useNativeDriver: false
     }).start();
@@ -327,7 +327,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
         if (tripData.mode === 'single-base') {
           return (
             tripData.origin &&
-            tripData.destination.trim().length > 0 &&
+            (tripData.destination || '').trim().length > 0 &&
             tripData.endLocation
           );
         } else {
@@ -480,6 +480,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
 
   const renderStepContent = () => {
     const step = STEPS[currentStep];
+    if (!step) return null; // Safety guard
 
     switch (step.key) {
       case 'mode':
@@ -678,13 +679,15 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                       <View style={[styles.dropdownIconBg, { backgroundColor: type.color + '20', width: 32, height: 32 }]}>
                         <Icon name={type.icon} size={16} color={type.color} />
                       </View>
-                      <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={[styles.dropdownItemLabel, { color: colors.text }]}>{type.label}</Text>
-                        <Text style={[styles.dropdownItemDesc, { color: colors.textMuted }]}>{type.description}</Text>
+                      <View style={{ flex: 1, marginLeft: 12, justifyContent: 'center' }}>
+                        <Text style={[styles.dropdownItemLabel, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>{type.label}</Text>
+                        <Text style={[styles.dropdownItemDesc, { color: colors.textMuted, fontSize: 13 }]} numberOfLines={1}>{type.description}</Text>
                       </View>
-                      {tripData.tripType === type.key && (
-                        <Icon name="check" size={14} color={colors.primary} />
-                      )}
+                      <View style={{ width: 20 }}>
+                        {tripData.tripType === type.key && (
+                          <Icon name="check" size={14} color={colors.primary} />
+                        )}
+                      </View>
                     </Pressable>
                   ))}
                 </View>

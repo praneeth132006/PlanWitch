@@ -140,7 +140,7 @@ export default function MainNavigator() {
         setTripInfo(trip);
       }
     }
-    setCurrentScreen('Welcome');
+    setCurrentScreen('TripDashboard');
   };
 
   const handleMyTrip = (trip, index) => {

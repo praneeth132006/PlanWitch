@@ -276,6 +276,28 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
           )}
         </Animated.View>
 
+        {/* Prominent AI Personalization Prompt if missing preferences */}
+        {(!tripPreferences || !tripPreferences.style) && (
+          <Animated.View style={[styles.aiPromptCard, { opacity: fadeAnim }]}>
+            <View style={styles.aiPromptHeader}>
+              <View style={styles.aiIconBg}>
+                <Icon name="sparkles" size={24} color={colors.primary} />
+              </View>
+              <View style={styles.aiPromptTextContainer}>
+                <Text style={styles.aiPromptTitle}>Personalize Your Trip ✨</Text>
+                <Text style={styles.aiPromptSubtitle}>Get AI-powered recommendations based on your style.</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.aiPromptAction}
+              onPress={handlePersonalizedPlan}
+            >
+              <Text style={styles.aiPromptActionText}>Start Personalizing</Text>
+              <Icon name="arrow-right" size={16} color="#000" />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
         {/* Main Map & Info Section */}
         <Animated.View style={[styles.mainSection, { transform: [{ scale: scaleAnim }] }]}>
           {/* Top: Interactive Map */}
@@ -798,6 +820,63 @@ const createStyles = (colors) => StyleSheet.create({
   backButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.primaryBorder },
   backButtonText: { color: colors.textMuted, fontSize: 18 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryMuted, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, alignSelf: 'flex-start', marginTop: 12, borderWidth: 1, borderColor: colors.primaryBorder },
+
+  // AI Prompt Card
+  aiPromptCard: {
+    marginHorizontal: 20,
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  aiPromptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  aiIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: colors.primary + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  aiPromptTextContainer: {
+    flex: 1,
+  },
+  aiPromptTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  aiPromptSubtitle: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  aiPromptAction: {
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 8,
+  },
+  aiPromptActionText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
   statusEmoji: { fontSize: 16, marginRight: 8 },
   statusText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
 
