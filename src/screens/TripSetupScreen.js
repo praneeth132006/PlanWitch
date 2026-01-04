@@ -675,10 +675,12 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                         setShowTypeDropdown(false);
                       }}
                     >
-                      <Icon name={type.icon} size={18} color={type.color} />
+                      <View style={[styles.dropdownIconBg, { backgroundColor: type.color + '20', width: 32, height: 32 }]}>
+                        <Icon name={type.icon} size={16} color={type.color} />
+                      </View>
                       <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={styles.dropdownItemLabel}>{type.label}</Text>
-                        <Text style={styles.dropdownItemDesc}>{type.description}</Text>
+                        <Text style={[styles.dropdownItemLabel, { color: colors.text }]}>{type.label}</Text>
+                        <Text style={[styles.dropdownItemDesc, { color: colors.textMuted }]}>{type.description}</Text>
                       </View>
                       {tripData.tripType === type.key && (
                         <Icon name="check" size={14} color={colors.primary} />
@@ -1009,7 +1011,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
         {/* Header */}
         <View style={[
           styles.header,
-          STEPS[currentStep].key === 'location' && tripData.mode === 'multi-city' ? {
+          STEPS[currentStep]?.key === 'location' && tripData.mode === 'multi-city' ? {
             position: 'absolute',
             top: 0,
             left: 0,
@@ -1037,18 +1039,18 @@ export default function TripSetupScreen({ onComplete, onBack }) {
 
 
         {/* Step Header - Hidden for location step and family companions */}
-        {!((STEPS[currentStep].key === 'location') || (STEPS[currentStep].key === 'companions' && tripData.tripType === 'family')) && (
+        {STEPS[currentStep] && !((STEPS[currentStep].key === 'location') || (STEPS[currentStep].key === 'companions' && tripData.tripType === 'family')) && (
           <Animated.View style={[styles.stepHeader, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <View style={styles.stepIconBg}>
-              <Icon name={STEPS[currentStep].icon} size={32} color={colors.primary} />
+              <Icon name={STEPS[currentStep]?.icon || 'star'} size={32} color={colors.primary} />
             </View>
-            <Text style={styles.stepTitle}>{STEPS[currentStep].title}</Text>
-            <Text style={styles.stepSubtitle}>{STEPS[currentStep].subtitle}</Text>
+            <Text style={styles.stepTitle}>{STEPS[currentStep]?.title}</Text>
+            <Text style={styles.stepSubtitle}>{STEPS[currentStep]?.subtitle}</Text>
           </Animated.View>
         )}
 
         {/* Content */}
-        {STEPS[currentStep].key === 'location' && tripData.mode === 'multi-city' ? (
+        {STEPS[currentStep]?.key === 'location' && tripData.mode === 'multi-city' ? (
           <View style={{ flex: 1 }}>
             <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
               {renderStepContent()}
@@ -1080,9 +1082,9 @@ export default function TripSetupScreen({ onComplete, onBack }) {
             disabled={!isStepValid() || isCreating}
           >
             <Text style={styles.nextButtonText}>
-              {currentStep === STEPS.length - 1 ? (isCreating ? 'Creating...' : '🚀 Create Trip') : 'Continue'}
+              {STEPS.length > 0 && currentStep === STEPS.length - 1 ? (isCreating ? 'Creating...' : '🚀 Create Trip') : 'Continue'}
             </Text>
-            {currentStep < STEPS.length - 1 && <Text style={styles.nextButtonIcon}>→</Text>}
+            {STEPS.length > 0 && currentStep < STEPS.length - 1 && <Text style={styles.nextButtonIcon}>→</Text>}
           </Pressable>
         </View>
 
@@ -2033,5 +2035,68 @@ const createStyles = (colors) => StyleSheet.create({
     fontSize: 16,
     color: colors.textMuted,
     fontWeight: '600',
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    borderRadius: 16,
+    padding: 16,
+    justifyContent: 'space-between',
+  },
+  dropdownTriggerActive: {
+    borderColor: colors.primary,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  dropdownIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  dropdownValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 9999,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.primaryBorder + '50',
+  },
+  dropdownItemLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  dropdownItemDesc: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
   },
 });
