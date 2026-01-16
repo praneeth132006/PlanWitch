@@ -195,6 +195,53 @@ export const generateFoodRecommendations = async (destinations) => {
     }
 };
 
+// Generate Budget Plan based on user questionnaire
+export const generateBudgetPlan = async (destination, duration, travelers, answers) => {
+    console.log(`[AI Service] Generating budget for ${destination}`);
+
+    const prompt = `Act as a travel budget expert. Create a detailed budget allocation for a trip to ${destination}.
+    
+    Trip Context:
+    - Duration: ${duration} days
+    - Travelers: ${travelers}
+    - Destination: ${destination}
+
+    User Preferences:
+    - Budget Range: ${answers.budget_min} to ${answers.budget_max}
+    - Style: ${answers.preference}
+    - Priority: ${answers.priority}
+    - Accommodation: ${answers.accommodation} (${answers.hotel_price})
+    - Transport To: ${answers.primary_transport}
+    - Local Transport: ${answers.local_transport}
+
+    Task:
+    1. Estimate a realistic TOTAL budget within the range (or close to it if range is unrealistic) based on the preferences.
+    2. Allocate this total into categories: 'accommodation', 'transport', 'food', 'activities', 'shopping', 'other'.
+    3. Ensure the allocation reflects the user's "Priority" (e.g. if Food is priority, allocate more there).
+    
+    Return ONLY a JSON object with this exact structure:
+    {
+      "success": true,
+      "total": 150000,
+      "categories": {
+        "accommodation": 50000,
+        "transport": 30000,
+        "food": 40000,
+        "activities": 20000,
+        "shopping": 5000,
+        "other": 5000
+      },
+      "tips": ["Tip 1", "Tip 2 about saving money or spending wisely"]
+    }`;
+
+    try {
+        return await callGemini(prompt);
+    } catch (error) {
+        console.error('[AI Service] Budget Gemini Error:', error);
+        return { success: false, error: error.message };
+    }
+};
+
 // Generate comprehensive personalized plan (Full Itinerary + Packing + Food)
 export const generateFullPersonalizedPlan = async (details) => {
     console.log(`[AI Service] Generating Nuclear Plan for ${details.startLocation} to ${details.endLocation}`);

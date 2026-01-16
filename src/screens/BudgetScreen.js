@@ -1,14 +1,60 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, ScrollView, TextInput, StyleSheet, TouchableOpacity, Dimensions, Modal, Animated, Pressable, Image } from 'react-native';
+import {
+  View, Text, ScrollView, TextInput, StyleSheet, TouchableOpacity,
+  Dimensions, Modal, Pressable, ActivityIndicator, Alert
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTravelContext } from '../context/TravelContext';
 import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
-
-const { width } = Dimensions.get('window');
+import { generateBudgetPlan } from '../services/aiService';
 
 const ICON_OPTIONS = ['hotel', 'car', 'food', 'shopping', 'packing', 'airplane', 'train', 'beach', 'nature', 'ticket', 'hospital', 'mobile', 'task', 'like', 'heart', 'budget'];
 const COLOR_OPTIONS = ['#8B5CF6', '#3B82F6', '#F59E0B', '#10B981', '#EC4899', '#6B7280', '#EF4444', '#06B6D4', '#84CC16', '#F97316'];
+
+const AI_QUESTIONS = [
+  {
+    id: 'budget_range',
+    question: 'Total budget range allowed?',
+    type: 'range'
+  },
+  {
+    id: 'preference',
+    question: 'Budget preference',
+    type: 'option',
+    options: ['Low', 'Mid', 'Luxury', 'Mixed']
+  },
+  {
+    id: 'priority',
+    question: 'Major expense priority',
+    type: 'option',
+    options: ['Stay', 'Food', 'Experiences', 'Shopping']
+  },
+  {
+    id: 'accommodation',
+    question: 'Accommodation type',
+    type: 'option',
+    options: ['Hotel', 'Hostel', 'Homestay', 'Airbnb']
+  },
+  {
+    id: 'hotel_price',
+    question: 'Hotel price range (per night)',
+    type: 'option',
+    options: ['< 2000', '2000 - 5000', '5000 - 10000', '10000+']
+  },
+  {
+    id: 'primary_transport',
+    question: 'Primary transport',
+    type: 'option',
+    options: ['Flight', 'Train', 'Bus', 'Car', 'Bike']
+  },
+  {
+    id: 'local_transport',
+    question: 'Local transport preference',
+    type: 'option',
+    options: ['Public transport', 'Cab', 'Rental bike']
+  }
+];
 
 export default function BudgetScreen() {
   const {
@@ -19,25 +65,35 @@ export default function BudgetScreen() {
     currency = { symbol: '₹', code: 'INR' },
     tripInfo = {},
     customCategories,
-    setCustomCategories
+    setCustomCategories,
+    saveTripPreferences
   } = useTravelContext();
   const { colors } = useTheme();
 
-  // Use custom categories from context (which now defaults to the correct set)
   const CATEGORIES = customCategories || [];
 
   const [totalBudget, setTotalBudget] = useState((budget.total || 0).toString());
   const [categoryInputs, setCategoryInputs] = useState({});
+
+  // Category Modal State
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [newCategory, setNewCategory] = useState({ key: '', label: '', icon: 'packing', color: '#6B7280', tip: '5-10%' });
 
-  // Sync totalBudget with budget.total when it changes externally
+  // AI Modal State
+  const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [currentQIndex, setCurrentQIndex] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [rangeMin, setRangeMin] = useState('');
+  const [rangeMax, setRangeMax] = useState('');
+
+  // Sync totalBudget
   useEffect(() => {
     setTotalBudget((budget.total || 0).toString());
   }, [budget.total]);
 
-  // Initialize category inputs from budget
+  // Sync inputs
   useEffect(() => {
     const inputs = {};
     CATEGORIES.forEach(cat => {
@@ -49,6 +105,84 @@ export default function BudgetScreen() {
   const expensesByCategory = getExpensesByCategory ? getExpensesByCategory() : {};
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  // ================= AI HANDLERS =================
+  const startAiPlan = () => {
+    setAnswers({});
+    setCurrentQIndex(0);
+    setRangeMin('');
+    setRangeMax('');
+    setAiModalVisible(true);
+  };
+
+  const handleAiAnswer = (value) => {
+    const currentQ = AI_QUESTIONS[currentQIndex];
+    const newAnswers = { ...answers, [currentQ.id]: value };
+    setAnswers(newAnswers);
+
+    if (currentQIndex < AI_QUESTIONS.length - 1) {
+      setCurrentQIndex(currentQIndex + 1);
+    } else {
+      submitAiPlan(newAnswers);
+    }
+  };
+
+  const handleRangeSubmit = () => {
+    if (!rangeMin || !rangeMax) {
+      Alert.alert('Required', 'Please enter both min and max values');
+      return;
+    }
+    const newAnswers = { ...answers, budget_min: rangeMin, budget_max: rangeMax };
+    setAnswers(newAnswers);
+    setCurrentQIndex(currentQIndex + 1);
+  };
+
+  const submitAiPlan = async (finalAnswers) => {
+    setIsGenerating(true);
+    try {
+      const destination = tripInfo.destination || 'Unknown';
+
+      // Calculate duration
+      let duration = 3; // Default
+      if (tripInfo.startDate && tripInfo.endDate) {
+        const start = new Date(tripInfo.startDate);
+        const end = new Date(tripInfo.endDate); // This needs parsing if format is dd MMM yyyy
+        // Assuming simplistic check or fallback
+        duration = 5;
+      }
+
+      // Travelers count
+      let travelers = 1;
+      if (Array.isArray(tripInfo.participants)) travelers = tripInfo.participants.length;
+      else if (tripInfo.participants) travelers = Object.keys(tripInfo.participants).length;
+
+      const result = await generateBudgetPlan(destination, duration, travelers, finalAnswers);
+
+      if (result.success && result.categories) {
+        // Apply Budget
+        setBudget({
+          total: result.total || 0,
+          categories: result.categories
+        });
+
+        // Save preferences if needed
+        if (saveTripPreferences) {
+          saveTripPreferences(finalAnswers);
+        }
+
+        setAiModalVisible(false);
+        Alert.alert('Budget Generated!', `AI has allocated ${currency.symbol}${result.total} for your trip based on your preferences.`);
+      } else {
+        Alert.alert('Error', 'AI could not generate a budget plan. Please try again.');
+      }
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+
+  // ================= MANUAL HANDLERS =================
   const handleSaveBudget = () => {
     const newTotal = parseFloat(totalBudget) || 0;
     setBudget({ ...budget, total: newTotal });
@@ -72,43 +206,23 @@ export default function BudgetScreen() {
     return `${currency.symbol}${num.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
   };
 
-  // Category management functions
   const handleAddCategory = () => {
     if (!newCategory.label.trim()) return;
-
-    // Generate simple key
     const key = newCategory.label.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now().toString().slice(-4);
     const categoryToAdd = { ...newCategory, key };
-
     const updatedCategories = [...CATEGORIES, categoryToAdd];
-    if (setCustomCategories) {
-      setCustomCategories(updatedCategories);
-    }
-
-    // Initialize input for new category
+    if (setCustomCategories) setCustomCategories(updatedCategories);
     setCategoryInputs(prev => ({ ...prev, [key]: '0' }));
-
     setNewCategory({ key: '', label: '', icon: 'packing', color: '#6B7280', tip: '5-10%' });
     setShowCategoryModal(false);
   };
 
-  const handleEditCategory = (category) => {
-    setEditingCategory(category);
-    setNewCategory({ ...category });
-    setShowCategoryModal(true);
-  };
-
   const handleUpdateCategory = () => {
     if (!editingCategory || !newCategory.label.trim()) return;
-
     const updatedCategories = CATEGORIES.map(cat =>
       cat.key === editingCategory.key ? { ...newCategory, key: editingCategory.key } : cat
     );
-
-    if (setCustomCategories) {
-      setCustomCategories(updatedCategories);
-    }
-
+    if (setCustomCategories) setCustomCategories(updatedCategories);
     setEditingCategory(null);
     setNewCategory({ key: '', label: '', icon: 'packing', color: '#6B7280', tip: '5-10%' });
     setShowCategoryModal(false);
@@ -116,14 +230,16 @@ export default function BudgetScreen() {
 
   const handleDeleteCategory = (categoryKey) => {
     const updatedCategories = CATEGORIES.filter(cat => cat.key !== categoryKey);
-    if (setCustomCategories) {
-      setCustomCategories(updatedCategories);
-    }
-
-    // Also remove from budget categories
+    if (setCustomCategories) setCustomCategories(updatedCategories);
     const newBudgetCategories = { ...budget.categories };
     delete newBudgetCategories[categoryKey];
     setBudget({ ...budget, categories: newBudgetCategories });
+  };
+
+  const handleEditCategory = (category) => {
+    setEditingCategory(category);
+    setNewCategory({ ...category });
+    setShowCategoryModal(true);
   };
 
   const allocatedTotal = Object.values(budget.categories || {}).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
@@ -136,28 +252,6 @@ export default function BudgetScreen() {
     if (pct > 90) return '#EF4444';
     if (pct > 75) return '#F59E0B';
     return colors.primary;
-  };
-
-  const quickAllocate = () => {
-    if (budget.total <= 0) return;
-
-    const perCategory = Math.round(budget.total / CATEGORIES.length);
-    const newCategories = {};
-    CATEGORIES.forEach((cat, index) => {
-      // Give first category remainder to balance
-      if (index === 0) {
-        newCategories[cat.key] = budget.total - (perCategory * (CATEGORIES.length - 1));
-      } else {
-        newCategories[cat.key] = perCategory;
-      }
-    });
-
-    setBudget({ ...budget, categories: newCategories });
-
-    // Update inputs
-    const inputs = {};
-    Object.keys(newCategories).forEach(key => inputs[key] = newCategories[key].toString());
-    setCategoryInputs(inputs);
   };
 
   return (
@@ -173,14 +267,13 @@ export default function BudgetScreen() {
             </Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.quickActionBtn} onPress={quickAllocate}>
-          <Icon name="task" size={16} color={colors.primary} style={{ marginRight: 4 }} />
-          <Text style={styles.quickActionText}>Auto-Fill</Text>
+        <TouchableOpacity style={styles.aiBtn} onPress={startAiPlan}>
+          <Icon name="sparkles" size={16} color="#fff" style={{ marginRight: 6 }} />
+          <Text style={styles.aiBtnText}>AI Plan</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-
         {/* Total Budget Card */}
         <View style={styles.totalCard}>
           <View style={styles.totalHeader}>
@@ -261,7 +354,7 @@ export default function BudgetScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Edit/Add Modal */}
+      {/* Edit/Add Category Modal */}
       <Modal visible={showCategoryModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -274,7 +367,6 @@ export default function BudgetScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Name Input */}
               <Text style={styles.inputLabel}>Name</Text>
               <TextInput
                 style={[styles.modalInput, { outlineStyle: 'none' }]}
@@ -284,7 +376,6 @@ export default function BudgetScreen() {
                 placeholderTextColor={colors.textMuted}
               />
 
-              {/* Emojis */}
               <Text style={styles.inputLabel}>Icon</Text>
               <View style={styles.emojiGrid}>
                 {ICON_OPTIONS.map(iconKey => (
@@ -294,7 +385,6 @@ export default function BudgetScreen() {
                 ))}
               </View>
 
-              {/* Colors */}
               <Text style={styles.inputLabel}>Color</Text>
               <View style={styles.colorGrid}>
                 {COLOR_OPTIONS.map(c => (
@@ -304,7 +394,6 @@ export default function BudgetScreen() {
                 ))}
               </View>
 
-              {/* Actions */}
               <TouchableOpacity style={styles.saveBtn} onPress={editingCategory ? handleUpdateCategory : handleAddCategory}>
                 <Text style={styles.saveBtnText}>{editingCategory ? 'Update Category' : 'Create Category'}</Text>
               </TouchableOpacity>
@@ -318,6 +407,88 @@ export default function BudgetScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* AI Budget Planner Modal */}
+      <Modal visible={aiModalVisible} animationType="fade" transparent>
+        <View style={styles.aiModalOverlay}>
+          <View style={styles.aiModalContent}>
+            {isGenerating ? (
+              <View style={{ alignItems: 'center', padding: 40 }}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={{ marginTop: 20, color: colors.text, fontSize: 16, fontWeight: 'bold' }}>Creating your budget plan...</Text>
+                <Text style={{ marginTop: 8, color: colors.textMuted, fontSize: 14 }}>Analyzing {tripInfo?.destination} costs</Text>
+              </View>
+            ) : (
+              <>
+                {/* Progress Bar for AI Questions */}
+                <View style={{ height: 4, backgroundColor: colors.cardLight, borderRadius: 2, marginBottom: 20, overflow: 'hidden' }}>
+                  <View style={{ height: '100%', backgroundColor: colors.primary, width: `${((currentQIndex + 1) / AI_QUESTIONS.length) * 100}%` }} />
+                </View>
+
+                <Text style={styles.aiQuestionTitle}>{AI_QUESTIONS[currentQIndex]?.question}</Text>
+
+                {/* Q1: Range Input */}
+                {AI_QUESTIONS[currentQIndex]?.type === 'range' && (
+                  <View style={{ marginTop: 20 }}>
+                    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.textMuted, marginBottom: 8, fontSize: 12 }}>MIN ({currency.symbol})</Text>
+                        <TextInput
+                          style={styles.aiRangeInput}
+                          keyboardType="numeric"
+                          placeholder="10000"
+                          placeholderTextColor={colors.textMuted + '50'}
+                          value={rangeMin}
+                          onChangeText={setRangeMin}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.textMuted, marginBottom: 8, fontSize: 12 }}>MAX ({currency.symbol})</Text>
+                        <TextInput
+                          style={styles.aiRangeInput}
+                          keyboardType="numeric"
+                          placeholder="50000"
+                          placeholderTextColor={colors.textMuted + '50'}
+                          value={rangeMax}
+                          onChangeText={setRangeMax}
+                        />
+                      </View>
+                    </View>
+                    <TouchableOpacity style={styles.aiNextBtn} onPress={handleRangeSubmit}>
+                      <Text style={styles.aiNextBtnText}>Next Step</Text>
+                      <Icon name="arrow-right" size={20} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Q2+: Options */}
+                {AI_QUESTIONS[currentQIndex]?.type === 'option' && (
+                  <View style={{ marginTop: 20, gap: 12 }}>
+                    {AI_QUESTIONS[currentQIndex]?.options.map(opt => (
+                      <TouchableOpacity
+                        key={opt}
+                        style={styles.aiOptionBtn}
+                        onPress={() => handleAiAnswer(opt)}
+                      >
+                        <Text style={styles.aiOptionText}>{opt}</Text>
+                        <Icon name="chevron-right" size={16} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={styles.aiCloseBtn}
+                  onPress={() => setAiModalVisible(false)}
+                >
+                  <Text style={{ color: colors.textMuted }}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -332,12 +503,9 @@ const CategoryCard = ({ cat, budget, expensesByCategory, currency, categoryInput
 
   return (
     <View style={styles.catCard}>
-      {/* Background/Card Press Handler */}
       <Pressable
         style={[StyleSheet.absoluteFill, { borderRadius: 20 }]}
         onPress={() => handleEditCategory(cat)}
-        onLongPress={() => handleEditCategory(cat)}
-        delayLongPress={200}
       />
 
       <View pointerEvents="none" style={styles.catIconContainer}>
@@ -348,11 +516,9 @@ const CategoryCard = ({ cat, budget, expensesByCategory, currency, categoryInput
 
       <View pointerEvents="box-none" style={styles.catContent}>
         <View pointerEvents="box-none" style={styles.catHeader}>
-          {/* Allow clicks on name to trigger card edit (pass-through) */}
           <Text pointerEvents="none" style={styles.catName}>{cat.label}</Text>
           <View style={styles.catInputWrapper}>
             <Text style={styles.catCurrency}>{currency.symbol}</Text>
-            {/* Hidden Text for measurement */}
             <Text
               style={[styles.catInput, { position: 'absolute', opacity: 0, zIndex: -1 }]}
               onLayout={(e) => setInputWidth(e.nativeEvent.layout.width)}
@@ -367,7 +533,6 @@ const CategoryCard = ({ cat, budget, expensesByCategory, currency, categoryInput
               keyboardType="decimal-pad"
               placeholder="0"
               placeholderTextColor={colors.textMuted + '50'}
-              // Ensure input captures touches
               onPressIn={(e) => e.stopPropagation()}
             />
           </View>
@@ -395,9 +560,21 @@ const createStyles = (colors) => StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 },
   headerTitle: { fontSize: 28, fontWeight: '800', color: colors.text },
   headerSubtitle: { fontSize: 14, color: colors.textMuted, fontWeight: '500' },
-  quickActionBtn: { backgroundColor: colors.cardLight, flexDirection: 'row', alignItems: 'center', padding: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.primaryBorder },
-  quickActionEmoji: { fontSize: 14, marginRight: 4 },
-  quickActionText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+
+  // AI Button
+  aiBtn: { backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, shadowColor: colors.primary, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
+  aiBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+
+  // AI Modal
+  aiModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
+  aiModalContent: { backgroundColor: colors.card, padding: 24, borderRadius: 24, minHeight: 300 },
+  aiQuestionTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 8, textAlign: 'center' },
+  aiRangeInput: { backgroundColor: colors.bg, padding: 14, borderRadius: 12, color: colors.text, fontSize: 18, fontWeight: 'bold', textAlign: 'center', borderWidth: 1, borderColor: colors.primaryBorder },
+  aiNextBtn: { backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 16, marginTop: 10 },
+  aiNextBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginRight: 8 },
+  aiOptionBtn: { backgroundColor: colors.bg, padding: 16, borderRadius: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: colors.primaryBorder },
+  aiOptionText: { color: colors.text, fontSize: 16, fontWeight: '600' },
+  aiCloseBtn: { alignSelf: 'center', marginTop: 20, padding: 10 },
 
   // Total Card
   totalCard: { backgroundColor: colors.card, borderRadius: 24, padding: 24, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
@@ -420,7 +597,6 @@ const createStyles = (colors) => StyleSheet.create({
   warningIcon: { marginRight: 8 },
   warningText: { fontSize: 12, color: '#D97706', fontWeight: '600' },
 
-  // Categories
   categoriesSection: { gap: 16 },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.textMuted, marginBottom: 8, marginLeft: 4 },
 
@@ -446,7 +622,6 @@ const createStyles = (colors) => StyleSheet.create({
   newCatIcon: { fontSize: 18, color: colors.primary, marginRight: 8, fontWeight: '700' },
   newCatText: { fontSize: 14, color: colors.primary, fontWeight: '700' },
 
-  // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContainer: { backgroundColor: colors.card, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, height: '80%' },
   modalHandle: { width: 40, height: 5, backgroundColor: colors.textMuted + '40', borderRadius: 3, alignSelf: 'center', marginBottom: 20 },
