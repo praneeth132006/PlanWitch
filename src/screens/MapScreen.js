@@ -197,11 +197,42 @@ export default function MapScreen() {
       return;
     }
 
+    // Validate total days match trip duration exactly
+    const totalTripDays = tripDays.length || 3;
+
+    // Only count days for current stops (ignore stale keys in locationDurations)
+    let totalLocationDays = 0;
+    if (tripInfo.stops && tripInfo.stops.length > 0) {
+      tripInfo.stops.forEach((stop, index) => {
+        const stopName = typeof stop === 'object' ? (stop.name || `Stop ${index + 1}`) : stop;
+        const days = parseInt(aiPreferences.locationDurations?.[stopName]) || 0;
+        totalLocationDays += days;
+      });
+    }
+
+    if (totalLocationDays !== totalTripDays) {
+      const message = totalLocationDays > totalTripDays
+        ? `You've allocated ${totalLocationDays} days, but your trip is only ${totalTripDays} days. Please reduce by ${totalLocationDays - totalTripDays} day(s).`
+        : `You've allocated ${totalLocationDays} days, but your trip is ${totalTripDays} days. Please add ${totalTripDays - totalLocationDays} more day(s).`;
+
+      showAlert('Days Mismatch', message, 'warning');
+      return;
+    }
+
     setAiModalVisible(false);
     setIsAiGenerating(true);
 
-    // Show generating alert
-    showAlert('Generating Itinerary', 'AI is crafting your perfect trip plan... This may take a moment.', 'info');
+    // Show generating alert without dismiss button (loading state)
+    setAlertConfig({
+      visible: true,
+      title: 'Generating Itinerary',
+      message: 'AI is crafting your perfect trip plan... This may take a moment.',
+      type: 'loading',
+      onConfirm: null, // No dismiss button
+      onCancel: null,
+      confirmText: '',
+      cancelText: ''
+    });
 
     try {
       // Calculate days to generate
@@ -456,12 +487,8 @@ export default function MapScreen() {
                                   </View>
                                 )}
 
-                                {stop.cost && (
-                                  <View style={styles.stopDetailRow}>
-                                    <Text style={styles.stopDetailIcon}>💰</Text>
-                                    <Text style={styles.stopDetailText}>${stop.cost}</Text>
-                                  </View>
-                                )}
+
+                                {/* Cost removed as per user request */}
 
                                 {stop.notes && (
                                   <View style={styles.stopNotesContainer}>
@@ -674,7 +701,8 @@ export default function MapScreen() {
                             width: 80,
                             textAlign: 'center',
                             borderWidth: 1,
-                            borderColor: colors.border
+                            borderColor: colors.border,
+                            outlineStyle: 'none'
                           }}
                           placeholder="Days"
                           placeholderTextColor={colors.textMuted}

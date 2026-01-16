@@ -8,6 +8,7 @@ import DatePickerModal from '../components/DatePickerModal';
 import { auth } from '../config/firebase';
 import Icon from '../components/Icon';
 import TripMap from '../components/TripMap';
+import PlacesAutocomplete from '../components/PlacesAutocomplete';
 
 export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const {
@@ -38,9 +39,9 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const [editStartDate, setEditStartDate] = useState(tripInfo.startDate || '');
   const [editEndDate, setEditEndDate] = useState(tripInfo.endDate || '');
   const [editLocations, setEditLocations] = useState({
-    origin: '',
-    destination: '',
-    stops: []
+    origin: null,       // Full place object with coords
+    stops: [],          // Array of place objects
+    endLocation: null   // Full place object with coords
   });
 
   // Derived State
@@ -204,10 +205,11 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
       setEditEndDate(tripInfo.endDate || '');
       setShowDatesModal(true);
     } else if (option.id === 'edit_locations') {
+      // Initialize with full place objects from tripInfo
       setEditLocations({
-        origin: tripInfo.origin?.name || tripInfo.start?.name || '',
-        destination: tripInfo.destination || '',
-        stops: tripInfo.stops ? [...tripInfo.stops] : []
+        origin: tripInfo.origin || tripInfo.start || null,
+        stops: tripInfo.stops ? [...tripInfo.stops] : [],
+        endLocation: tripInfo.endLocation || null
       });
       setShowLocationEditModal(true);
     } else if (option.id === 'manage_travelers') {
@@ -221,23 +223,24 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   };
 
   const handleSaveLocations = async () => {
-    // Filter empty stops
-    const cleanStops = editLocations.stops.filter(s => s && s.trim().length > 0);
+    // Filter out null/empty stops
+    const cleanStops = editLocations.stops.filter(s => s && (s.name || s.fullAddress));
 
-    // Update local state
+    // Build destination string from stops for legacy compatibility
+    const destinationNames = cleanStops.map(s => s.name || s.fullAddress || '').filter(Boolean);
+    const destinationString = destinationNames.join(' - ') || tripInfo.destination;
+
+    // Update local state with full place objects (includes lat/lng for map)
     const updatedTrip = {
       ...tripInfo,
-      destination: editLocations.destination,
-      origin: { ...tripInfo.origin, name: editLocations.origin }, // Preserve other origin data if any
-      start: { ...tripInfo.start, name: editLocations.origin }, // Legacy support
-      stops: cleanStops.map(s => ({ name: s, type: 'stop' })) // Ensure stops are objects
+      destination: destinationString,
+      origin: editLocations.origin,
+      start: editLocations.origin, // Legacy support
+      stops: cleanStops,
+      endLocation: editLocations.endLocation
     };
 
     setTripInfo(updatedTrip); // Update context
-
-    // Persist to DB if owner
-    // if (isAdmin) { await DB.updateTrip(updatedTrip); } // Assuming DB.updateTrip exists or similar logic
-
     setShowLocationEditModal(false);
   };
 
@@ -735,77 +738,84 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-              <View style={styles.locationEditSection}>
-                {/* Origin */}
-                <View style={styles.locationInputGroup}>
-                  <Text style={styles.locationLabel}>Origin</Text>
-                  <View style={styles.locationInputWrapper}>
-                    <Icon name="location" size={20} color={colors.primary} style={styles.locationIcon} />
-                    <TextInput
-                      style={[styles.locationInput, { outlineStyle: 'none' }]}
-                      placeholder="Start Location"
-                      placeholderTextColor={colors.textMuted}
-                      value={editLocations.origin}
-                      onChangeText={(t) => setEditLocations(prev => ({ ...prev, origin: t }))}
-                    />
-                  </View>
-                </View>
+              {/* Departure City */}
+              <View style={{ marginBottom: 20, zIndex: 4000 }}>
+                <Text style={styles.locationLabel}>Departure City</Text>
+                <PlacesAutocomplete
+                  value={editLocations.origin?.name || editLocations.origin?.fullAddress || ''}
+                  onPlaceSelect={(place) => setEditLocations(prev => ({ ...prev, origin: place }))}
+                  placeholder="Where are you starting?"
+                  showMap={false}
+                />
+              </View>
 
-                {/* Destination */}
-                <View style={styles.locationInputGroup}>
-                  <Text style={styles.locationLabel}>Destination</Text>
-                  <View style={styles.locationInputWrapper}>
-                    <Icon name="flag" size={20} color={colors.primary} style={styles.locationIcon} />
-                    <TextInput
-                      style={[styles.locationInput, { outlineStyle: 'none' }]}
-                      placeholder="Final Destination"
-                      placeholderTextColor={colors.textMuted}
-                      value={editLocations.destination}
-                      onChangeText={(t) => setEditLocations(prev => ({ ...prev, destination: t }))}
-                    />
-                  </View>
-                </View>
+              {/* Main Locations to Visit */}
+              <View style={{ marginBottom: 20, zIndex: 3000 }}>
+                <Text style={styles.locationLabel}>Main Locations to Visit</Text>
 
-                {/* Stops */}
-                <View style={styles.locationInputGroup}>
-                  <Text style={styles.locationLabel}>Stops / Main Places</Text>
-                  <View style={styles.stopsList}>
-                    {editLocations.stops.map((stop, index) => (
-                      <View key={index} style={styles.stopItem}>
-                        <View style={styles.stopNumber}>
-                          <Text style={styles.stopNumberText}>{index + 1}</Text>
+                {/* Added Stops List */}
+                {editLocations.stops.length > 0 && (
+                  <View style={{ marginBottom: 12 }}>
+                    {editLocations.stops.map((stop, index) => {
+                      // Extract display name from various possible fields
+                      const getStopName = (s) => {
+                        if (!s) return `Stop ${index + 1}`;
+                        if (typeof s === 'string') return s;
+                        if (s.name) return s.name;
+                        if (s.formatted_address) return s.formatted_address.split(',')[0]; // First part of address
+                        if (s.fullAddress) return s.fullAddress.split(',')[0];
+                        if (s.description) return s.description.split(',')[0];
+                        return `Stop ${index + 1}`;
+                      };
+                      const displayName = getStopName(stop);
+                      return (
+                        <View key={index} style={styles.addedLocationItem}>
+                          <View style={styles.locationIconBg}>
+                            <Icon name="location" size={16} color={colors.primary} />
+                          </View>
+                          <Text style={styles.addedLocationText} numberOfLines={1}>
+                            {displayName}
+                          </Text>
+                          <Pressable
+                            onPress={() => setEditLocations(prev => ({
+                              ...prev,
+                              stops: prev.stops.filter((_, i) => i !== index)
+                            }))}
+                            style={styles.removeLocationBtn}
+                          >
+                            <Icon name="close" size={12} color={colors.text} />
+                          </Pressable>
                         </View>
-                        <TextInput
-                          style={[styles.locationInput, { outlineStyle: 'none', height: 'auto', paddingVertical: 4 }]}
-                          placeholder={`Stop ${index + 1}`}
-                          placeholderTextColor={colors.textMuted}
-                          value={stop}
-                          onChangeText={(t) => {
-                            const newStops = [...editLocations.stops];
-                            newStops[index] = t;
-                            setEditLocations(prev => ({ ...prev, stops: newStops }));
-                          }}
-                        />
-                        <Pressable
-                          style={styles.removeStopBtn}
-                          onPress={() => {
-                            const newStops = editLocations.stops.filter((_, i) => i !== index);
-                            setEditLocations(prev => ({ ...prev, stops: newStops }));
-                          }}
-                        >
-                          <Icon name="close" size={16} color={colors.textMuted} />
-                        </Pressable>
-                      </View>
-                    ))}
-                    <Pressable
-                      style={styles.addStopBtn}
-                      onPress={() => setEditLocations(prev => ({ ...prev, stops: [...prev.stops, ''] }))}
-                    >
-                      <Icon name="add" size={16} color={colors.primary} />
-                      <Text style={styles.addStopText}>Add Stop</Text>
-                    </Pressable>
+                      );
+                    })}
                   </View>
-                </View>
+                )}
+
+                {/* Add New Stop */}
+                <PlacesAutocomplete
+                  placeholder="Search destination..."
+                  onPlaceSelect={(place) => {
+                    if (place) {
+                      setEditLocations(prev => ({
+                        ...prev,
+                        stops: [...prev.stops, place]
+                      }));
+                    }
+                  }}
+                  showMap={false}
+                  clearOnSelect={true}
+                />
+              </View>
+
+              {/* Trip End Location */}
+              <View style={{ marginBottom: 24, zIndex: 2000 }}>
+                <Text style={styles.locationLabel}>Trip End Location</Text>
+                <PlacesAutocomplete
+                  value={editLocations.endLocation?.name || editLocations.endLocation?.fullAddress || ''}
+                  onPlaceSelect={(place) => setEditLocations(prev => ({ ...prev, endLocation: place }))}
+                  placeholder="Where will you end up?"
+                  showMap={false}
+                />
               </View>
 
               <Pressable style={styles.saveButton} onPress={handleSaveLocations}>
@@ -1343,6 +1353,41 @@ const createStyles = (colors) => StyleSheet.create({
     borderRadius: 12
   },
   addStopText: { color: colors.primary, marginLeft: 8, fontWeight: '600' },
+
+  // New location edit styles
+  addedLocationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  locationIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12
+  },
+  addedLocationText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '500'
+  },
+  removeLocationBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#EF444420',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
 
   joinedStatus: { color: colors.primary, fontSize: 11, fontWeight: '600', marginTop: 2 },
   waitingStatus: { color: '#F59E0B', fontSize: 11, fontWeight: '600', marginTop: 2 },

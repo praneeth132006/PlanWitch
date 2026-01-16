@@ -57,7 +57,7 @@ const callGemini = async (prompt, isJson = true) => {
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
                 generationConfig: {
                     temperature: 0.7,
-                    maxOutputTokens: 2048,
+                    maxOutputTokens: 8192,
                     ...(isJson ? { responseMimeType: "application/json" } : {})
                 }
             };
@@ -101,8 +101,34 @@ const callGemini = async (prompt, isJson = true) => {
 
             let text = firstCandidate.content.parts[0].text;
             if (isJson) {
+                // Clean up common AI formatting issues
                 text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                return JSON.parse(text);
+
+                // Try to parse, with fallback handling for truncated responses
+                try {
+                    return JSON.parse(text);
+                } catch (parseError) {
+                    console.warn('[AI] JSON parse failed, attempting recovery...');
+
+                    // Attempt to fix truncated JSON by closing brackets
+                    let fixedText = text;
+
+                    // Count open/close brackets
+                    const openBraces = (fixedText.match(/{/g) || []).length;
+                    const closeBraces = (fixedText.match(/}/g) || []).length;
+                    const openBrackets = (fixedText.match(/\[/g) || []).length;
+                    const closeBrackets = (fixedText.match(/\]/g) || []).length;
+
+                    // Add missing closing brackets
+                    for (let i = 0; i < openBrackets - closeBrackets; i++) fixedText += ']';
+                    for (let i = 0; i < openBraces - closeBraces; i++) fixedText += '}';
+
+                    try {
+                        return JSON.parse(fixedText);
+                    } catch (e) {
+                        throw new Error(`JSON parse failed: ${parseError.message}`);
+                    }
+                }
             }
             return text;
 
@@ -142,10 +168,11 @@ export const generateTripItinerary = async (destination, days, budget, travelers
     2. Respect the 'Starts at' and 'Ends at' times for daily activities.
     3. If location durations are specified, strictly allocate days accordingly.
     4. You must return a valid JSON object.
+    5. IMPORTANT: Each activity's time MUST be SEQUENTIAL and CHRONOLOGICAL. Each activity should start AFTER the previous one ends (previous time + duration). Never have two activities at the same time. Space activities logically throughout the day from start to end time.
     
     Structure rules:
     - "type": Must be one of: 'flight', 'train', 'bus', 'car', 'hotel', 'checkin', 'checkout', 'breakfast', 'lunch', 'dinner', 'cafe', 'attraction', 'tour', 'shopping', 'nature', 'beach', 'museum', 'nightlife'.
-    - "time": Use "HH:MM AM/PM" format.
+    - "time": Use "HH:MM AM/PM" format. Times MUST progress sequentially through the day.
     - "cost": Estimated cost per person in local currency (number only).
     - "duration": Duration in hours (e.g. "2 hours").
 

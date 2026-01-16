@@ -229,6 +229,13 @@ export default function BudgetScreen() {
           `Do you want to continue with your entered budget anyway?`,
           'warning',
           () => {
+            // No, Change Amount - Go back to Step 1 (budget range)
+            setCurrentQIndex(0);
+            setRangeMin('');
+            setRangeMax('');
+            hideAlert();
+          },
+          () => {
             // Yes, Continue
             setBudget({
               total: result.total || parseInt(finalAnswers.budget_max),
@@ -245,16 +252,8 @@ export default function BudgetScreen() {
               );
             }, 500);
           },
-          () => {
-            // No, Change Amount
-            // Go back to Step 1 (budget range)
-            setCurrentQIndex(0);
-            setRangeMin('');
-            setRangeMax('');
-            hideAlert();
-          },
-          'Yes, Continue',
-          'No, Change Amount'
+          'No, Change Amount',
+          'Yes, Continue'
         );
         return;
       }
