@@ -277,26 +277,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         </Animated.View>
 
         {/* Prominent AI Personalization Prompt if missing preferences */}
-        {(!tripPreferences || !tripPreferences.style) && (
-          <Animated.View style={[styles.aiPromptCard, { opacity: fadeAnim }]}>
-            <View style={styles.aiPromptHeader}>
-              <View style={styles.aiIconBg}>
-                <Icon name="sparkles" size={24} color={colors.primary} />
-              </View>
-              <View style={styles.aiPromptTextContainer}>
-                <Text style={styles.aiPromptTitle}>Personalize Your Trip ✨</Text>
-                <Text style={styles.aiPromptSubtitle}>Get AI-powered recommendations based on your style.</Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={styles.aiPromptAction}
-              onPress={handlePersonalizedPlan}
-            >
-              <Text style={styles.aiPromptActionText}>Start Personalizing</Text>
-              <Icon name="arrow-right" size={16} color="#000" />
-            </TouchableOpacity>
-          </Animated.View>
-        )}
+
 
         {/* Main Map & Info Section */}
         <Animated.View style={[styles.mainSection, { transform: [{ scale: scaleAnim }] }]}>
@@ -358,117 +339,106 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               </View>
             </View>
 
-            <View style={styles.cardFooter}>
-              <View>
-                <Text style={styles.priceLabel}>TOTAL BUDGET</Text>
-                <Text style={styles.priceValue}>{formatCurrency(budget.total)}</Text>
-              </View>
-              <Pressable
-                style={({ pressed }) => [styles.ctaButton, pressed && { opacity: 0.9 }]}
-                onPress={handlePersonalizedPlan}
-              >
-                <Text style={styles.ctaButtonText}>Generate Plan ✨</Text>
-              </Pressable>
-            </View>
+
           </View>
         </Animated.View>
 
 
         {/* Participants - Keep this section */}
-        {travelers.length > 0 && (
-          <Animated.View style={[styles.participantsSection, { opacity: fadeAnim }]}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Icon name="group" size={20} color={colors.primary} style={{ marginRight: 8 }} />
-                <Text style={styles.sectionTitle}>Travel Buddies</Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowTravelersModal(true)}>
-                <Text style={styles.viewMoreText}>Edit →</Text>
-              </TouchableOpacity>
+        {/* {travelers.length > 0 && ( */}
+        <Animated.View style={[styles.participantsSection, { opacity: fadeAnim }]}>
+          <View style={styles.sectionHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Icon name="group" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Travelers</Text>
             </View>
-            <View style={styles.participantsCard}>
-              <View style={styles.participantsList}>
-                {tripInfo.tripType === 'family' ? (
-                  // Grouped View for Family
-                  (() => {
-                    const groups = {};
-                    const allParticipants = getAllTravelers();
+            <TouchableOpacity onPress={() => setShowTravelersModal(true)}>
+              <Text style={styles.viewMoreText}>Edit →</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.participantsCard}>
+            <View style={styles.participantsList}>
+              {tripInfo.tripType === 'family' ? (
+                // Grouped View for Family
+                (() => {
+                  const groups = {};
+                  const allParticipants = getAllTravelers();
 
-                    allParticipants.forEach(t => {
-                      const gName = t.familyGroup || 'Family 1';
-                      if (!groups[gName]) groups[gName] = [];
-                      groups[gName].push(t);
-                    });
+                  allParticipants.forEach(t => {
+                    const gName = t.familyGroup || 'Family 1';
+                    if (!groups[gName]) groups[gName] = [];
+                    groups[gName].push(t);
+                  });
 
-                    return Object.entries(groups).map(([groupName, members], gIndex) => (
-                      <View key={groupName} style={[styles.familyGroupItem, gIndex > 0 && styles.familyGroupDivider]}>
-                        <Text style={styles.familyGroupName}>{groupName}</Text>
-                        <View style={styles.familyMembersList}>
-                          {members.map((p, idx) => (
-                            <View key={idx} style={styles.participantItem}>
-                              <View style={[styles.participantAvatar, p.isMe && { backgroundColor: colors.primary }]}>
-                                {p.userId ? (
-                                  <Icon
-                                    name={p.photoURL || 'profile_avatar'}
-                                    size={32}
-                                    style={{ borderRadius: 16 }}
-                                  />
-                                ) : (
-                                  <Icon
-                                    name="tour_guide"
-                                    size={32}
-                                    style={{ borderRadius: 16 }}
-                                  />
-                                )}
-                              </View>
-                              <View style={styles.participantInfo}>
-                                <Text style={styles.participantName}>{p.name}{p.type === 'owner' ? ' (Organizer)' : ''}</Text>
-                                {p.userId ? (
-                                  <Text style={styles.joinedStatus}>Joined</Text>
-                                ) : (
-                                  <Text style={styles.waitingStatus}>Pending</Text>
-                                )}
-                              </View>
+                  return Object.entries(groups).map(([groupName, members], gIndex) => (
+                    <View key={groupName} style={[styles.familyGroupItem, gIndex > 0 && styles.familyGroupDivider]}>
+                      <Text style={styles.familyGroupName}>{groupName}</Text>
+                      <View style={styles.familyMembersList}>
+                        {members.map((p, idx) => (
+                          <View key={idx} style={styles.participantItem}>
+                            <View style={[styles.participantAvatar, p.isMe && { backgroundColor: colors.primary }]}>
+                              {p.userId ? (
+                                <Icon
+                                  name={p.photoURL || 'profile_avatar'}
+                                  size={32}
+                                  style={{ borderRadius: 16 }}
+                                />
+                              ) : (
+                                <Icon
+                                  name="tour_guide"
+                                  size={32}
+                                  style={{ borderRadius: 16 }}
+                                />
+                              )}
                             </View>
-                          ))}
-                        </View>
-                      </View>
-                    ));
-                  })()
-                ) : (
-                  // Original View for Friends/Others - NOW LIST FORMAT
-                  getAllTravelers().map((p, index) => (
-                    <View key={index} style={styles.participantItem}>
-                      <View style={[styles.participantAvatar, p.isMe && { backgroundColor: colors.primary }]}>
-                        {p.userId ? (
-                          <Icon
-                            name={p.photoURL || 'profile_avatar'}
-                            size={32}
-                            style={{ borderRadius: 16 }}
-                          />
-                        ) : (
-                          <Icon
-                            name="tour_guide"
-                            size={32}
-                            style={{ borderRadius: 16 }}
-                          />
-                        )}
-                      </View>
-                      <View style={styles.participantInfo}>
-                        <Text style={styles.participantName}>{p.name}{p.type === 'owner' ? ' (Organizer)' : ''}</Text>
-                        {p.userId ? (
-                          <Text style={styles.joinedStatus}>Joined</Text>
-                        ) : (
-                          <Text style={styles.waitingStatus}>Pending</Text>
-                        )}
+                            <View style={styles.participantInfo}>
+                              <Text style={styles.participantName}>{p.name}{p.type === 'owner' ? ' (Organizer)' : ''}</Text>
+                              {p.userId ? (
+                                <Text style={styles.joinedStatus}>Joined</Text>
+                              ) : (
+                                <Text style={styles.waitingStatus}>Pending</Text>
+                              )}
+                            </View>
+                          </View>
+                        ))}
                       </View>
                     </View>
-                  ))
-                )}
-              </View>
+                  ));
+                })()
+              ) : (
+                // Original View for Friends/Others - NOW LIST FORMAT
+                getAllTravelers().map((p, index) => (
+                  <View key={index} style={styles.participantItem}>
+                    <View style={[styles.participantAvatar, p.isMe && { backgroundColor: colors.primary }]}>
+                      {p.userId ? (
+                        <Icon
+                          name={p.photoURL || 'profile_avatar'}
+                          size={32}
+                          style={{ borderRadius: 16 }}
+                        />
+                      ) : (
+                        <Icon
+                          name="tour_guide"
+                          size={32}
+                          style={{ borderRadius: 16 }}
+                        />
+                      )}
+                    </View>
+                    <View style={styles.participantInfo}>
+                      <Text style={styles.participantName}>{p.name}{p.type === 'owner' ? ' (Organizer)' : ''}</Text>
+                      {p.userId ? (
+                        <Text style={styles.joinedStatus}>Joined</Text>
+                      ) : (
+                        <Text style={styles.waitingStatus}>Pending</Text>
+                      )}
+                    </View>
+                  </View>
+                ))
+              )}
             </View>
-          </Animated.View>
-        )}
+          </View>
+        </Animated.View>
+        {/* )} */}
 
         <View style={{ height: 20 }} />
       </ScrollView>

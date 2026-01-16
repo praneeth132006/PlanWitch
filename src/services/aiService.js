@@ -92,11 +92,23 @@ const callGemini = async (prompt, isJson = true) => {
     }
 
     // If we get here, all attempts failed
-    let finalMsg = "AI Connection Failed: All models returned 404 or restricted access.";
+    let finalMsg = "AI Connection Failed: All models returned errors.";
     try {
         const parsed = JSON.parse(lastError);
+        // prioritizing the leaked key message
+        if (parsed.error && parsed.error.message && parsed.error.message.includes('leaked')) {
+            throw new Error("Your API Key was reported as leaked/compromised. Please generate a new specific Gemini API Key in Google AI Studio.");
+        }
         finalMsg = parsed.error?.message || lastError;
-    } catch (e) { /* ignore parse error */ }
+    } catch (e) {
+        if (e.message.includes('leaked')) throw e;
+        /* ignore parse error */
+    }
+
+    if (lastError && lastError.includes('leaked')) {
+        throw new Error("Your API Key was reported as leaked/compromised. Please generate a new specific Gemini API Key in Google AI Studio.");
+    }
+
     throw new Error(finalMsg);
 };
 

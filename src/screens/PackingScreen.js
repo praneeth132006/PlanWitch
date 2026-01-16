@@ -96,7 +96,9 @@ export default function PackingScreen() {
         setShowAiModal(true);
       }
     } catch (error) {
-      Alert.alert('AI Error', 'Failed to get suggestions.');
+      console.error('AI Suggest Error:', error);
+      Alert.alert('AI Error', 'Failed to get suggestions: ' + (error.message || 'Unknown error'));
+      setAiSuggestions([]); // Clear invalid state if any
     } finally {
       setIsGenerating(false);
     }
