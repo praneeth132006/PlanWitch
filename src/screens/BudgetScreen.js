@@ -190,7 +190,13 @@ export default function BudgetScreen() {
       if (Array.isArray(tripInfo.participants)) travelers = tripInfo.participants.length;
       else if (tripInfo.participants) travelers = Object.keys(tripInfo.participants).length;
 
-      const result = await generateBudgetPlan(destination, duration, travelers, finalAnswers);
+      const result = await generateBudgetPlan({
+        ...finalAnswers,
+        destination: destination,
+        duration: duration,
+        travelers: travelers,
+        currency: currency.code
+      });
 
       if (result.success && result.categories) {
         setBudget({
@@ -566,9 +572,9 @@ export default function BudgetScreen() {
                             style={[styles.aiOptionBtn, isSelected && { borderColor: colors.primary, backgroundColor: colors.primary + '20' }]}
                             onPress={() => toggleMultiSelect(opt)}
                           >
-                            <div style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                               <Text style={[styles.aiOptionText, isSelected && { color: colors.primary }]}>{opt}</Text>
-                            </div>
+                            </View>
                             {isSelected && <Icon name="check" size={18} color={colors.primary} />}
                           </TouchableOpacity>
                         );

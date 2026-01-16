@@ -39,52 +39,21 @@ const callGemini = async (prompt, isJson = true) => {
         throw new Error('API Key is missing in src/config/aiConfig.js');
     }
 
-    // List of reliable models to try if discovery isn't used
+    // Using Gemini 2.0 Flash - the current default model as of Jan 2025
     const fallbackModels = [
-        { ver: 'v1beta', name: 'gemini-1.5-flash' },
-        { ver: 'v1beta', name: 'gemini-1.5-pro' },
-        { ver: 'v1beta', name: 'gemini-pro' }
+        { ver: 'v1beta', name: 'gemini-2.0-flash' },          // CURRENT DEFAULT
+        { ver: 'v1beta', name: 'gemini-2.0-flash-exp' },      // Experimental
+        { ver: 'v1beta', name: 'gemini-2.0-flash-lite' },     // Lite version
     ];
 
     let lastError = null;
 
-    // Nuclear Fix 2.0: Try to discover available models on both v1 and v1beta
-    const versions = ['v1beta', 'v1'];
-    for (const ver of versions) {
-        try {
-            console.log(`[AI Discovery] Attempting to list models on ${ver}...`);
-            const listUrl = `https://generativelanguage.googleapis.com/${ver}/models?key=${apiKey}`;
-            const listRes = await fetch(listUrl);
-
-            if (listRes.status === 403) {
-                const errText = await listRes.text();
-                // Critical Error: Key is invalid or blocked
-                throw new Error(`API_KEY_ERROR: ${errText.includes('leaked') ? 'API Key reported as leaked' : 'Invalid API Key'}`);
-            }
-
-            if (listRes.ok) {
-                const listData = await listRes.json();
-                // ... (filtering logic remains similar, or we can trust fallback if this fails)
-                const models = listData.models || [];
-                const chatModel = models.find(m => m.name.includes('gemini-1.5-flash') || m.name.includes('gemini-pro'));
-
-                if (chatModel) {
-                    const modelName = chatModel.name.replace(`models/`, '');
-                    console.log(`[AI Discovery] Found model: ${modelName} on ${ver}`);
-                    fallbackModels.unshift({ ver, name: modelName });
-                    break; // Found a working version/model combo
-                }
-            }
-        } catch (e) {
-            console.warn(`[AI Discovery] Discovery failed on ${ver}:`, e.message);
-            if (e.message.includes('API_KEY_ERROR')) throw e; // Stop immediately if key is bad
-        }
-    }
-
-    // Try fallbacks
+    // Direct execution loop - No discovery, just try the trusted models
     for (const model of fallbackModels) {
         try {
-            const url = `https://generativelanguage.googleapis.com/${model.ver}/models/${model.name}:generateContent?key=${apiKey}`;
+            // Ensure no double models/ prefix
+            const cleanName = model.name.replace(/^models\//, '');
+            const url = `https://generativelanguage.googleapis.com/${model.ver}/models/${cleanName}:generateContent?key=${apiKey}`;
 
             // ... construct body ...
             const body = {
@@ -96,7 +65,7 @@ const callGemini = async (prompt, isJson = true) => {
                 }
             };
 
-            console.log(`[AI Attempt] Trying ${model.name} on ${model.ver}...`);
+            console.log(`[AI Attempt] Trying ${cleanName} on ${model.ver}...`);
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -110,21 +79,35 @@ const callGemini = async (prompt, isJson = true) => {
 
             if (!response.ok) {
                 const errText = await response.text();
-                // If 404, just try next model
                 if (response.status === 404) {
-                    console.warn(`[AI Attempt Failed] ${model.name} 404 Not Found: ${errText}`);
-                    lastError = new Error(`Model ${model.name} not found`);
+                    console.warn(`[AI Attempt Failed] ${cleanName} 404 Not Found: ${errText}`);
+                    lastError = new Error(`Model ${cleanName} not found`);
                     continue;
                 }
                 throw new Error(`API Error ${response.status}: ${errText}`);
             }
 
             const data = await response.json();
-            if (!data.candidates || data.candidates.length === 0) {
-                throw new Error('No content generated');
+
+            // Safety Check
+            if (data.promptFeedback && data.promptFeedback.blockReason) {
+                console.warn(`[AI Safety Block] ${cleanName}:`, data.promptFeedback);
+                throw new Error(`AI Safety Block: ${data.promptFeedback.blockReason}`);
             }
 
-            let text = data.candidates[0].content.parts[0].text;
+            if (!data.candidates || data.candidates.length === 0) {
+                console.error(`[AI Empty Response] ${cleanName}:`, JSON.stringify(data));
+                throw new Error('No content candidates returned. The AI might be overloaded or blocked.');
+            }
+
+            // Check for valid parts
+            const firstCandidate = data.candidates[0];
+            if (!firstCandidate.content || !firstCandidate.content.parts || !firstCandidate.content.parts[0]) {
+                console.error(`[AI Malformed Response] ${cleanName}:`, JSON.stringify(data));
+                throw new Error('Malformed AI response.');
+            }
+
+            let text = firstCandidate.content.parts[0].text;
             if (isJson) {
                 // Clean markdown
                 text = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -133,7 +116,7 @@ const callGemini = async (prompt, isJson = true) => {
             return text;
 
         } catch (error) {
-            console.error(`[AI Attempt Failed] ${model.name} error:`, error);
+            console.error(`[AI Attempt Failed] ${model.name} error:`, error.message);
             lastError = error;
             if (error.message.includes('API Key')) throw error; // Stop retry loop
         }
@@ -143,107 +126,79 @@ const callGemini = async (prompt, isJson = true) => {
 };
 
 // Generate trip itinerary
-export const generateTripItinerary = async (destination, days, budget, interests = []) => {
-    console.log(`[AI Service] Generating real trip for ${destination}`);
+export const generateTripItinerary = async (destination, days, budget, travelers, interests) => {
+    // If no key, return mock data
+    if (!AI_CONFIG.geminiKey || AI_CONFIG.geminiKey === 'YOUR_GEMINI_API_KEY_HERE') {
+        console.warn('Using MOCK itinerary data (No API Key)');
+        return new Promise(resolve => setTimeout(() => resolve(MOCK_ITINERARY), 2000));
+    }
 
-    const prompt = `Create a detailed ${days}-day travel itinerary for ${destination} with a budget of ${budget}. 
-    Interests: ${interests.join(', ')}.
-    Return ONLY a JSON object with this exact structure:
+    const prompt = `
+    Create a detailed ${days}-day travel itinerary for ${destination} for ${travelers}.
+    Budget level: ${budget}.
+    Interests: ${interests}.
+    
+    Return the response in this EXACT JSON structure:
     {
-      "success": true,
-      "itinerary": [
-        {
-          "day": 1,
-          "title": "Day Title",
-          "activities": [
-            { "time": "hh:mm AM/PM", "title": "Activity Name", "description": "Brief description" }
-          ]
-        }
-      ],
-      "expenses": [
-        { "category": "food/transport/accommodation/activities", "amount": 100, "note": "Brief note" }
-      ]
-    }`;
+        "success": true,
+        "itinerary": [
+            {
+                "day": 1,
+                "title": "Day Theme",
+                "activities": [
+                    { "time": "10:00 AM", "title": "Check-in", "description": "Details..." },
+                    { "time": "02:00 PM", "title": "Activity", "description": "Details..." }
+                ]
+            }
+        ],
+        "expenses": [
+            { "category": "accommodation", "amount": 0, "note": "Estimate" },
+            { "category": "food", "amount": 0, "note": "Estimate" },
+            { "category": "transport", "amount": 0, "note": "Estimate" },
+            { "category": "activities", "amount": 0, "note": "Estimate" }
+        ]
+    }
+    `;
 
     try {
-        return await callGemini(prompt);
+        return await callGemini(prompt, true);
     } catch (error) {
-        console.error('[AI Service] Gemini Error:', error);
+        console.error("AI Error:", error);
         return { success: false, error: error.message };
     }
 };
 
-// Generate packing list with weather context
-export const generatePackingList = async (destination, month, duration, type) => {
-    console.log(`[AI Service] Generating real packing list for ${destination} in ${month}`);
-
-    const prompt = `Create a smart packing list for a ${duration}-day ${type} trip to ${destination} in ${month}.
-    CRITICAL: You MUST consider the typical weather and climate of ${destination} during ${month} (e.g., if it's monsoon, suggest rain gear; if winter, heavy coats).
-    
-    Return ONLY a JSON object with this exact structure, categorizing items logically:
-    {
-      "success": true,
-      "recommendations": [
-        { "category": "Category Name", "items": ["Item 1 (Context note if needed)", "Item 2"] }
-      ]
-    }`;
-
-    try {
-        return await callGemini(prompt);
-    } catch (error) {
-        console.error('[AI Service] Packing Gemini Error:', error);
-        return { success: false, error: error.message };
+export const generateBudgetPlan = async (answers) => {
+    // If no key, return mock data
+    if (!AI_CONFIG.geminiKey || AI_CONFIG.geminiKey === 'YOUR_GEMINI_API_KEY_HERE') {
+        console.warn('Using MOCK budget data (No API Key)');
+        return {
+            success: true,
+            feasible: true,
+            total: 50000,
+            per_person: 12500,
+            analysis_message: "MOCK: Budget looks good!",
+            categories: { accommodation: 20000, food: 10000, transport: 10000, activities: 5000, shopping: 2500, other: 2500 },
+            tips: ["Book early", "Eat local"]
+        };
     }
-};
 
-// Generate food recommendations (Veg/Non-Veg)
-export const generateFoodRecommendations = async (destinations) => {
-    const placesList = Array.isArray(destinations) ? destinations.join(', ') : destinations;
-    console.log(`[AI Service] Generating food recommendations for ${placesList}`);
+    const participantsCount = parseInt(answers.travelers) || 1;
+    const duration = parseInt(answers.duration) || 3;
 
-    const prompt = `Suggest famous local food items for a trip to: ${placesList}.
-    For EACH location or the region in general, provide a mix of Vegetarian and Non-Vegetarian famous dishes.
-    
-    Return ONLY a JSON object with this exact structure:
-    {
-      "success": true,
-      "recommendations": [
-        {
-            "place": "Place Name", 
-            "items": [
-                 { "name": "Dish Name", "type": "Veg" | "Non-Veg", "description": "Short yummy description" }
-            ]
-        }
-      ]
-    }`;
-
-    try {
-        return await callGemini(prompt);
-    } catch (error) {
-        console.error('[AI Service] Food Gemini Error:', error);
-        return { success: false, error: error.message };
-    }
-};
-
-// Generate Budget Plan based on user questionnaire
-
-export const generateBudgetPlan = async (destination, duration, travelers, answers) => {
-    console.log(`[AI Service] Generating budget for ${destination}`);
-
-    const prompt = `Act as a travel budget expert. Create a detailed budget allocation for a trip to ${destination}.
-    
-    Trip Context:
+    const prompt = `
+    Act as an expert travel budget planner.
+    Create a strict and realistic budget allocation for a trip to:
+    - Destination: ${answers.destination}
     - Duration: ${duration} days
-    - Travelers: ${travelers}
-    - Destination: ${destination}
-
-    User Preferences:
-    - Budget Range: ${answers.budget_min} to ${answers.budget_max}
-    - Style: ${answers.preference}
-    - Priority: ${answers.priority}
-    - Accommodation Type: ${answers.accommodation} (Price Range: ${answers.hotel_price})
-    - Transport Modes: ${answers.primary_transport}
-    - Local Transport: ${answers.local_transport}
+    - Travelers: ${participantsCount}
+    - Total Budget Limit: ${answers.budget_max} ${answers.currency || 'INR'}
+    - Budget Preference: ${answers.preference || 'Mid'}
+    - Priority Spending: ${answers.priority || 'Experiences'}
+    - Accommodation Type: ${answers.accommodation || 'Hotel'}
+    - Hotel Price Range: ${answers.hotel_price || '2000 - 5000'}
+    - Primary Transport: ${answers.primary_transport || 'Flight'}
+    - Local Transport: ${answers.local_transport || 'Cab'}
 
     CRITICAL RULES:
     1. Calculate the Realistic Total Cost (RTC) for this specific trip configuration (Destination + Duration + Travelers).
@@ -259,7 +214,7 @@ export const generateBudgetPlan = async (destination, duration, travelers, answe
       "feasible": true,
       "total": 80000,
       "per_person": 20000,
-      "analysis_message": "Insufficient Budget: Your budget of 5k is too low for 5 days in Dubai. You need at least 25k...",
+      "analysis_message": "Your budget analysis here...",
       "categories": {
         "accommodation": 30000,
         "transport": 20000,
@@ -272,115 +227,15 @@ export const generateBudgetPlan = async (destination, duration, travelers, answe
     }`;
 
     try {
-        return await callGemini(prompt);
+        return await callGemini(prompt, true);
     } catch (error) {
-        console.error('[AI Service] Budget Gemini Error:', error);
+        console.error("AI Budget Error:", error);
         return { success: false, error: error.message };
     }
 };
 
-// Generate comprehensive personalized plan (Full Itinerary + Packing + Food)
-export const generateFullPersonalizedPlan = async (details) => {
-    console.log(`[AI Service] Generating Nuclear Plan for ${details.startLocation} to ${details.endLocation}`);
-
-    const prompt = `Act as a premium travel concierge. Create a comprehensive, billionaire-level travel plan based on these details:
-    - Start Location: ${details.startLocation}
-    - End Location: ${details.endLocation}
-    - Stops: ${JSON.stringify(details.stops)}
-    - Total Days: ${details.totalDays}
-    - Budget: ${details.budget}
-    - Dietary Preference: ${details.dietary}
-    - Travelers: ${details.travelers} (Ages: ${details.ages})
-    - Additional Notes: ${details.additionalNotes}
-
-    Return NO TEXT other than a JSON object with this exact structure:
-    {
-      "success": true,
-      "itinerary": [
-        {
-          "day": 1,
-          "title": "Day Title",
-          "activities": [
-            { "time": "hh:mm AM/PM", "title": "Activity Name", "description": "Brief description", "cost": "est cost" }
-          ]
-        }
-      ],
-      "packingList": [
-        { "category": "Clothing/Gear/Health", "items": ["Item name with reason"] }
-      ],
-      "foodRecommendations": [
-        { "name": "Dish/Restaurant Name", "description": "Why they should try it", "isVegFriendly": true }
-      ],
-      "budgetAnalysis": {
-        "summary": "Short breakdown of how to spend the budget",
-        "tips": ["Tip 1", "Tip 2"]
-      }
-    }`;
-
-    try {
-        return await callGemini(prompt);
-    } catch (error) {
-        console.error('[AI Service] Full Plan Error:', error);
-        return { success: false, error: error.message };
-    }
-};
-
-// Chat with assistant
-export const chatWithAssistant = async (message, tripContext = {}) => {
-    const prompt = `You are RouteMate, a professional travel assistant. 
-    Context: Trip to ${tripContext.destination || 'a destination'}.
-    User Message: ${message}
-    Provide a helpful, concierge-style response. Be specific and friendly.`;
-
-    try {
-        return await callGemini(prompt, false);
-    } catch (error) {
-        console.error('[AI Chat] Error:', error);
-        return "I'm having a little trouble connecting to my travel database. Please check your internet or try again in a moment!";
-    }
-};
-
-// Internal helper for actual fetch execution
-const executeGeminiRequest = async (url, prompt, isJson) => {
-    const body = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 4096, // Increased for full master plans
-        }
-    };
-
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText);
-    }
-
-    const data = await response.json();
-    if (!data.candidates || !data.candidates[0]?.content?.parts[0]?.text) {
-        throw new Error('Malformed AI response');
-    }
-
-    const text = data.candidates[0].content.parts[0].text;
-    if (isJson) {
-        try {
-            // Robust JSON extraction: Find the first '{' and last '}'
-            const startIdx = text.indexOf('{');
-            const endIdx = text.lastIndexOf('}');
-            if (startIdx !== -1 && endIdx !== -1) {
-                const jsonStr = text.substring(startIdx, endIdx + 1);
-                return JSON.parse(jsonStr);
-            }
-            throw new Error('No JSON brackets found');
-        } catch (e) {
-            console.error('[AI Parse Error] Failed to parse JSON from text:', text);
-            throw new Error(`AI generated text but it wasn't valid JSON. You can try copying the prompt manually.`);
-        }
-    }
-    return text;
+export const submitAiPlan = async (tripInfo, budgetData) => {
+    // This function can be used to refine the plan if needed
+    console.log("Submitting plan:", tripInfo.destination);
+    return { success: true };
 };
