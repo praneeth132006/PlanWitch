@@ -17,7 +17,7 @@ import TripSetupScreen from '../screens/TripSetupScreen';
 import BudgetScreen from '../screens/BudgetScreen';
 
 import JoinSelectionScreen from '../screens/JoinSelectionScreen';
-import AIChatScreen from '../screens/AIChatScreen';
+import FoodChecklistScreen from '../screens/FoodChecklistScreen';
 import AIPersonalizedPlanScreen from '../screens/AIPersonalizedPlanScreen';
 import TripPreferencesScreen from '../screens/TripPreferencesScreen';
 import Icon from '../components/Icon';
@@ -100,11 +100,11 @@ function TabNavigator({ onBackToHome, onSetScreen }) {
         }}
       />
       <Tab.Screen
-        name="Assistant"
-        component={AIChatScreen}
+        name="Food"
+        component={FoodChecklistScreen}
         options={{
-          tabBarLabel: 'Assistant',
-          tabBarIcon: ({ focused, color }) => <TabIcon name="sparkles" focused={focused} color={color} />,
+          tabBarLabel: 'Food',
+          tabBarIcon: ({ focused, color }) => <TabIcon name="food" focused={focused} color={color} />,
         }}
       />
     </Tab.Navigator>
