@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
 import { isValidTripCode } from '../utils/tripCodeGenerator';
 import Icon from '../components/Icon';
+import Popover15 from '../components/ui/Popover15';
 
 const { width } = Dimensions.get('window');
 
@@ -354,7 +355,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
                   {isActive || isOngoing ? 'CURRENT TRIP' : 'UPCOMING TRIP'}
                 </Text>
               </View>
-              <Text style={styles.currentTripName}>{trip.destination || trip.name || 'My Trip'}</Text>
+              <Text style={styles.currentTripName}>{trip.name || trip.destination || 'My Trip'}</Text>
             </View>
             <View style={styles.currentTripArrow}>
               <Text style={styles.arrowText}>→</Text>
@@ -450,7 +451,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
             <Icon name={tripTypeData.icon} size={24} color={tripTypeData.color} />
           </View>
           <View style={styles.upcomingTripInfo}>
-            <Text style={styles.upcomingTripName}>{trip.destination || trip.name || 'My Trip'}</Text>
+            <Text style={styles.upcomingTripName}>{trip.name || trip.destination || 'My Trip'}</Text>
             <Text style={styles.upcomingTripDates}>
               {typeof trip.startDate === 'string' ? trip.startDate : trip.startDate?.toLocaleDateString()} • {tripDays} days
             </Text>
@@ -733,37 +734,47 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
         </View>
       </Modal>
 
-      {/* Join Modal */}
-      <Modal animationType="slide" transparent visible={showJoinModal} onRequestClose={resetJoinModal}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
-
-            <View style={styles.modalIconBg}><Icon name="search" size={32} color={colors.primary} /></View>
-            <Text style={styles.modalTitle}>Join a Trip</Text>
-            <Text style={styles.modalDescription}>Enter the trip code shared by your travel buddy</Text>
-            <TextInput
-              style={styles.codeInput}
-              placeholder="Enter trip code"
-              placeholderTextColor={colors.textMuted}
-              value={tripCode}
-              onChangeText={setTripCode}
-              autoCapitalize="characters"
-              maxLength={6}
-            />
-            <Pressable
-              style={({ pressed }) => [styles.joinButton, !tripCode.trim() && styles.joinButtonDisabled, pressed && styles.buttonPressed]}
-              onPress={handleJoinTripNext}
-              disabled={!tripCode.trim()}
-            >
-              <Text style={styles.joinButtonText}>Find Trip</Text>
-            </Pressable>
-            <Pressable style={styles.cancelButton} onPress={resetJoinModal}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </Pressable>
-          </View>
+      {/* Join Modal - Replaced with Popover15 */}
+      <Popover15
+        visible={showJoinModal}
+        onClose={resetJoinModal}
+        title="Join a Trip"
+        description="Enter the trip code shared by your travel buddy"
+      >
+        <TextInput
+          style={[styles.codeInput, { outlineStyle: 'none' }]}
+          placeholder="Enter trip code"
+          placeholderTextColor={colors.textMuted}
+          value={tripCode}
+          onChangeText={setTripCode}
+          autoCapitalize="characters"
+          maxLength={6}
+        />
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.cancelButton,
+              { flex: 1, marginTop: 0, paddingVertical: 12, backgroundColor: colors.cardLight, borderRadius: 12, borderWidth: 1, borderColor: colors.primaryBorder },
+              pressed && { opacity: 0.8 }
+            ]}
+            onPress={resetJoinModal}
+          >
+            <Text style={[styles.cancelButtonText, { fontSize: 14, fontWeight: '600', color: colors.textMuted }]}>Cancel</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.joinButton,
+              { flex: 1, paddingVertical: 12, borderRadius: 12 },
+              !tripCode.trim() && styles.joinButtonDisabled,
+              pressed && styles.buttonPressed
+            ]}
+            onPress={handleJoinTripNext}
+            disabled={!tripCode.trim()}
+          >
+            <Text style={[styles.joinButtonText, { fontSize: 14 }]}>Find Trip</Text>
+          </Pressable>
         </View>
-      </Modal>
+      </Popover15>
     </SafeAreaView>
   );
 }

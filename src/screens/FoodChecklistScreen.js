@@ -42,31 +42,23 @@ export default function FoodChecklistScreen() {
     }, []);
 
     // Get places from trip info safely - FIXED PARSING
+    // Get places from trip info safely - Uses STOPS only (excluding start/end)
     const places = useMemo(() => {
         try {
-            if (!tripInfo?.destination) return [];
+            if (!tripInfo?.stops || !Array.isArray(tripInfo.stops)) return [];
 
-            if (Array.isArray(tripInfo.destination)) {
-                return tripInfo.destination.map(d =>
-                    typeof d === 'string' ? d : (d?.name || 'Unknown Place')
-                );
-            }
+            // Extract names and filter duplicates
+            const uniquePlaces = new Set();
+            tripInfo.stops.forEach(stop => {
+                if (stop.name) uniquePlaces.add(stop.name.trim());
+            });
 
-            if (typeof tripInfo.destination === 'string') {
-                // Split by comma AND hyphen (e.g. "Munnar - Kochi" -> ["Munnar", "Kochi"])
-                return tripInfo.destination
-                    .split(/[\s,]+-[\s,]+|,\s*/) // Split by " - " or ","
-                    .map(p => p.trim())
-                    .filter(Boolean);
-            }
-
-            // Fallback for object/unexpected type
-            return ['My Trip'];
+            return Array.from(uniquePlaces);
         } catch (e) {
-            console.warn('Error parsing destinations', e);
+            console.warn('Error parsing stops', e);
             return [];
         }
-    }, [tripInfo?.destination]);
+    }, [tripInfo?.stops]);
 
     // Modal State
     const [modalVisible, setModalVisible] = useState(false);

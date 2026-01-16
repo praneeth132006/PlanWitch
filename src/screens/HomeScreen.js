@@ -84,7 +84,6 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const spentPercentage = budget.total > 0 ? (getTotalExpenses() / budget.total) * 100 : 0;
   const participantCount = tripInfo.participants?.length || 1;
   const remainingBudget = getRemainingBudget();
-  const lastExpense = expenses.length > 0 ? expenses[expenses.length - 1] : null;
   const recentExpenses = expenses.slice(-2).reverse();
 
   const getCategoryInfo = (key) => {
@@ -153,6 +152,28 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
     }
     return places.size;
   }, [tripInfo.stops, itinerary]);
+
+  // Main Locations Count (Unique Stops only)
+  const mainLocationsCount = useMemo(() => {
+    if (!tripInfo.stops || !Array.isArray(tripInfo.stops)) return 0;
+    const uniqueStops = new Set();
+    tripInfo.stops.forEach(s => {
+      if (s.name) uniqueStops.add(s.name.trim());
+    });
+    return uniqueStops.size;
+  }, [tripInfo.stops]);
+
+  // Last Expense Logic
+  const lastExpense = useMemo(() => {
+    if (!expenses || expenses.length === 0) return null;
+    // Sort by date descending
+    const sorted = [...expenses].sort((a, b) => {
+      const timeA = a.date?.seconds ? a.date.seconds * 1000 : (a.date || 0);
+      const timeB = b.date?.seconds ? b.date.seconds * 1000 : (b.date || 0);
+      return timeB - timeA;
+    });
+    return sorted[0];
+  }, [expenses]);
 
   const goToItinerary = () => navigation.navigate('Itinerary');
   const goToExpenses = () => navigation.navigate('Expenses');
@@ -260,14 +281,34 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         contentContainerStyle={styles.scrollContent}
         bounces={false}
       >
-        {/* Header */}
+        {/* Header - Now shows Trip Status/Countdown */}
         <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
           <View style={styles.headerTop}>
-            <View style={{ flex: 1, marginRight: 16 }}>
-              <Text style={styles.headerLabel}>YOUR TRIP</Text>
-              <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-                {tripInfo.destination || 'My Adventure'}
-              </Text>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: colors.primary + '15', // Soft background
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: colors.primary + '30',
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 2
+              }}>
+                <Text style={{
+                  color: colors.primary,
+                  fontWeight: '700',
+                  fontSize: 13,
+                  letterSpacing: 0.5
+                }}>
+                  {daysUntil < 0 ? 'TRIP IN PROGRESS' : daysUntil === 0 ? 'TRIP STARTS TODAY!' : `${daysUntil} DAYS TO GO`}
+                </Text>
+              </View>
             </View>
             <View style={styles.headerActions}>
               <Pressable
@@ -281,31 +322,13 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               </Pressable>
             </View>
           </View>
-
-          {/* Trip Status Badge */}
-          {daysUntil !== null && (
-            <View style={styles.statusBadge}>
-              <Icon
-                name={daysUntil < 0 ? 'flight' : daysUntil === 0 ? 'party' : 'calendar'}
-                size={16}
-                color={colors.primary}
-                style={{ marginRight: 6 }}
-              />
-              <Text style={styles.statusText}>
-                {daysUntil < 0 ? 'Trip in progress!' : daysUntil === 0 ? 'Trip starts today!' : `${daysUntil} days to go`}
-              </Text>
-            </View>
-          )}
         </Animated.View>
-
-        {/* Prominent AI Personalization Prompt if missing preferences */}
-
 
         {/* Main Map & Info Section */}
         <Animated.View style={[styles.mainSection, { transform: [{ scale: scaleAnim }] }]}>
           {/* Top: Interactive Map (Read-Only visualization) */}
           <TripMap
-            origin={tripInfo.origin || { latitude: tripInfo.latitude, longitude: tripInfo.longitude, name: tripInfo.destination }}
+            origin={tripInfo.origin || (tripInfo.latitude ? { latitude: tripInfo.latitude, longitude: tripInfo.longitude, name: tripInfo.destination } : null)}
             stops={[...(tripInfo.stops || []), ...itinerary]}
             destination={tripInfo.endLocation}
             style={styles.mapContainer}
@@ -316,7 +339,10 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
           <View style={styles.boxedInfoCard}>
             <View style={styles.cardHeader}>
               <View>
-                <Text style={styles.cardTripName}>{tripInfo.destination || 'My Adventure'}</Text>
+                {/* Trip Name Display */}
+                <Text style={styles.cardTripName} numberOfLines={2}>
+                  {tripInfo.name || tripInfo.destination || 'My Adventure'}
+                </Text>
                 <View style={styles.tagRow}>
                   <View style={styles.typeTag}>
                     <Text style={styles.typeTagText}>{(tripInfo.tripType || 'Solo').toUpperCase()}</Text>
@@ -326,43 +352,50 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                   </View>
                 </View>
               </View>
-              <Pressable
-                style={({ pressed }) => [styles.heartButton, pressed && { opacity: 0.7 }]}
-                onPress={() => setShowSettingsModal(true)}
-              >
-                <Icon name="settings" size={20} color={colors.text} />
-              </Pressable>
+              {/* Removed Settings Icon Button */}
             </View>
 
             <Text style={styles.cardDescription} numberOfLines={3}>
-              A {tripInfo.tripType || 'solo'} adventure to {tripInfo.destination || 'your next destination'}.
-              Discover {uniquePlacesCount} places and manage your {formatCurrency(budget.total)} budget with ease.
+              Get ready for an unforgettable journey to {tripInfo.destination || 'your destination'}.
+              You're all set to explore {mainLocationsCount} amazing places and make memories that last a lifetime!
             </Text>
+
+
 
             {/* Stats Grid */}
             <View style={styles.statsGrid}>
               <View style={styles.gridItem}>
-                <Text style={styles.gridLabel}>PLACES</Text>
-                <Text style={styles.gridValue}>{uniquePlacesCount}</Text>
+                <Text style={styles.gridLabel}>LOCATIONS</Text>
+                <Text style={styles.gridValue}>{mainLocationsCount}</Text>
+              </View>
+              <View style={styles.gridItem}>
+                <Text style={styles.gridLabel}>BUDGET</Text>
+                <Text style={styles.gridValue}>{formatCurrency(budget.total)}</Text>
+              </View>
+              <View style={styles.gridItem}>
+                <Text style={styles.gridLabel}>LAST EXPENSE</Text>
+                <Text style={[styles.gridValue, { fontSize: 16 }]}>
+                  {lastExpense ? formatCurrency(lastExpense.amount) : '-'}
+                </Text>
+                {lastExpense && <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>{lastExpense.title}</Text>}
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.gridLabel}>TRAVELERS</Text>
                 <Text style={styles.gridValue}>{travelers.length}</Text>
               </View>
-              <View style={styles.gridItem}>
-                <Text style={styles.gridLabel}>STOPS</Text>
-                <Text style={styles.gridValue}>{tripInfo.stops ? tripInfo.stops.length : 0}</Text>
-              </View>
-              <View style={styles.gridItem}>
-                <Text style={styles.gridLabel}>DAYS</Text>
-                <Text style={styles.gridValue}>{tripDays}</Text>
-              </View>
             </View>
 
 
+            {/* Helper Text - Moved to bottom */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, justifyContent: 'center' }}>
+              <Icon name="info" size={12} color={colors.primary} style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 11, color: colors.textMuted, fontStyle: 'italic' }}>
+                Click on the settings icons to edit the trip details.
+              </Text>
+            </View>
+
           </View>
         </Animated.View>
-
 
         {/* Participants - Keep this section */}
         {/* {travelers.length > 0 && ( */}
@@ -791,7 +824,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         title="Select End Date"
         minDate={editStartDate}
       />
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 

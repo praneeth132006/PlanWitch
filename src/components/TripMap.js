@@ -19,40 +19,55 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
     useEffect(() => {
         if (Platform.OS !== 'web') return;
 
-        const initMap = () => {
-            if (window.google && window.google.maps && mapRef.current && !mapInstance.current) {
-                mapInstance.current = new window.google.maps.Map(mapRef.current, {
-                    ...MAP_DEFAULTS,
-                    disableDefaultUI: true,
-                    zoomControl: false,
-                    gestureHandling: 'none',
-                    keyboardShortcuts: false,
-                    clickableIcons: false,
-                });
+        // Web Initialization with Retry
+        const checkGoogleMaps = () => {
+            if (window.google && window.google.maps) {
+                if (mapRef.current && !mapInstance.current) {
+                    mapInstance.current = new window.google.maps.Map(mapRef.current, {
+                        ...MAP_DEFAULTS,
+                        disableDefaultUI: true,
+                        zoomControl: false,
+                        gestureHandling: 'none',
+                        keyboardShortcuts: false,
+                        clickableIcons: false,
+                    });
 
-                bounds.current = new window.google.maps.LatLngBounds();
+                    bounds.current = new window.google.maps.LatLngBounds();
 
-                // Initialize Directions Service
-                directionsService.current = new window.google.maps.DirectionsService();
-                directionsRenderer.current = new window.google.maps.DirectionsRenderer({
-                    map: mapInstance.current,
-                    suppressMarkers: true,
-                    preserveViewport: false,
-                    polylineOptions: {
-                        strokeColor: '#FFD2AD',
-                        strokeWeight: 5,
-                        strokeOpacity: 0.8,
-                    }
-                });
+                    directionsService.current = new window.google.maps.DirectionsService();
+                    directionsRenderer.current = new window.google.maps.DirectionsRenderer({
+                        map: mapInstance.current,
+                        suppressMarkers: true,
+                        preserveViewport: false,
+                        polylineOptions: {
+                            strokeColor: '#FFD2AD',
+                            strokeWeight: 5,
+                            strokeOpacity: 0.8,
+                        }
+                    });
+
+                    updateMapContents();
+                }
+                return true;
             }
+            return false;
         };
 
-        setTimeout(initMap, 500);
+        if (!checkGoogleMaps()) {
+            const interval = setInterval(() => {
+                if (checkGoogleMaps()) {
+                    clearInterval(interval);
+                }
+            }, 500);
 
+            // Stop checking after 10 seconds
+            setTimeout(() => clearInterval(interval), 10000);
+            return () => clearInterval(interval);
+        }
     }, []);
 
-    // Update markers and route when points change
-    useEffect(() => {
+    // Extract update logic to function so we can call it from init
+    const updateMapContents = () => {
         if (!mapInstance.current || !window.google) return;
 
         // Clear existing markers
@@ -180,11 +195,26 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                 }
             }
         }
+    };
+
+    // Update markers and route when points change
+    useEffect(() => {
+        updateMapContents();
     }, [start, origin, visit, end, destination, stops]);
 
     const styles = createStyles(colors);
 
-    if (Platform.OS !== 'web') return null;
+    // Native Fallback - since we don't have react-native-maps installed
+    if (Platform.OS !== 'web') {
+        return (
+            <View style={[styles.container, style, { alignItems: 'center', justifyContent: 'center' }]}>
+                {/* Fallback View for Native */}
+                <View style={{ width: '100%', height: '100%', backgroundColor: colors.cardLight, alignItems: 'center', justifycontent: 'center' }}>
+                    {/* Placeholder content if needed, e.g. static image or nothing */}
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View style={[styles.container, style]}>
