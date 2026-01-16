@@ -198,32 +198,85 @@ export default function BudgetScreen() {
         currency: currency.code
       });
 
-      if (result.success && result.categories) {
-        setBudget({
-          total: result.total || 0,
-          categories: result.categories
-        });
-
-        if (saveTripPreferences) saveTripPreferences(finalAnswers);
-
-        setAiModalVisible(false);
-
-        // Show AI Analysis Message
-        setTimeout(() => {
-          Alert.alert(
-            result.feasible ? 'Budget Plan Created' : 'Budget Warning',
-            result.analysis_message || `AI has allocated ${currency.symbol}${result.total} for your trip.`,
-            [{ text: 'OK' }]
-          );
-        }, 500);
-
-      } else {
-        Alert.alert('Error', 'AI could not generate a budget plan. Please try again.');
-      }
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    } finally {
       setIsGenerating(false);
+
+      if (!result.success || !result.categories) {
+        Alert.alert('Error', result.error || 'AI could not generate a budget plan. Please try again.');
+        return;
+      }
+
+      // CASE 1: Budget is INSUFFICIENT (feasible = false)
+      if (result.feasible === false) {
+        const deficit = result.deficit || (result.realistic_cost - result.total);
+        Alert.alert(
+          '⚠️ Budget Warning',
+          `Your budget of ${currency.symbol}${finalAnswers.budget_max} may not be sufficient for this trip.\n\n` +
+          `Estimated realistic cost: ${currency.symbol}${result.realistic_cost || 'N/A'}\n` +
+          `Additional amount needed: ${currency.symbol}${deficit}\n\n` +
+          `${result.analysis_message || ''}\n\n` +
+          `Do you want to continue with your entered budget anyway?`,
+          [
+            {
+              text: 'No, Change Amount',
+              style: 'cancel',
+              onPress: () => {
+                // Go back to Step 1 (budget range)
+                setCurrentQIndex(0);
+                setRangeMin('');
+                setRangeMax('');
+                // Keep modal open
+              }
+            },
+            {
+              text: 'Yes, Continue',
+              onPress: () => {
+                // Apply the budget within user's limit
+                setBudget({
+                  total: result.total || parseInt(finalAnswers.budget_max),
+                  categories: result.categories
+                });
+                if (saveTripPreferences) saveTripPreferences(finalAnswers);
+                setAiModalVisible(false);
+                setTimeout(() => {
+                  Alert.alert(
+                    'Budget Applied',
+                    `Budget of ${currency.symbol}${result.total} has been allocated. Consider increasing your budget for a more comfortable trip.`,
+                    [{ text: 'OK' }]
+                  );
+                }, 300);
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      // CASE 2: Budget is SUFFICIENT (feasible = true)
+      setBudget({
+        total: result.total || 0,
+        categories: result.categories
+      });
+
+      if (saveTripPreferences) saveTripPreferences(finalAnswers);
+      setAiModalVisible(false);
+
+      const surplus = result.surplus || (parseInt(finalAnswers.budget_max) - result.total);
+      setTimeout(() => {
+        Alert.alert(
+          '✅ Budget Plan Created',
+          surplus > 0
+            ? `Great news! Your budget is sufficient.\n\n` +
+            `Allocated: ${currency.symbol}${result.total}\n` +
+            `You have ${currency.symbol}${surplus} extra for savings or splurges!\n\n` +
+            `${result.analysis_message || ''}`
+            : result.analysis_message || `AI has allocated ${currency.symbol}${result.total} for your trip.`,
+          [{ text: 'OK' }]
+        );
+      }, 300);
+
+    } catch (error) {
+      setIsGenerating(false);
+      Alert.alert('Error', error.message);
     }
   };
 

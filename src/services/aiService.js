@@ -32,30 +32,27 @@ const MOCK_ITINERARY = {
     ]
 };
 
-// Helper to call Gemini AI with automated model discovery
+// Helper to call Gemini AI
 const callGemini = async (prompt, isJson = true) => {
     const apiKey = AI_CONFIG.geminiKey;
-    if (!apiKey || apiKey === 'YOUR_GEMINI_API_KEY_HERE') {
-        throw new Error('API Key is missing in src/config/aiConfig.js');
+    if (!apiKey) {
+        throw new Error('API Key is missing. Please set GEMINI_API_KEY in your .env file.');
     }
 
-    // Using Gemini 2.0 Flash - the current default model as of Jan 2025
+    // Using Gemini 2.0 Flash - the current default model
     const fallbackModels = [
-        { ver: 'v1beta', name: 'gemini-2.0-flash' },          // CURRENT DEFAULT
-        { ver: 'v1beta', name: 'gemini-2.0-flash-exp' },      // Experimental
-        { ver: 'v1beta', name: 'gemini-2.0-flash-lite' },     // Lite version
+        { ver: 'v1beta', name: 'gemini-2.0-flash' },
+        { ver: 'v1beta', name: 'gemini-2.0-flash-exp' },
+        { ver: 'v1beta', name: 'gemini-2.0-flash-lite' },
     ];
 
     let lastError = null;
 
-    // Direct execution loop - No discovery, just try the trusted models
     for (const model of fallbackModels) {
         try {
-            // Ensure no double models/ prefix
             const cleanName = model.name.replace(/^models\//, '');
             const url = `https://generativelanguage.googleapis.com/${model.ver}/models/${cleanName}:generateContent?key=${apiKey}`;
 
-            // ... construct body ...
             const body = {
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
                 generationConfig: {
@@ -65,7 +62,7 @@ const callGemini = async (prompt, isJson = true) => {
                 }
             };
 
-            console.log(`[AI Attempt] Trying ${cleanName} on ${model.ver}...`);
+            console.log(`[AI Attempt] Trying ${cleanName}...`);
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -80,7 +77,7 @@ const callGemini = async (prompt, isJson = true) => {
             if (!response.ok) {
                 const errText = await response.text();
                 if (response.status === 404) {
-                    console.warn(`[AI Attempt Failed] ${cleanName} 404 Not Found: ${errText}`);
+                    console.warn(`[AI] ${cleanName} 404 Not Found`);
                     lastError = new Error(`Model ${cleanName} not found`);
                     continue;
                 }
@@ -89,46 +86,39 @@ const callGemini = async (prompt, isJson = true) => {
 
             const data = await response.json();
 
-            // Safety Check
             if (data.promptFeedback && data.promptFeedback.blockReason) {
-                console.warn(`[AI Safety Block] ${cleanName}:`, data.promptFeedback);
                 throw new Error(`AI Safety Block: ${data.promptFeedback.blockReason}`);
             }
 
             if (!data.candidates || data.candidates.length === 0) {
-                console.error(`[AI Empty Response] ${cleanName}:`, JSON.stringify(data));
-                throw new Error('No content candidates returned. The AI might be overloaded or blocked.');
+                throw new Error('No content candidates returned.');
             }
 
-            // Check for valid parts
             const firstCandidate = data.candidates[0];
             if (!firstCandidate.content || !firstCandidate.content.parts || !firstCandidate.content.parts[0]) {
-                console.error(`[AI Malformed Response] ${cleanName}:`, JSON.stringify(data));
                 throw new Error('Malformed AI response.');
             }
 
             let text = firstCandidate.content.parts[0].text;
             if (isJson) {
-                // Clean markdown
                 text = text.replace(/```json/g, '').replace(/```/g, '').trim();
                 return JSON.parse(text);
             }
             return text;
 
         } catch (error) {
-            console.error(`[AI Attempt Failed] ${model.name} error:`, error.message);
+            console.error(`[AI Failed] ${model.name}:`, error.message);
             lastError = error;
-            if (error.message.includes('API Key')) throw error; // Stop retry loop
+            if (error.message.includes('API Key')) throw error;
         }
     }
 
-    throw lastError || new Error('All AI models failed. Please check your API key.');
+    throw lastError || new Error('All AI models failed.');
 };
 
 // Generate trip itinerary
 export const generateTripItinerary = async (destination, days, budget, travelers, interests) => {
-    // If no key, return mock data
-    if (!AI_CONFIG.geminiKey || AI_CONFIG.geminiKey === 'YOUR_GEMINI_API_KEY_HERE') {
+    if (!AI_CONFIG.geminiKey) {
         console.warn('Using MOCK itinerary data (No API Key)');
         return new Promise(resolve => setTimeout(() => resolve(MOCK_ITINERARY), 2000));
     }
@@ -170,7 +160,7 @@ export const generateTripItinerary = async (destination, days, budget, travelers
 
 export const generateBudgetPlan = async (answers) => {
     // If no key, return mock data
-    if (!AI_CONFIG.geminiKey || AI_CONFIG.geminiKey === 'YOUR_GEMINI_API_KEY_HERE') {
+    if (!AI_CONFIG.geminiKey) {
         console.warn('Using MOCK budget data (No API Key)');
         return {
             success: true,
@@ -178,6 +168,8 @@ export const generateBudgetPlan = async (answers) => {
             total: 50000,
             per_person: 12500,
             analysis_message: "MOCK: Budget looks good!",
+            realistic_cost: 50000,
+            deficit: 0,
             categories: { accommodation: 20000, food: 10000, transport: 10000, activities: 5000, shopping: 2500, other: 2500 },
             tips: ["Book early", "Eat local"]
         };
@@ -185,49 +177,76 @@ export const generateBudgetPlan = async (answers) => {
 
     const participantsCount = parseInt(answers.travelers) || 1;
     const duration = parseInt(answers.duration) || 3;
+    const userMaxBudget = parseInt(answers.budget_max) || 50000;
 
     const prompt = `
-    Act as an expert travel budget planner.
-    Create a strict and realistic budget allocation for a trip to:
+    You are an expert travel budget planner. Analyze and allocate budget for this trip:
+    
+    TRIP DETAILS:
     - Destination: ${answers.destination}
     - Duration: ${duration} days
     - Travelers: ${participantsCount}
-    - Total Budget Limit: ${answers.budget_max} ${answers.currency || 'INR'}
+    - User's Maximum Budget: ${userMaxBudget} ${answers.currency || 'INR'}
+    - User's Minimum Budget: ${answers.budget_min || userMaxBudget * 0.8} ${answers.currency || 'INR'}
     - Budget Preference: ${answers.preference || 'Mid'}
     - Priority Spending: ${answers.priority || 'Experiences'}
-    - Accommodation Type: ${answers.accommodation || 'Hotel'}
-    - Hotel Price Range: ${answers.hotel_price || '2000 - 5000'}
-    - Primary Transport: ${answers.primary_transport || 'Flight'}
-    - Local Transport: ${answers.local_transport || 'Cab'}
+    - Accommodation: ${answers.accommodation || 'Hotel'} (${answers.hotel_price || '2000-5000'}/night)
+    - Transport: ${answers.primary_transport || 'Flight'}, Local: ${answers.local_transport || 'Cab'}
 
-    CRITICAL RULES:
-    1. Calculate the Realistic Total Cost (RTC) for this specific trip configuration (Destination + Duration + Travelers).
-    2. STRICTLY Compare RTC with the user's Max Budget (${answers.budget_max}).
-    3. FEASIBILITY CHECK:
-       - If RTC > ${answers.budget_max}: Set "feasible": false. The "total" MUST be the RTC (the actual needed amount). Message MUST start with "Insufficient Budget:" and explain the deficit.
-       - If RTC <= ${answers.budget_max}: Set "feasible": true. The "total" should be the RTC. Message should confirm sufficiency.
-    4. MATH CHECK: The Sum of "categories" values MUST equal the "total" field EXACTLY.
+    CRITICAL INSTRUCTIONS:
+    1. First, calculate the REALISTIC MINIMUM COST for this trip based on destination, duration, and travelers.
+    2. Compare realistic cost with user's max budget (${userMaxBudget}).
     
-    Return ONLY a JSON object with this exact structure:
+    IF realistic_cost > ${userMaxBudget}:
+       - Set "feasible": false
+       - Set "deficit": (realistic_cost - ${userMaxBudget})
+       - Still allocate categories but WITHIN user's max budget of ${userMaxBudget}
+       - Message should explain the shortfall
+    
+    IF realistic_cost <= ${userMaxBudget}:
+       - Set "feasible": true
+       - Set "surplus": (${userMaxBudget} - realistic_cost)
+       - Allocate based on realistic cost (not the full max)
+       - Message should confirm budget is sufficient
+    
+    MATH RULE: Sum of ALL category values MUST EQUAL the "total" field EXACTLY.
+    The "total" should NEVER exceed ${userMaxBudget}.
+    
+    Return ONLY this JSON:
     {
       "success": true,
-      "feasible": true,
-      "total": 80000,
-      "per_person": 20000,
-      "analysis_message": "Your budget analysis here...",
+      "feasible": true or false,
+      "total": <number within user's budget>,
+      "realistic_cost": <actual estimated cost>,
+      "deficit": <if feasible=false, how much more is needed>,
+      "surplus": <if feasible=true, how much extra budget user has>,
+      "per_person": <total / travelers>,
+      "analysis_message": "<detailed explanation>",
       "categories": {
-        "accommodation": 30000,
-        "transport": 20000,
-        "food": 15000,
-        "activities": 10000,
-        "shopping": 2500,
-        "other": 2500
+        "accommodation": <number>,
+        "transport": <number>,
+        "food": <number>,
+        "activities": <number>,
+        "shopping": <number>,
+        "other": <number>
       },
-      "tips": ["Tip 1", "Tip 2"]
+      "tips": ["tip1", "tip2"]
     }`;
 
     try {
-        return await callGemini(prompt, true);
+        const result = await callGemini(prompt, true);
+
+        // Validate and enforce budget cap
+        if (result.total > userMaxBudget) {
+            console.warn(`[AI] Total ${result.total} exceeds user max ${userMaxBudget}, capping.`);
+            const scale = userMaxBudget / result.total;
+            result.categories = Object.fromEntries(
+                Object.entries(result.categories).map(([k, v]) => [k, Math.round(v * scale)])
+            );
+            result.total = userMaxBudget;
+        }
+
+        return result;
     } catch (error) {
         console.error("AI Budget Error:", error);
         return { success: false, error: error.message };
@@ -235,7 +254,105 @@ export const generateBudgetPlan = async (answers) => {
 };
 
 export const submitAiPlan = async (tripInfo, budgetData) => {
-    // This function can be used to refine the plan if needed
     console.log("Submitting plan:", tripInfo.destination);
     return { success: true };
 };
+
+// Generate packing list suggestions
+export const generatePackingList = async (destination, travelDate, duration, tripType) => {
+    if (!AI_CONFIG.geminiKey) {
+        // Return mock data
+        return {
+            success: true,
+            recommendations: [
+                { category: 'Essentials', items: ['Passport', 'Wallet', 'Phone', 'Keys'] },
+                { category: 'Clothing', items: ['T-Shirts', 'Pants', 'Jacket', 'Underwear'] },
+                { category: 'Toiletries', items: ['Toothbrush', 'Shampoo', 'Sunscreen'] },
+            ]
+        };
+    }
+
+    const prompt = `
+    Create a packing list for a trip:
+    - Destination: ${destination}
+    - Travel Date: ${travelDate}
+    - Duration: ${duration} days
+    - Trip Type: ${tripType}
+    
+    Consider the weather, local customs, and essential items needed.
+    
+    Return ONLY this JSON format:
+    {
+      "success": true,
+      "recommendations": [
+        { "category": "Essentials", "items": ["item1", "item2", "item3"] },
+        { "category": "Clothing", "items": ["item1", "item2", "item3"] },
+        { "category": "Toiletries", "items": ["item1", "item2"] },
+        { "category": "Electronics", "items": ["item1", "item2"] },
+        { "category": "Documents", "items": ["item1", "item2"] },
+        { "category": "Health", "items": ["item1", "item2"] }
+      ]
+    }`;
+
+    try {
+        return await callGemini(prompt, true);
+    } catch (error) {
+        console.error("AI Packing Error:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Generate food recommendations for multiple locations
+export const generateFoodRecommendations = async (places, preferences) => {
+    const locationList = Array.isArray(places) ? places.join(', ') : places;
+
+    if (!AI_CONFIG.geminiKey) {
+        // Return mock data matching expected format
+        const mockPlaces = Array.isArray(places) ? places : [places];
+        return {
+            success: true,
+            recommendations: mockPlaces.map(place => ({
+                place: place,
+                items: [
+                    { name: 'Local Specialty', type: 'veg', mustTry: true },
+                    { name: 'Street Food', type: 'non-veg', mustTry: true },
+                    { name: 'Famous Restaurant Dish', type: 'veg', mustTry: false },
+                ]
+            }))
+        };
+    }
+
+    const prompt = `
+    Suggest famous food items and must-try dishes for these locations: ${locationList}
+    Preferences: ${preferences || 'Both veg and non-veg'}
+    
+    Include local specialties, street food, and popular dishes for EACH location.
+    
+    Return ONLY this JSON format (one entry per location):
+    {
+      "success": true,
+      "recommendations": [
+        {
+          "place": "Location Name 1",
+          "items": [
+            { "name": "Dish Name", "type": "veg", "mustTry": true },
+            { "name": "Dish Name 2", "type": "non-veg", "mustTry": false }
+          ]
+        },
+        {
+          "place": "Location Name 2",
+          "items": [
+            { "name": "Dish Name", "type": "veg", "mustTry": true }
+          ]
+        }
+      ]
+    }`;
+
+    try {
+        return await callGemini(prompt, true);
+    } catch (error) {
+        console.error("AI Food Error:", error);
+        return { success: false, error: error.message };
+    }
+};
+

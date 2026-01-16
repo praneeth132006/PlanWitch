@@ -124,21 +124,37 @@ export default function FoodChecklistScreen() {
         await addFoodItem(targetPlace, itemName, itemType);
     };
 
-    const handleAddAllAiItems = () => {
+    const handleAddAllAiItems = async () => {
         let addedCount = 0;
-        aiSuggestions.forEach(rec => {
-            rec.items.forEach(async (item) => {
-                const targetPlace = places.find(p => p.toLowerCase().includes(rec.place.toLowerCase()) || rec.place.toLowerCase().includes(p.toLowerCase())) || places[0];
-                const exists = foodItems.some(fi => fi.place === targetPlace && fi.name.toLowerCase() === item.name.toLowerCase());
+
+        for (const rec of aiSuggestions) {
+            // More robust place matching: check if AI place name matches any part of user's place
+            const targetPlace = places.find(p => {
+                const pLower = p.toLowerCase();
+                const recLower = rec.place.toLowerCase();
+                return pLower.includes(recLower) || recLower.includes(pLower) ||
+                    pLower.split(' ').some(word => recLower.includes(word)) ||
+                    recLower.split(' ').some(word => pLower.includes(word));
+            }) || places[0];
+
+            for (const item of rec.items) {
+                const exists = foodItems.some(fi =>
+                    fi.place === targetPlace && fi.name.toLowerCase() === item.name.toLowerCase()
+                );
 
                 if (!exists) {
-                    await addFoodItem(targetPlace, item.name, item.type);
+                    // Normalize type to proper case: 'veg' -> 'Veg', 'non-veg' -> 'Non-Veg'
+                    let normalizedType = item.type;
+                    if (typeof item.type === 'string') {
+                        normalizedType = item.type.toLowerCase().includes('non') ? 'Non-Veg' : 'Veg';
+                    }
+                    await addFoodItem(targetPlace, item.name, normalizedType);
                     addedCount++;
                 }
-            });
-        });
+            }
+        }
 
-        Alert.alert('Success', `Items added to your checklist!`);
+        Alert.alert('Success', `${addedCount} items added to your checklist!`);
         setAiModalVisible(false);
     };
 
@@ -246,13 +262,17 @@ export default function FoodChecklistScreen() {
                                                             {item.tried && <Icon name="check" size={12} color="#fff" />}
                                                         </TouchableOpacity>
 
-                                                        {/* Veg/Non-Veg Indicator */}
+                                                        {/* Veg/Non-Veg Indicator - Case insensitive check */}
                                                         {item.type && (
                                                             <View style={[{
-                                                                width: 16, height: 16, borderWidth: 1, borderColor: 'green',
+                                                                width: 16, height: 16, borderWidth: 1,
+                                                                borderColor: item.type?.toLowerCase().includes('non') ? '#EF4444' : '#22C55E',
                                                                 alignItems: 'center', justifyContent: 'center', marginRight: 10
-                                                            }, item.type === 'Non-Veg' && { borderColor: 'red' }]}>
-                                                                <View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'green' }, item.type === 'Non-Veg' && { backgroundColor: 'red' }]} />
+                                                            }]}>
+                                                                <View style={[{
+                                                                    width: 8, height: 8, borderRadius: 4,
+                                                                    backgroundColor: item.type?.toLowerCase().includes('non') ? '#EF4444' : '#22C55E'
+                                                                }]} />
                                                             </View>
                                                         )}
 
