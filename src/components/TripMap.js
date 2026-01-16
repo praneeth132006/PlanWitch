@@ -7,7 +7,7 @@ import GOOGLE_MAPS_CONFIG, { MAP_DEFAULTS } from '../config/googleMaps';
  * TripMap Component
  * Visualizes the trip Start, Visit, and End points on a read-only map.
  */
-const TripMap = ({ start, origin, visit, end, destination, stops, mode, style }) => {
+const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, borderRadius = 0 }) => {
     const { colors } = useTheme();
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
@@ -60,82 +60,105 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style })
         markers.current = [];
 
         bounds.current = new window.google.maps.LatLngBounds();
-        let validLocations = [];
 
-        // Combine all potential points: Origin/Start -> Stops -> End/Destination
+        // 1. Collect all points in order with their logical label
+        const allPoints = [];
+        let labelCounter = 1;
+
+        // Start
         const startPoint = origin || start;
-        const endPoint = destination || end;
-
-        // 1. Add Start Point
         if (startPoint && startPoint.latitude && startPoint.longitude) {
-            const position = { lat: startPoint.latitude, lng: startPoint.longitude };
-            validLocations.push(position);
-            markers.current.push(new window.google.maps.Marker({
-                position,
-                map: mapInstance.current,
-                label: 'A',
-                title: startPoint.name || 'Start',
-            }));
-            bounds.current.extend(position);
+            allPoints.push({
+                type: 'start',
+                position: { lat: startPoint.latitude, lng: startPoint.longitude },
+                label: (labelCounter++).toString(),
+                name: startPoint.name || 'Start'
+            });
         }
 
-        // 2. Add Stops
+        // Stops
         if (stops && stops.length > 0) {
             stops.forEach((stop, index) => {
                 if (stop && stop.latitude && stop.longitude) {
-                    const position = { lat: stop.latitude, lng: stop.longitude };
-                    validLocations.push(position);
-                    markers.current.push(new window.google.maps.Marker({
-                        position,
-                        map: mapInstance.current,
-                        label: (index + 1).toString(),
-                        title: stop.name || `Stop ${index + 1}`,
-                    }));
-                    bounds.current.extend(position);
+                    allPoints.push({
+                        type: 'stop',
+                        position: { lat: stop.latitude, lng: stop.longitude },
+                        label: (labelCounter++).toString(),
+                        name: stop.name || `Stop ${index + 1}`
+                    });
                 }
             });
         }
 
-        // 3. Add Visit (Legacy single point)
-        if (visit && (!stops || stops.length === 0)) {
-            if (visit.latitude && visit.longitude) {
-                const position = { lat: visit.latitude, lng: visit.longitude };
-                validLocations.push(position);
-                markers.current.push(new window.google.maps.Marker({
-                    position,
-                    map: mapInstance.current,
-                    label: 'B',
-                    title: visit.name || 'Visit',
-                }));
-                bounds.current.extend(position);
-            }
+        // Visit (Legacy)
+        if (visit && (!stops || stops.length === 0) && visit.latitude && visit.longitude) {
+            allPoints.push({
+                type: 'visit',
+                position: { lat: visit.latitude, lng: visit.longitude },
+                label: (labelCounter++).toString(),
+                name: visit.name || 'Visit'
+            });
         }
 
-        // 4. Add End Point
+        // End
+        const endPoint = destination || end;
         if (endPoint && endPoint.latitude && endPoint.longitude) {
-            const position = { lat: endPoint.latitude, lng: endPoint.longitude };
-            validLocations.push(position);
-            markers.current.push(new window.google.maps.Marker({
-                position,
-                map: mapInstance.current,
-                label: validLocations.length > 1 ? String.fromCharCode(65 + validLocations.length - 1) : 'B', // Dynamic label
-                title: endPoint.name || 'End',
-            }));
-            bounds.current.extend(position);
+            allPoints.push({
+                type: 'end',
+                position: { lat: endPoint.latitude, lng: endPoint.longitude },
+                label: (labelCounter++).toString(),
+                name: endPoint.name || 'End'
+            });
         }
 
-        // Calculate Route
+        if (allPoints.length === 0) return;
+
+        // 2. Group collinear points for Markers
+        // We use a simple string key of lat,lng to detect duplicates
+        const uniqueParams = {}; // "lat,lng" -> { position, labels[], title }
+
+        allPoints.forEach(p => {
+            const key = `${p.position.lat},${p.position.lng}`;
+            if (!uniqueParams[key]) {
+                uniqueParams[key] = {
+                    position: p.position,
+                    labels: [p.label],
+                    title: p.name
+                };
+            } else {
+                uniqueParams[key].labels.push(p.label);
+                // Append title if different? Usually keep first or append
+                if (!uniqueParams[key].title.includes(p.name)) {
+                    uniqueParams[key].title += ` & ${p.name}`;
+                }
+            }
+            bounds.current.extend(p.position);
+        });
+
+        // 3. Create Markers from groups
+        Object.values(uniqueParams).forEach(group => {
+            markers.current.push(new window.google.maps.Marker({
+                position: group.position,
+                map: mapInstance.current,
+                label: group.labels.join(', '), // "1, 3"
+                title: group.title,
+            }));
+        });
+
+        // 4. Calculate Route (Use ALL points in sequence)
         if (directionsService.current && directionsRenderer.current) {
-            if (validLocations.length >= 2) {
-                const origin = validLocations[0];
-                const destination = validLocations[validLocations.length - 1];
-                const waypoints = validLocations.length > 2
-                    ? validLocations.slice(1, -1).map(loc => ({ location: loc, stopover: true }))
+            if (allPoints.length >= 2) {
+                const routeOrigin = allPoints[0].position;
+                const routeDestination = allPoints[allPoints.length - 1].position;
+
+                // Waypoints are everything in between
+                const waypoints = allPoints.length > 2
+                    ? allPoints.slice(1, -1).map(p => ({ location: p.position, stopover: true }))
                     : [];
 
                 directionsService.current.route({
-                    origin,
-                    destination,
+                    origin: routeOrigin,
+                    destination: routeDestination,
                     waypoints,
                     optimizeWaypoints: false,
                     travelMode: window.google.maps.TravelMode.DRIVING,
@@ -149,7 +172,7 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style })
                 });
             } else {
                 directionsRenderer.current.setDirections({ routes: [] });
-                if (validLocations.length > 0) {
+                if (allPoints.length > 0) {
                     mapInstance.current.fitBounds(bounds.current);
                     if (bounds.current.getNorthEast().equals(bounds.current.getSouthWest())) {
                         mapInstance.current.setZoom(10);
@@ -157,7 +180,7 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style })
                 }
             }
         }
-    }, [start, visit, end, stops]);
+    }, [start, origin, visit, end, destination, stops]);
 
     const styles = createStyles(colors);
 
@@ -170,7 +193,8 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style })
                 style={{
                     width: '100%',
                     height: '100%',
-                    borderRadius: '0px'
+                    borderRadius: borderRadius,
+                    overflow: 'hidden'
                 }}
             />
         </View>

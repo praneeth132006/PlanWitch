@@ -220,9 +220,8 @@ export default function MainNavigator() {
         }
       }
 
-      // 3. Navigate to Preferences Wizard to personalize
-      // User can skip from there to Dashboard
-      setCurrentScreen('TripPreferences');
+      // 3. Navigate directly to TripDashboard as requested
+      setCurrentScreen('TripDashboard');
     } catch (error) {
       console.error('Error in handleTripSetupComplete:', error);
       Alert.alert('Error', 'Failed to save trip. Please try again.');

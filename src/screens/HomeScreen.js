@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import DatePickerModal from '../components/DatePickerModal';
 import { auth } from '../config/firebase';
 import Icon from '../components/Icon';
-import HomeMap from '../components/HomeMap';
+import TripMap from '../components/TripMap';
 
 export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const {
@@ -134,6 +134,26 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const tripDays = getTripDays();
   const daysUntil = getDaysUntilTrip();
 
+  const uniquePlacesCount = useMemo(() => {
+    const places = new Set();
+    // Add setup stops
+    if (tripInfo.stops && Array.isArray(tripInfo.stops)) {
+      tripInfo.stops.forEach(s => {
+        if (s.place_id) places.add(s.place_id);
+        else if (s.name) places.add(s.name);
+      });
+    }
+    // Add itinerary items (activities)
+    if (itinerary && Array.isArray(itinerary)) {
+      itinerary.forEach(i => {
+        // Itinerary items might be just activities without location data, but if they have a location/name
+        const key = i.place_id || i.location || i.name;
+        if (key) places.add(key);
+      });
+    }
+    return places.size;
+  }, [tripInfo.stops, itinerary]);
+
   const goToItinerary = () => navigation.navigate('Itinerary');
   const goToExpenses = () => navigation.navigate('Expenses');
 
@@ -243,9 +263,11 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         {/* Header */}
         <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
           <View style={styles.headerTop}>
-            <View>
+            <View style={{ flex: 1, marginRight: 16 }}>
               <Text style={styles.headerLabel}>YOUR TRIP</Text>
-              <Text style={styles.headerTitle}>{tripInfo.destination || 'My Adventure'}</Text>
+              <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+                {tripInfo.destination || 'My Adventure'}
+              </Text>
             </View>
             <View style={styles.headerActions}>
               <Pressable
@@ -281,15 +303,13 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
         {/* Main Map & Info Section */}
         <Animated.View style={[styles.mainSection, { transform: [{ scale: scaleAnim }] }]}>
-          {/* Top: Interactive Map */}
-          <HomeMap
-            destination={{
-              name: tripInfo.destination,
-              latitude: tripInfo.latitude,
-              longitude: tripInfo.longitude
-            }}
-            markers={itinerary}
+          {/* Top: Interactive Map (Read-Only visualization) */}
+          <TripMap
+            origin={tripInfo.origin || { latitude: tripInfo.latitude, longitude: tripInfo.longitude, name: tripInfo.destination }}
+            stops={[...(tripInfo.stops || []), ...itinerary]}
+            destination={tripInfo.endLocation}
             style={styles.mapContainer}
+            borderRadius={24}
           />
 
           {/* Nike-style Boxed Info Card */}
@@ -316,14 +336,14 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
             <Text style={styles.cardDescription} numberOfLines={3}>
               A {tripInfo.tripType || 'solo'} adventure to {tripInfo.destination || 'your next destination'}.
-              Discover {itinerary.length} places and manage your {formatCurrency(budget.total)} budget with ease.
+              Discover {uniquePlacesCount} places and manage your {formatCurrency(budget.total)} budget with ease.
             </Text>
 
             {/* Stats Grid */}
             <View style={styles.statsGrid}>
               <View style={styles.gridItem}>
                 <Text style={styles.gridLabel}>PLACES</Text>
-                <Text style={styles.gridValue}>{itinerary.length}</Text>
+                <Text style={styles.gridValue}>{uniquePlacesCount}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.gridLabel}>TRAVELERS</Text>
@@ -331,7 +351,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.gridLabel}>STOPS</Text>
-                <Text style={styles.gridValue}>{itinerary.length}</Text>
+                <Text style={styles.gridValue}>{tripInfo.stops ? tripInfo.stops.length : 0}</Text>
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.gridLabel}>DAYS</Text>

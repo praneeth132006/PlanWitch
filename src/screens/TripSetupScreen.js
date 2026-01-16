@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, ScrollView,
-  StyleSheet, Animated, Pressable, KeyboardAvoidingView, Platform, Alert, Image
+  StyleSheet, Animated, Pressable, KeyboardAvoidingView, Platform, Alert, Image, Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -526,12 +526,6 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                 mode="multi-city"
                 style={{ height: '100%', width: '100%' }}
               />
-              {/* Floating Badge */}
-              <View style={[styles.floatingCityBadge, { top: 60, right: 20 }]}>
-                <Text style={styles.badgeText}>
-                  {tripData.stops.length + (tripData.origin ? 1 : 0) + (tripData.endLocation ? 1 : 0)} Locations
-                </Text>
-              </View>
             </View>
 
             {/* 2. Content (Fixed Bottom 50%) - Non-overlapping for cleaner split */}
@@ -581,6 +575,24 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                 contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 20, paddingBottom: 100 }}
                 keyboardShouldPersistTaps="handled"
               >
+                {/* Trip Name */}
+                <View style={{ marginBottom: 16, zIndex: 5000 }}>
+                  <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Trip Name</Text>
+                  <View style={styles.inputContainer}>
+                    <View style={styles.inputIconBg}>
+                      <Icon name="edit" size={16} color={colors.primary} />
+                    </View>
+                    <TextInput
+                      style={[styles.mainInput, { outlineStyle: 'none' }]}
+                      placeholder="e.g. Summer Vacation 2024"
+                      placeholderTextColor={colors.textMuted}
+                      value={tripData.name}
+                      maxLength={20} // Restricted length
+                      onChangeText={(text) => setTripData(prev => ({ ...prev, name: text }))}
+                    />
+                  </View>
+                </View>
+
                 {/* Departure */}
                 <View style={{ marginBottom: 16, zIndex: 4000 }}>
                   <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Departure City</Text>
@@ -651,7 +663,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                   <View style={[styles.infoNoteContainer, { marginTop: 12 }]}>
                     <Icon name="info" size={14} color={colors.primary} />
                     <Text style={styles.infoNoteText}>
-                      You can edit locations later.
+                      You can add more main locations even after creating the trip.
                     </Text>
                   </View>
                 </View>
@@ -679,65 +691,79 @@ export default function TripSetupScreen({ onComplete, onBack }) {
         const selectedType = TRIP_TYPES.find(t => t.key === tripData.tripType);
         return (
           <View style={styles.stepContent}>
-            {/* Trip Type Dropdown (Redesigned) */}
-            <View style={{ zIndex: 5000, marginBottom: 24 }}>
+            {/* Trip Type Selection - Popover Style */}
+            <View style={{ marginBottom: 24 }}>
               <Text style={styles.inputLabel}>Trip Type</Text>
+
               <Pressable
-                style={[styles.dropdownTrigger, showTypeDropdown && styles.dropdownTriggerActive]}
-                onPress={() => setShowTypeDropdown(!showTypeDropdown)}
+                style={styles.popoverTrigger}
+                onPress={() => setShowTypeDropdown(true)}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   {selectedType ? (
                     <>
-                      <View style={[styles.dropdownIconBg, { backgroundColor: selectedType.color + '15' }]}>
-                        <Icon name={selectedType.icon} size={20} color={selectedType.color} />
+                      <View style={[styles.popoverIconBox, { backgroundColor: selectedType.color + '15' }]}>
+                        <Icon name={selectedType.icon} size={22} color={selectedType.color} />
                       </View>
-                      <View style={{ marginLeft: 12 }}>
-                        <Text style={styles.dropdownValue}>{selectedType.label}</Text>
-                        <Text style={styles.dropdownSubValue} numberOfLines={1}>{selectedType.description}</Text>
+                      <View>
+                        <Text style={styles.popoverValueMain}>{selectedType.label}</Text>
+                        <Text style={styles.popoverValueSub}>{selectedType.description}</Text>
                       </View>
                     </>
                   ) : (
-                    <Text style={[styles.dropdownValue, { color: colors.textMuted }]}>Select Trip Type</Text>
+                    <Text style={styles.popoverPlaceholder}>Select Trip Style</Text>
                   )}
                 </View>
-                <Icon name={showTypeDropdown ? "arrow-up" : "arrow-down"} size={20} color={colors.textMuted} />
+                <Icon name="chevron-right" size={20} color={colors.textMuted} />
               </Pressable>
 
-              {showTypeDropdown && (
-                <View style={styles.dropdownMenu}>
-                  {TRIP_TYPES.map((type, index) => (
-                    <Pressable
-                      key={type.key}
-                      style={({ pressed }) => [
-                        styles.dropdownItem,
-                        tripData.tripType === type.key && styles.dropdownItemActive,
-                        pressed && { backgroundColor: colors.cardLight },
-                        index !== TRIP_TYPES.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }
-                      ]}
-                      onPress={() => {
-                        selectTripType(type);
-                        setShowTypeDropdown(false);
-                      }}
-                    >
-                      <View style={[styles.dropdownIconBg, { backgroundColor: type.color + '15', width: 36, height: 36, borderRadius: 10 }]}>
-                        <Icon name={type.icon} size={18} color={type.color} />
-                      </View>
-                      <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={[styles.dropdownItemLabel, { color: tripData.tripType === type.key ? colors.primary : colors.text }]}>
-                          {type.label}
-                        </Text>
-                        <Text style={[styles.dropdownItemDesc, { color: colors.textMuted }]} numberOfLines={1}>
-                          {type.description}
-                        </Text>
-                      </View>
-                      {tripData.tripType === type.key && (
-                        <Icon name="check" size={16} color={colors.primary} />
-                      )}
-                    </Pressable>
-                  ))}
-                </View>
-              )}
+              {/* Custom Popover Modal */}
+              <Modal
+                visible={showTypeDropdown}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowTypeDropdown(false)}
+              >
+                <Pressable style={styles.modalOverlay} onPress={() => setShowTypeDropdown(false)}>
+                  <View style={styles.popoverContainer} onStartShouldSetResponder={() => true}>
+                    <View style={styles.popoverHeader}>
+                      <Text style={styles.popoverTitle}>Choose Trip Type</Text>
+                      <Pressable onPress={() => setShowTypeDropdown(false)} style={styles.closeBtn}>
+                        <Icon name="close" size={20} color={colors.text} />
+                      </Pressable>
+                    </View>
+                    <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+                      {TRIP_TYPES.map((type, index) => (
+                        <Pressable
+                          key={type.key}
+                          style={({ pressed }) => [
+                            styles.popoverItem,
+                            tripData.tripType === type.key && styles.popoverItemActive,
+                            pressed && { opacity: 0.7 }
+                          ]}
+                          onPress={() => {
+                            selectTripType(type);
+                            setShowTypeDropdown(false);
+                          }}
+                        >
+                          <View style={[styles.popoverItemIcon, { backgroundColor: type.color + '15' }]}>
+                            <Icon name={type.icon} size={20} color={type.color} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.popoverItemTitle, tripData.tripType === type.key && { color: colors.primary }]}>
+                              {type.label}
+                            </Text>
+                            <Text style={styles.popoverItemDesc}>{type.description}</Text>
+                          </View>
+                          {tripData.tripType === type.key && (
+                            <Icon name="check" size={18} color={colors.primary} />
+                          )}
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                </Pressable>
+              </Modal>
             </View>
 
             {/* Dates Selection */}
@@ -2313,5 +2339,105 @@ const createStyles = (colors) => StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Popover Styles (New)
+  popoverTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  popoverIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  popoverValueMain: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  popoverValueSub: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  popoverPlaceholder: {
+    fontSize: 16,
+    color: colors.textMuted,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  popoverContainer: {
+    backgroundColor: colors.bg,
+    borderRadius: 24,
+    maxHeight: '70%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  popoverHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  popoverTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  closeBtn: {
+    padding: 4,
+  },
+  popoverItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardLight,
+  },
+  popoverItemActive: {
+    backgroundColor: colors.primary + '08',
+  },
+  popoverItemIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  popoverItemTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  popoverItemDesc: {
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 18,
   },
 });
