@@ -1,15 +1,21 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
-  Modal, StyleSheet, Animated, Dimensions, Image
+  Modal, StyleSheet, Animated, Dimensions, Image, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTravelContext } from '../context/TravelContext';
+
 import { useTheme } from '../context/ThemeContext';
 import TimePickerModal from '../components/TimePickerModal';
 import Icon from '../components/Icon';
+import { CustomAlert } from '../components/CustomAlert';
+import { generateTripItinerary } from '../services/aiService';
 
 const { width } = Dimensions.get('window');
+
+const INTEREST_TAGS = ['Nature', 'History', 'Food', 'Adventure', 'Shopping', 'Culture', 'Relaxation', 'Nightlife'];
+const PACE_OPTIONS = ['Relaxed', 'Moderate', 'Packed'];
 
 // Simplified and organized stop types
 // Simplified and organized stop types
@@ -100,6 +106,28 @@ export default function MapScreen() {
     duration: '', cost: ''
   });
 
+
+
+  // AI State
+  const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [aiPreferences, setAiPreferences] = useState({
+    pace: 'Moderate',
+    interests: [],
+    startTime: '09:00 AM'
+  });
+
+  // Custom Alert State
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info', onConfirm: () => { }, onCancel: null, confirmText: 'OK', cancelText: 'Cancel' });
+
+  const showAlert = (title, message, type = 'info', onConfirm = () => hideAlert(), onCancel = null, confirmText = 'OK', cancelText = 'Cancel') => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm, onCancel, confirmText, cancelText });
+  };
+
+  const hideAlert = () => {
+    setAlertConfig(prev => ({ ...prev, visible: false }));
+  };
+
   const scrollViewRef = useRef(null);
   const floatAnim = useState(new Animated.Value(0))[0];
   const pulseAnim = useState(new Animated.Value(1))[0];
@@ -148,11 +176,93 @@ export default function MapScreen() {
     const stops = getStopsForDay(dayNumber);
     return {
       transport: stops.filter(s => getStopType(s.type).category === 'transport').length,
-      accommodation: stops.filter(s => getStopType(s.type).category === 'accommodation').length,
-      activity: stops.filter(s => getStopType(s.type).category === 'activity').length,
-      meal: stops.filter(s => getStopType(s.type).category === 'meal').length,
+      // ... existing categories
     };
   };
+
+  const handleToggleInterest = (interest) => {
+    setAiPreferences(prev => {
+      const exists = prev.interests.includes(interest);
+      if (exists) return { ...prev, interests: prev.interests.filter(i => i !== interest) };
+      return { ...prev, interests: [...prev.interests, interest] };
+    });
+  };
+
+  const handleGenerateItinerary = async () => {
+    if (aiPreferences.interests.length === 0) {
+      showAlert('Selection Required', 'Please select at least one interest.', 'warning');
+      return;
+    }
+
+    setAiModalVisible(false);
+    setIsAiGenerating(true);
+
+    // Show generating alert
+    showAlert('Generating Itinerary', 'AI is crafting your perfect trip plan... This may take a moment.', 'info');
+
+    try {
+      // Calculate days to generate
+      const days = tripDays.length || 3;
+      const result = await generateTripItinerary(
+        tripInfo.destination,
+        days,
+        'Mid', // User budget preference could be passed here if available
+        tripInfo.travelers || '2',
+        aiPreferences.interests.join(', '),
+        aiPreferences
+      );
+
+      hideAlert(); // Hide generating alert
+
+      if (result.success && result.itinerary) {
+        let addedCount = 0;
+        result.itinerary.forEach(day => {
+          day.activities.forEach(activity => {
+            // Map AI type to our STOP_TYPES
+            let type = activity.type?.toLowerCase() || 'attraction';
+            // Ensure type exists in our list
+            if (!STOP_TYPES.some(t => t.key === type)) {
+              // Fallback mapping
+              if (type.includes('meal')) type = 'lunch';
+              else if (type.includes('visit')) type = 'attraction';
+              else type = 'attraction';
+            }
+
+            addItineraryItem({
+              dayNumber: day.day,
+              name: activity.title,
+              type: type,
+              time: activity.time,
+              notes: activity.description,
+              location: activity.location || '',
+              duration: activity.duration || '',
+              cost: activity.cost ? activity.cost.toString() : '',
+              latitude: 0,
+              longitude: 0 // Placeholder
+            });
+            addedCount++;
+          });
+        });
+
+        setTimeout(() => {
+          showAlert('Success', `AI has added ${addedCount} stops to your itinerary!`, 'success');
+        }, 500);
+      } else {
+        setTimeout(() => {
+          showAlert('AI Error', result.error || 'Could not generate itinerary.', 'error');
+        }, 500);
+      }
+
+    } catch (e) {
+      hideAlert();
+      setTimeout(() => {
+        showAlert('Error', e.message, 'error');
+      }, 500);
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
 
   const totalStops = itinerary.length;
   const travelers = getAllTravelers();
@@ -164,12 +274,21 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Itinerary</Text>
-        <Text style={styles.headerSubtitle}>
-          {tripInfo.destination || 'Your Trip'} • {tripDays.length} Days
-        </Text>
+      {/* Header with AI Button */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
+        <View>
+          <Text style={styles.headerTitle}>Itinerary</Text>
+          <Text style={styles.headerSubtitle}>
+            {tripInfo.destination || 'Your Trip'} • {tripDays.length} Days
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '15', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: colors.primary + '30' }}
+          onPress={() => setAiModalVisible(true)}
+        >
+          <Icon name="sparkle" size={18} color={colors.primary} />
+          <Text style={{ marginLeft: 6, color: colors.primary, fontWeight: '700', fontSize: 13 }}>AI Plan</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Trip Summary Card */}
@@ -467,6 +586,110 @@ export default function MapScreen() {
         onSelect={(time) => setNewStop({ ...newStop, time })}
         selectedTime={newStop.time}
         title="Select Time"
+      />
+
+      {/* AI Preferences Modal */}
+      <Modal visible={aiModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { height: 'auto', maxHeight: '80%' }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>✨ AI Trip Planner</Text>
+              <TouchableOpacity onPress={() => setAiModalVisible(false)} style={{ padding: 4 }}>
+                <Icon name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Trip Pace</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
+                {PACE_OPTIONS.map(pace => (
+                  <TouchableOpacity
+                    key={pace}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 12,
+                      backgroundColor: aiPreferences.pace === pace ? colors.primary : colors.bg,
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: aiPreferences.pace === pace ? colors.primary : colors.border
+                    }}
+                    onPress={() => setAiPreferences(prev => ({ ...prev, pace }))}
+                  >
+                    <Text style={{
+                      fontWeight: '600',
+                      color: aiPreferences.pace === pace ? 'white' : colors.textMuted
+                    }}>{pace}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Interests</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 30 }}>
+                {INTEREST_TAGS.map(tag => {
+                  const selected = aiPreferences.interests.includes(tag);
+                  return (
+                    <TouchableOpacity
+                      key={tag}
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 10,
+                        borderRadius: 20,
+                        backgroundColor: selected ? colors.primary + '20' : colors.bg,
+                        borderWidth: 1,
+                        borderColor: selected ? colors.primary : colors.border
+                      }}
+                      onPress={() => handleToggleInterest(tag)}
+                    >
+                      <Text style={{
+                        color: selected ? colors.primary : colors.textMuted,
+                        fontWeight: selected ? '700' : '500'
+                      }}>{tag}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: colors.primary,
+                  padding: 16,
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center'
+                }}
+                onPress={handleGenerateItinerary}
+                disabled={isAiGenerating}
+              >
+                {isAiGenerating ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <>
+                    <Icon name="sparkles" size={20} color="white" />
+                    <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>Generate Itinerary</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <Text style={{ textAlign: 'center', color: colors.textMuted, fontSize: 12, marginTop: 12 }}>
+                This will add new stops to your existing plan.
+              </Text>
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
       />
     </SafeAreaView>
   );

@@ -117,38 +117,61 @@ const callGemini = async (prompt, isJson = true) => {
 };
 
 // Generate trip itinerary
-export const generateTripItinerary = async (destination, days, budget, travelers, interests) => {
+// Generate trip itinerary
+export const generateTripItinerary = async (destination, days, budget, travelers, interests, preferences = {}) => {
     if (!AI_CONFIG.geminiKey) {
         console.warn('Using MOCK itinerary data (No API Key)');
         return new Promise(resolve => setTimeout(() => resolve(MOCK_ITINERARY), 2000));
     }
 
+    const { pace = 'Moderate', startTime = '09:00 AM' } = preferences;
+
     const prompt = `
-    Create a detailed ${days}-day travel itinerary for ${destination} for ${travelers}.
-    Budget level: ${budget}.
+    Create a detailed ${days}-day travel itinerary for ${destination}.
+    Group: ${travelers} travelers.
+    Budget Level: ${budget}.
     Interests: ${interests}.
+    Pace: ${pace}.
+    Daily Start Time: ${startTime}.
+
+    CRITICAL: You must return a valid JSON object.
     
-    Return the response in this EXACT JSON structure:
+    Structure rules:
+    - "type": Must be one of: 'flight', 'train', 'bus', 'car', 'hotel', 'checkin', 'checkout', 'breakfast', 'lunch', 'dinner', 'cafe', 'attraction', 'tour', 'shopping', 'nature', 'beach', 'museum', 'nightlife'.
+    - "time": Use "HH:MM AM/PM" format.
+    - "cost": Estimated cost per person in local currency (number only).
+    - "duration": Duration in hours (e.g. "2 hours").
+
+    Return ONLY this JSON:
     {
         "success": true,
         "itinerary": [
             {
                 "day": 1,
-                "title": "Day Theme",
+                "title": "Day Theme/Area Name",
                 "activities": [
-                    { "time": "10:00 AM", "title": "Check-in", "description": "Details..." },
-                    { "time": "02:00 PM", "title": "Activity", "description": "Details..." }
+                    { 
+                        "time": "10:00 AM", 
+                        "type": "checkin", 
+                        "title": "Arrive & Check-in", 
+                        "description": "Hotel check-in details", 
+                        "location": "City Center",
+                        "duration": "1 hour",
+                        "cost": 0
+                    },
+                    { 
+                        "time": "11:30 AM", 
+                        "type": "attraction", 
+                        "title": "Famous Landmark", 
+                        "description": "Visit the iconic spot", 
+                        "location": "Address",
+                        "duration": "2 hours",
+                        "cost": 500
+                    }
                 ]
             }
-        ],
-        "expenses": [
-            { "category": "accommodation", "amount": 0, "note": "Estimate" },
-            { "category": "food", "amount": 0, "note": "Estimate" },
-            { "category": "transport", "amount": 0, "note": "Estimate" },
-            { "category": "activities", "amount": 0, "note": "Estimate" }
         ]
-    }
-    `;
+    }`;
 
     try {
         return await callGemini(prompt, true);
