@@ -7,7 +7,7 @@ import GOOGLE_MAPS_CONFIG, { MAP_DEFAULTS } from '../config/googleMaps';
  * TripMap Component
  * Visualizes the trip Start, Visit, and End points on a read-only map.
  */
-const TripMap = ({ start, visit, end, stops, mode, style }) => {
+const TripMap = ({ start, origin, visit, end, destination, stops, mode, style }) => {
     const { colors } = useTheme();
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
@@ -24,8 +24,8 @@ const TripMap = ({ start, visit, end, stops, mode, style }) => {
                 mapInstance.current = new window.google.maps.Map(mapRef.current, {
                     ...MAP_DEFAULTS,
                     disableDefaultUI: true,
-                    zoomControl: true,
-                    gestureHandling: 'cooperative',
+                    zoomControl: false,
+                    gestureHandling: 'none',
                     keyboardShortcuts: false,
                     clickableIcons: false,
                 });
@@ -62,45 +62,66 @@ const TripMap = ({ start, visit, end, stops, mode, style }) => {
         bounds.current = new window.google.maps.LatLngBounds();
         let validLocations = [];
 
-        // Determine points to show based on mode
+        // Combine all potential points: Origin/Start -> Stops -> End/Destination
+        const startPoint = origin || start;
+        const endPoint = destination || end;
+
+        // 1. Add Start Point
+        if (startPoint && startPoint.latitude && startPoint.longitude) {
+            const position = { lat: startPoint.latitude, lng: startPoint.longitude };
+            validLocations.push(position);
+            markers.current.push(new window.google.maps.Marker({
+                position,
+                map: mapInstance.current,
+                label: 'A',
+                title: startPoint.name || 'Start',
+            }));
+            bounds.current.extend(position);
+        }
+
+        // 2. Add Stops
         if (stops && stops.length > 0) {
             stops.forEach((stop, index) => {
                 if (stop && stop.latitude && stop.longitude) {
                     const position = { lat: stop.latitude, lng: stop.longitude };
                     validLocations.push(position);
-
-                    const marker = new window.google.maps.Marker({
+                    markers.current.push(new window.google.maps.Marker({
                         position,
                         map: mapInstance.current,
                         label: (index + 1).toString(),
                         title: stop.name || `Stop ${index + 1}`,
-                    });
-                    markers.current.push(marker);
+                    }));
                     bounds.current.extend(position);
                 }
             });
-        } else {
-            // Fallback to start, visit, end for single-base or legacy
-            const pointsData = [
-                { p: start, label: 'A', title: 'Start' },
-                { p: visit, label: 'B', title: 'Visit' },
-                { p: end, label: 'C', title: 'End' }
-            ];
+        }
 
-            pointsData.forEach(item => {
-                if (item.p && item.p.latitude && item.p.longitude) {
-                    const position = { lat: item.p.latitude, lng: item.p.longitude };
-                    validLocations.push(position);
-                    const marker = new window.google.maps.Marker({
-                        position,
-                        map: mapInstance.current,
-                        label: item.label,
-                        title: item.p.name || item.title,
-                    });
-                    markers.current.push(marker);
-                    bounds.current.extend(position);
-                }
-            });
+        // 3. Add Visit (Legacy single point)
+        if (visit && (!stops || stops.length === 0)) {
+            if (visit.latitude && visit.longitude) {
+                const position = { lat: visit.latitude, lng: visit.longitude };
+                validLocations.push(position);
+                markers.current.push(new window.google.maps.Marker({
+                    position,
+                    map: mapInstance.current,
+                    label: 'B',
+                    title: visit.name || 'Visit',
+                }));
+                bounds.current.extend(position);
+            }
+        }
+
+        // 4. Add End Point
+        if (endPoint && endPoint.latitude && endPoint.longitude) {
+            const position = { lat: endPoint.latitude, lng: endPoint.longitude };
+            validLocations.push(position);
+            markers.current.push(new window.google.maps.Marker({
+                position,
+                map: mapInstance.current,
+                label: validLocations.length > 1 ? String.fromCharCode(65 + validLocations.length - 1) : 'B', // Dynamic label
+                title: endPoint.name || 'End',
+            }));
+            bounds.current.extend(position);
         }
 
         // Calculate Route
@@ -149,7 +170,7 @@ const TripMap = ({ start, visit, end, stops, mode, style }) => {
                 style={{
                     width: '100%',
                     height: '100%',
-                    borderRadius: '16px'
+                    borderRadius: '0px'
                 }}
             />
         </View>
@@ -158,12 +179,9 @@ const TripMap = ({ start, visit, end, stops, mode, style }) => {
 
 const createStyles = (colors) => StyleSheet.create({
     container: {
-        height: 250,
+        height: 300,
         width: '100%',
-        borderRadius: 16,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: colors.primaryBorder,
         backgroundColor: colors.cardLight,
     },
 });

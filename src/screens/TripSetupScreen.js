@@ -61,7 +61,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
 
 
   const [tripData, setTripData] = useState({
-    mode: null, // 'multi-city' | 'single-base'
+    mode: 'multi-city', // Default to multi-city as requested
     stops: [], // For multi-city: [{id, name, ...}]
     origin: null,
     destination: '',
@@ -69,7 +69,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
     endLocation: null,
     startDate: '',
     endDate: '',
-    tripType: '',
+    tripType: '', // Will be set in Details step
     budget: '',
     name: '',
     // Friends data
@@ -97,17 +97,11 @@ export default function TripSetupScreen({ onComplete, onBack }) {
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  // Dynamic steps based on trip type
+  // Dynamic steps matching the new flow
   const getSteps = () => {
-    // Step 0: Mode Selection
-    if (!tripData.mode) {
-      return [{ key: 'mode', title: 'Trip Style' }];
-    }
-
     const baseSteps = [
-      { key: 'mode', title: 'Trip Style' },
-      { key: 'location', title: tripData.mode === 'multi-city' ? 'Destinations' : 'Route' },
-      { key: 'details', title: 'Details' }, // Merged Type & Dates
+      { key: 'location', title: 'Route' },
+      { key: 'details', title: 'Details' },
     ];
 
     // Add companions step based on trip type
@@ -324,15 +318,11 @@ export default function TripSetupScreen({ onComplete, onBack }) {
       case 'mode':
         return tripData.mode !== null;
       case 'location':
-        if (tripData.mode === 'single-base') {
-          return (
-            tripData.origin &&
-            (tripData.destination || '').trim().length > 0 &&
-            tripData.endLocation
-          );
-        } else {
-          return tripData.stops.length > 0;
-        }
+        // Require at least one main location (stop) or destination logic
+        // The user wants "one departure, one end, as many main locations".
+        // Let's enforce roughly: Origin is good to have, Stops > 0 is good.
+        // But for flexibility, we might just require at least one 'stop' or 'destination'.
+        return tripData.stops.length > 0;
       case 'details':
         return tripData.tripType !== '' && tripData.startDate && tripData.endDate;
       case 'companions':
@@ -346,6 +336,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
   };
 
   const selectDestination = (dest) => {
+    // Legacy support if needed, but we rely on stops now
     setTripData({ ...tripData, destination: `${dest.name}, ${dest.country}` });
   };
 
@@ -517,32 +508,122 @@ export default function TripSetupScreen({ onComplete, onBack }) {
         );
 
       case 'location':
-        if (tripData.mode === 'multi-city') {
-          return (
-            <View style={styles.fullScreenContent}>
-              {/* Map Section - Top 60% */}
-              <View style={styles.fullMapSection}>
-                <TripMap
-                  stops={tripData.stops}
-                  mode="multi-city"
-                  style={{ height: '100%', width: '100%' }}
-                />
-                {/* Floating Badge */}
-                <View style={styles.floatingCityBadge}>
-                  <Text style={styles.badgeText}>{tripData.stops.length} Cities</Text>
-                </View>
+        return (
+          <View style={{ flex: 1, backgroundColor: colors.bg }}>
+            {/* 1. Map (Fixed Top 50%) */}
+            <View style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '50%',
+              zIndex: 0
+            }}>
+              <TripMap
+                stops={tripData.stops}
+                origin={tripData.origin}
+                destination={tripData.endLocation}
+                mode="multi-city"
+                style={{ height: '100%', width: '100%' }}
+              />
+              {/* Floating Badge */}
+              <View style={[styles.floatingCityBadge, { top: 60, right: 20 }]}>
+                <Text style={styles.badgeText}>
+                  {tripData.stops.length + (tripData.origin ? 1 : 0) + (tripData.endLocation ? 1 : 0)} Locations
+                </Text>
+              </View>
+            </View>
+
+            {/* 2. Content (Fixed Bottom 50%) - Non-overlapping for cleaner split */}
+            <View style={{
+              position: 'absolute',
+              top: '47%', // Slight overlap for rounded corners
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: colors.bg,
+              borderTopLeftRadius: 30,
+              borderTopRightRadius: 30,
+              overflow: 'hidden',
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: -5 },
+              shadowOpacity: 0.15,
+              shadowRadius: 10,
+              elevation: 15,
+              zIndex: 100
+            }}>
+              {/* Fixed Header */}
+              <View style={{
+                paddingHorizontal: 24,
+                paddingTop: 20,
+                paddingBottom: 12,
+                backgroundColor: colors.bg,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.primaryBorder + '30',
+                alignItems: 'center'
+              }}>
+                <View style={{
+                  width: 40,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: colors.cardLight,
+                  marginBottom: 12
+                }} />
+                <Text style={[styles.plannerTitle, { fontSize: 20 }]}>Plan Your Route</Text>
+                <Text style={[styles.plannerSubtitle, { textAlign: 'center' }]}>
+                  Add your departure, stops, and final destination.
+                </Text>
               </View>
 
-              {/* Controls Section - Bottom 40% */}
-              <View style={styles.fullControlsSection}>
-                <View style={styles.plannerHeader}>
-                  <Text style={styles.plannerTitle}>Route Planner</Text>
-                  <Text style={styles.plannerSubtitle}>Build your dream itinerary by adding cities in order.</Text>
+              {/* Scrollable Form */}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 20, paddingBottom: 100 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Departure */}
+                <View style={{ marginBottom: 16, zIndex: 4000 }}>
+                  <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Departure City</Text>
+                  <PlacesAutocomplete
+                    value={tripData.origin?.name || tripData.origin?.fullAddress || ''}
+                    onPlaceSelect={(place) => setTripData(prev => ({ ...prev, origin: place }))}
+                    placeholder="Where are you starting?"
+                    showMap={false}
+                  />
                 </View>
 
-                <View style={{ zIndex: 3000, marginVertical: 15 }}>
+                {/* Main Locations (Stops) */}
+                <View style={{ marginBottom: 16, zIndex: 3000 }}>
+                  <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Main Locations to Visit</Text>
+
+                  {/* Added Stops List */}
+                  {tripData.stops.length > 0 && (
+                    <View style={{ marginBottom: 12 }}>
+                      {tripData.stops.map((stop, index) => (
+                        <View key={index} style={styles.addedLocationItem}>
+                          <View style={styles.locationIconBg}>
+                            <Icon name="location" size={16} color={colors.primary} />
+                          </View>
+                          <Text style={styles.addedLocationText} numberOfLines={1}>
+                            {stop.name || stop.formatted_address || stop.fullAddress}
+                          </Text>
+                          <Pressable
+                            onPress={() => setTripData(prev => ({
+                              ...prev,
+                              stops: prev.stops.filter((_, i) => i !== index)
+                            }))}
+                            style={styles.removeLocationBtn}
+                          >
+                            <Icon name="close" size={12} color={colors.text} />
+                          </Pressable>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Add New Stop */}
                   <PlacesAutocomplete
-                    placeholder="Where to next?"
+                    placeholder="Search destination..."
                     onPlaceSelect={(place) => {
                       if (place) {
                         setTripData(prev => ({
@@ -553,89 +634,44 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                     }}
                     showMap={false}
                     clearOnSelect={true}
+                    inputStyle={tripData.stops.length > 0 ? { borderTopLeftRadius: 6, borderTopRightRadius: 6 } : {}}
                   />
                 </View>
 
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingBottom: 20 }}
-                  style={{ flex: 1 }}
+                {/* End Location */}
+                <View style={{ marginBottom: 24, zIndex: 2000 }}>
+                  <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Trip End Location</Text>
+                  <PlacesAutocomplete
+                    value={tripData.endLocation?.name || tripData.endLocation?.fullAddress || ''}
+                    onPlaceSelect={(place) => setTripData(prev => ({ ...prev, endLocation: place }))}
+                    placeholder="Where will you end up?"
+                    showMap={false}
+                  />
+
+                  <View style={[styles.infoNoteContainer, { marginTop: 12 }]}>
+                    <Icon name="info" size={14} color={colors.primary} />
+                    <Text style={styles.infoNoteText}>
+                      You can edit locations later.
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Continue Button */}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.nextButton,
+                    !isStepValid() && styles.nextButtonDisabled,
+                    pressed && isStepValid() && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+                    { marginBottom: 20, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 }
+                  ]}
+                  onPress={handleNext}
+                  disabled={!isStepValid() || isCreating}
                 >
-                  {tripData.stops.map((stop, index) => (
-                    <View key={index} style={styles.premiumStopCard}>
-                      <View style={styles.premiumStopNumber}>
-                        <Text style={styles.premiumStopNumberText}>{index + 1}</Text>
-                      </View>
-                      <View style={{ flex: 1, paddingHorizontal: 16 }}>
-                        <Text style={styles.premiumStopName}>{stop.name || stop.fullAddress.split(',')[0]}</Text>
-                        <Text style={styles.premiumStopAddress} numberOfLines={1}>{stop.fullAddress}</Text>
-                      </View>
-                      <Pressable
-                        onPress={() => setTripData(prev => ({ ...prev, stops: prev.stops.filter((_, i) => i !== index) }))}
-                        style={styles.premiumRemoveBtn}
-                      >
-                        <Icon name="close" size={14} color="#EF4444" />
-                      </Pressable>
-                    </View>
-                  ))}
-
-                  {tripData.stops.length === 0 && (
-                    <View style={styles.emptyStateContainer}>
-                      <Icon name="location" size={40} color={colors.textMuted} />
-                      <Text style={styles.emptyStateText}>No destinations added</Text>
-                    </View>
-                  )}
-                </ScrollView>
-              </View>
+                  <Text style={styles.nextButtonText}>Continue</Text>
+                  <Text style={styles.nextButtonIcon}>→</Text>
+                </Pressable>
+              </ScrollView>
             </View>
-          );
-        }
-
-        return (
-          <View style={styles.stepContent}>
-            <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-              <View style={{ marginBottom: 16, zIndex: 3000 }}>
-                <Text style={styles.inputLabel}>Departure City</Text>
-                <PlacesAutocomplete
-                  value={tripData.origin?.name || tripData.origin?.fullAddress || ''}
-                  onPlaceSelect={(place) => setTripData(prev => ({ ...prev, origin: place }))}
-                  placeholder="Where are you starting?"
-                  showMap={false}
-                />
-              </View>
-
-              <View style={{ marginBottom: 16, zIndex: 2000 }}>
-                <Text style={styles.inputLabel}>Main Location to Visit</Text>
-                <PlacesAutocomplete
-                  value={tripData.destination}
-                  onPlaceSelect={(place) => {
-                    if (place) {
-                      setTripData(prev => ({
-                        ...prev,
-                        destination: place.name || place.fullAddress,
-                        destinationCoords: place
-                      }));
-                    }
-                  }}
-                  placeholder="Search destination..."
-                  showMap={false}
-                />
-              </View>
-
-              <View style={{ marginBottom: 16, zIndex: 1000 }}>
-                <Text style={styles.inputLabel}>Trip End Location</Text>
-                <PlacesAutocomplete
-                  value={tripData.endLocation?.name || tripData.endLocation?.fullAddress || ''}
-                  onPlaceSelect={(place) => setTripData(prev => ({ ...prev, endLocation: place }))}
-                  placeholder="Where will you end up?"
-                  showMap={false}
-                />
-              </View>
-
-              <Text style={[styles.inputHelper, { marginTop: 20, textAlign: 'center', color: colors.primary }]}>
-                You can edit all information after creating the trip.
-              </Text>
-            </ScrollView>
           </View>
         );
 
@@ -643,8 +679,8 @@ export default function TripSetupScreen({ onComplete, onBack }) {
         const selectedType = TRIP_TYPES.find(t => t.key === tripData.tripType);
         return (
           <View style={styles.stepContent}>
-            {/* Trip Type Dropdown */}
-            <View style={{ zIndex: 5000, marginBottom: 20 }}>
+            {/* Trip Type Dropdown (Redesigned) */}
+            <View style={{ zIndex: 5000, marginBottom: 24 }}>
               <Text style={styles.inputLabel}>Trip Type</Text>
               <Pressable
                 style={[styles.dropdownTrigger, showTypeDropdown && styles.dropdownTriggerActive]}
@@ -653,10 +689,13 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                   {selectedType ? (
                     <>
-                      <View style={[styles.dropdownIconBg, { backgroundColor: selectedType.color + '20' }]}>
+                      <View style={[styles.dropdownIconBg, { backgroundColor: selectedType.color + '15' }]}>
                         <Icon name={selectedType.icon} size={20} color={selectedType.color} />
                       </View>
-                      <Text style={styles.dropdownValue}>{selectedType.label}</Text>
+                      <View style={{ marginLeft: 12 }}>
+                        <Text style={styles.dropdownValue}>{selectedType.label}</Text>
+                        <Text style={styles.dropdownSubValue} numberOfLines={1}>{selectedType.description}</Text>
+                      </View>
                     </>
                   ) : (
                     <Text style={[styles.dropdownValue, { color: colors.textMuted }]}>Select Trip Type</Text>
@@ -667,27 +706,34 @@ export default function TripSetupScreen({ onComplete, onBack }) {
 
               {showTypeDropdown && (
                 <View style={styles.dropdownMenu}>
-                  {TRIP_TYPES.map((type) => (
+                  {TRIP_TYPES.map((type, index) => (
                     <Pressable
                       key={type.key}
-                      style={styles.dropdownItem}
+                      style={({ pressed }) => [
+                        styles.dropdownItem,
+                        tripData.tripType === type.key && styles.dropdownItemActive,
+                        pressed && { backgroundColor: colors.cardLight },
+                        index !== TRIP_TYPES.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }
+                      ]}
                       onPress={() => {
                         selectTripType(type);
                         setShowTypeDropdown(false);
                       }}
                     >
-                      <View style={[styles.dropdownIconBg, { backgroundColor: type.color + '20', width: 32, height: 32 }]}>
-                        <Icon name={type.icon} size={16} color={type.color} />
+                      <View style={[styles.dropdownIconBg, { backgroundColor: type.color + '15', width: 36, height: 36, borderRadius: 10 }]}>
+                        <Icon name={type.icon} size={18} color={type.color} />
                       </View>
-                      <View style={{ flex: 1, marginLeft: 12, justifyContent: 'center' }}>
-                        <Text style={[styles.dropdownItemLabel, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>{type.label}</Text>
-                        <Text style={[styles.dropdownItemDesc, { color: colors.textMuted, fontSize: 13 }]} numberOfLines={1}>{type.description}</Text>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={[styles.dropdownItemLabel, { color: tripData.tripType === type.key ? colors.primary : colors.text }]}>
+                          {type.label}
+                        </Text>
+                        <Text style={[styles.dropdownItemDesc, { color: colors.textMuted }]} numberOfLines={1}>
+                          {type.description}
+                        </Text>
                       </View>
-                      <View style={{ width: 20 }}>
-                        {tripData.tripType === type.key && (
-                          <Icon name="check" size={14} color={colors.primary} />
-                        )}
-                      </View>
+                      {tripData.tripType === type.key && (
+                        <Icon name="check" size={16} color={colors.primary} />
+                      )}
                     </Pressable>
                   ))}
                 </View>
@@ -1073,23 +1119,25 @@ export default function TripSetupScreen({ onComplete, onBack }) {
           </ScrollView>
         )}
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.nextButton,
-              !isStepValid() && styles.nextButtonDisabled,
-              pressed && isStepValid() && { opacity: 0.9, transform: [{ scale: 0.98 }] }
-            ]}
-            onPress={handleNext}
-            disabled={!isStepValid() || isCreating}
-          >
-            <Text style={styles.nextButtonText}>
-              {STEPS.length > 0 && currentStep === STEPS.length - 1 ? (isCreating ? 'Creating...' : '🚀 Create Trip') : 'Continue'}
-            </Text>
-            {STEPS.length > 0 && currentStep < STEPS.length - 1 && <Text style={styles.nextButtonIcon}>→</Text>}
-          </Pressable>
-        </View>
+        {/* Footer - Only show if NOT location step (as it has its own) */}
+        {!(STEPS[currentStep]?.key === 'location' && tripData.mode === 'multi-city') && (
+          <View style={styles.footer}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.nextButton,
+                !isStepValid() && styles.nextButtonDisabled,
+                pressed && isStepValid() && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+              ]}
+              onPress={handleNext}
+              disabled={!isStepValid() || isCreating}
+            >
+              <Text style={styles.nextButtonText}>
+                {STEPS.length > 0 && currentStep === STEPS.length - 1 ? (isCreating ? 'Creating...' : '🚀 Create Trip') : 'Continue'}
+              </Text>
+              {STEPS.length > 0 && currentStep < STEPS.length - 1 && <Text style={styles.nextButtonIcon}>→</Text>}
+            </Pressable>
+          </View>
+        )}
 
         {/* Date Pickers */}
 
@@ -2101,5 +2149,169 @@ const createStyles = (colors) => StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  // Added Location List Styles
+  addedLocationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+  },
+  locationIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: colors.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  addedLocationText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  removeLocationBtn: {
+    padding: 4,
+  },
+  infoNoteContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.cardLight,
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 20,
+    gap: 8,
+  },
+  infoNoteText: {
+    fontSize: 12,
+    color: colors.primary,
+    flex: 1,
+  },
+  // New Styles for Sheet and Dropdown
+  sheetContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '60%', // Overlap map
+    backgroundColor: colors.bg,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 20,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  sheetHeader: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 16,
+    backgroundColor: colors.bg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.primaryBorder + '30',
+    zIndex: 10,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.cardLight,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sheetContent: {
+    flex: 1,
+  },
+  plannerHeader: {
+    marginBottom: 0,
+  },
+  plannerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  plannerSubtitle: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+
+  // Updated Dropdown Styles
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  dropdownTriggerActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.card,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  dropdownValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  dropdownSubValue: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  dropdownMenu: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: colors.primaryBorder,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    overflow: 'hidden',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: colors.card,
+  },
+  dropdownItemActive: {
+    backgroundColor: colors.primary + '05',
+  },
+  dropdownItemLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  dropdownItemDesc: {
+    fontSize: 12,
+  },
+  dropdownIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
