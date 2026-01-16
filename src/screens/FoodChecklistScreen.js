@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
 import Icon from '../components/Icon';
+import { CustomAlert } from '../components/CustomAlert';
 import { generateFoodRecommendations } from '../services/aiService';
 
 export default function FoodChecklistScreen() {
@@ -17,6 +18,17 @@ export default function FoodChecklistScreen() {
 
     // Animation refs
     const pulseAnim = useRef(new Animated.Value(1)).current;
+
+    // Custom Alert State
+    const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
+
+    const showAlert = (title, message, type = 'info') => {
+        setAlertConfig({ visible: true, title, message, type });
+    };
+
+    const hideAlert = () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+    };
 
     useEffect(() => {
         const anim = Animated.loop(
@@ -29,7 +41,7 @@ export default function FoodChecklistScreen() {
         return () => anim.stop();
     }, []);
 
-    // Get places from trip info safely
+    // Get places from trip info safely - FIXED PARSING
     const places = useMemo(() => {
         try {
             if (!tripInfo?.destination) return [];
@@ -41,7 +53,11 @@ export default function FoodChecklistScreen() {
             }
 
             if (typeof tripInfo.destination === 'string') {
-                return tripInfo.destination.split(',').map(p => p.trim()).filter(Boolean);
+                // Split by comma AND hyphen (e.g. "Munnar - Kochi" -> ["Munnar", "Kochi"])
+                return tripInfo.destination
+                    .split(/[\s,]+-[\s,]+|,\s*/) // Split by " - " or ","
+                    .map(p => p.trim())
+                    .filter(Boolean);
             }
 
             // Fallback for object/unexpected type
@@ -93,7 +109,7 @@ export default function FoodChecklistScreen() {
 
     const handleAiSuggest = async () => {
         if (places.length === 0) {
-            Alert.alert('No Places', 'Add destinations to your trip first.');
+            showAlert('No Places', 'Add destinations to your trip first.', 'warning');
             return;
         }
 
@@ -104,10 +120,10 @@ export default function FoodChecklistScreen() {
                 setAiSuggestions(res.recommendations);
                 setAiModalVisible(true);
             } else {
-                Alert.alert('AI Error', 'Could not generate recommendations properly.');
+                showAlert('AI Error', 'Could not generate recommendations properly.', 'error');
             }
         } catch (error) {
-            Alert.alert('AI Error', error.message || 'Failed to connect to AI.');
+            showAlert('AI Error', error.message || 'Failed to connect to AI.', 'error');
         } finally {
             setIsAiGenerating(false);
         }
@@ -154,7 +170,7 @@ export default function FoodChecklistScreen() {
             }
         }
 
-        Alert.alert('Success', `${addedCount} items added to your checklist!`);
+        showAlert('Success', `${addedCount} items added to your checklist!`, 'success');
         setAiModalVisible(false);
     };
 
@@ -445,6 +461,13 @@ export default function FoodChecklistScreen() {
                 </View>
             </Modal>
 
+            <CustomAlert
+                visible={alertConfig.visible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+                onConfirm={hideAlert}
+            />
         </SafeAreaView>
     );
 }

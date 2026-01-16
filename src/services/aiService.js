@@ -194,20 +194,26 @@ export const generateBudgetPlan = async (answers) => {
     - Transport: ${answers.primary_transport || 'Flight'}, Local: ${answers.local_transport || 'Cab'}
 
     CRITICAL INSTRUCTIONS:
-    1. First, calculate the REALISTIC MINIMUM COST for this trip based on destination, duration, and travelers.
-    2. Compare realistic cost with user's max budget (${userMaxBudget}).
+    1. CALCULATE REALISTIC MINIMUM COST properly (Do not hallunicate low numbers):
+       - Accommodation: Min ${duration} * ${answers.hotel_price?.split('-')[0] || 2000} (Min 2000/night)
+       - Food: Min ${duration} * ${participantsCount} * 1000 (Min 1000/person/day)
+       - Transport: Flight/Train cost + Local travel (Min 500/day)
+       - Activities: Entry fees/tours (Min 500/day)
+       -> SUM these to get "realistic_cost".
+
+    2. Compare "realistic_cost" vs "userMaxBudget" (${userMaxBudget}).
     
     IF realistic_cost > ${userMaxBudget}:
-       - Set "feasible": false
+       - YOU MUST SET "feasible": false
        - Set "deficit": (realistic_cost - ${userMaxBudget})
        - Still allocate categories but WITHIN user's max budget of ${userMaxBudget}
-       - Message should explain the shortfall
+       - Message: "Budget is too low. Min realistic cost is ${answers.currency} <realistic_cost>."
     
     IF realistic_cost <= ${userMaxBudget}:
        - Set "feasible": true
        - Set "surplus": (${userMaxBudget} - realistic_cost)
        - Allocate based on realistic cost (not the full max)
-       - Message should confirm budget is sufficient
+       - Message should confirm budget is sufficient.
     
     MATH RULE: Sum of ALL category values MUST EQUAL the "total" field EXACTLY.
     The "total" should NEVER exceed ${userMaxBudget}.
@@ -217,7 +223,7 @@ export const generateBudgetPlan = async (answers) => {
       "success": true,
       "feasible": true or false,
       "total": <number within user's budget>,
-      "realistic_cost": <actual estimated cost>,
+      "realistic_cost": <actual estimated cost based on calculation>,
       "deficit": <if feasible=false, how much more is needed>,
       "surplus": <if feasible=true, how much extra budget user has>,
       "per_person": <total / travelers>,
@@ -326,23 +332,21 @@ export const generateFoodRecommendations = async (places, preferences) => {
     Suggest famous food items and must-try dishes for these locations: ${locationList}
     Preferences: ${preferences || 'Both veg and non-veg'}
     
-    Include local specialties, street food, and popular dishes for EACH location.
+    CRITICAL INSTRUCTIONS:
+    1. "place": Must EXACTLY match one of the locations in the list: [${locationList}]. Do not group them.
+    2. "type": Must be EXACTLY either "Veg" or "Non-Veg" (Case sensitive, use dashes).
+       - If it contains meat/fish/egg -> "Non-Veg"
+       - If it is vegetarian -> "Veg"
     
     Return ONLY this JSON format (one entry per location):
     {
       "success": true,
       "recommendations": [
         {
-          "place": "Location Name 1",
+          "place": "Location Name",
           "items": [
-            { "name": "Dish Name", "type": "veg", "mustTry": true },
-            { "name": "Dish Name 2", "type": "non-veg", "mustTry": false }
-          ]
-        },
-        {
-          "place": "Location Name 2",
-          "items": [
-            { "name": "Dish Name", "type": "veg", "mustTry": true }
+            { "name": "Dish Name", "type": "Veg", "mustTry": true },
+            { "name": "Dish Name 2", "type": "Non-Veg", "mustTry": false }
           ]
         }
       ]

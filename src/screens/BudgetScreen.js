@@ -8,6 +8,7 @@ import { useTravelContext } from '../context/TravelContext';
 import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import { generateBudgetPlan } from '../services/aiService';
+import { CustomAlert } from '../components/CustomAlert';
 
 const ICON_OPTIONS = ['hotel', 'car', 'food', 'shopping', 'packing', 'airplane', 'train', 'beach', 'nature', 'ticket', 'hospital', 'mobile', 'task', 'like', 'heart', 'budget'];
 const COLOR_OPTIONS = ['#8B5CF6', '#3B82F6', '#F59E0B', '#10B981', '#EC4899', '#6B7280', '#EF4444', '#06B6D4', '#84CC16', '#F97316'];
@@ -88,6 +89,17 @@ export default function BudgetScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [rangeMin, setRangeMin] = useState('');
   const [rangeMax, setRangeMax] = useState('');
+
+  // Custom Alert State
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info', onConfirm: () => { }, onCancel: null, confirmText: 'OK', cancelText: 'Cancel' });
+
+  const showAlert = (title, message, type = 'info', onConfirm = () => hideAlert(), onCancel = null, confirmText = 'OK', cancelText = 'Cancel') => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm, onCancel, confirmText, cancelText });
+  };
+
+  const hideAlert = () => {
+    setAlertConfig(prev => ({ ...prev, visible: false }));
+  };
 
   // Sync totalBudget
   useEffect(() => {
@@ -201,52 +213,48 @@ export default function BudgetScreen() {
       setIsGenerating(false);
 
       if (!result.success || !result.categories) {
-        Alert.alert('Error', result.error || 'AI could not generate a budget plan. Please try again.');
+        showAlert('Error', result.error || 'AI could not generate a budget plan. Please try again.', 'error');
         return;
       }
 
       // CASE 1: Budget is INSUFFICIENT (feasible = false)
       if (result.feasible === false) {
         const deficit = result.deficit || (result.realistic_cost - result.total);
-        Alert.alert(
+        showAlert(
           '⚠️ Budget Warning',
           `Your budget of ${currency.symbol}${finalAnswers.budget_max} may not be sufficient for this trip.\n\n` +
           `Estimated realistic cost: ${currency.symbol}${result.realistic_cost || 'N/A'}\n` +
           `Additional amount needed: ${currency.symbol}${deficit}\n\n` +
           `${result.analysis_message || ''}\n\n` +
           `Do you want to continue with your entered budget anyway?`,
-          [
-            {
-              text: 'No, Change Amount',
-              style: 'cancel',
-              onPress: () => {
-                // Go back to Step 1 (budget range)
-                setCurrentQIndex(0);
-                setRangeMin('');
-                setRangeMax('');
-                // Keep modal open
-              }
-            },
-            {
-              text: 'Yes, Continue',
-              onPress: () => {
-                // Apply the budget within user's limit
-                setBudget({
-                  total: result.total || parseInt(finalAnswers.budget_max),
-                  categories: result.categories
-                });
-                if (saveTripPreferences) saveTripPreferences(finalAnswers);
-                setAiModalVisible(false);
-                setTimeout(() => {
-                  Alert.alert(
-                    'Budget Applied',
-                    `Budget of ${currency.symbol}${result.total} has been allocated. Consider increasing your budget for a more comfortable trip.`,
-                    [{ text: 'OK' }]
-                  );
-                }, 300);
-              }
-            }
-          ]
+          'warning',
+          () => {
+            // Yes, Continue
+            setBudget({
+              total: result.total || parseInt(finalAnswers.budget_max),
+              categories: result.categories
+            });
+            if (saveTripPreferences) saveTripPreferences(finalAnswers);
+            setAiModalVisible(false);
+            hideAlert();
+            setTimeout(() => {
+              showAlert(
+                'Budget Applied',
+                `Budget of ${currency.symbol}${result.total} has been allocated. Consider increasing your budget for a more comfortable trip.`,
+                'success'
+              );
+            }, 500);
+          },
+          () => {
+            // No, Change Amount
+            // Go back to Step 1 (budget range)
+            setCurrentQIndex(0);
+            setRangeMin('');
+            setRangeMax('');
+            hideAlert();
+          },
+          'Yes, Continue',
+          'No, Change Amount'
         );
         return;
       }
@@ -262,7 +270,7 @@ export default function BudgetScreen() {
 
       const surplus = result.surplus || (parseInt(finalAnswers.budget_max) - result.total);
       setTimeout(() => {
-        Alert.alert(
+        showAlert(
           '✅ Budget Plan Created',
           surplus > 0
             ? `Great news! Your budget is sufficient.\n\n` +
@@ -270,13 +278,13 @@ export default function BudgetScreen() {
             `You have ${currency.symbol}${surplus} extra for savings or splurges!\n\n` +
             `${result.analysis_message || ''}`
             : result.analysis_message || `AI has allocated ${currency.symbol}${result.total} for your trip.`,
-          [{ text: 'OK' }]
+          'success'
         );
-      }, 300);
+      }, 500);
 
     } catch (error) {
       setIsGenerating(false);
-      Alert.alert('Error', error.message);
+      showAlert('Error', error.message, 'error');
     }
   };
 
@@ -653,6 +661,16 @@ export default function BudgetScreen() {
         </View>
       </Modal>
 
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+      />
     </SafeAreaView>
   );
 }
