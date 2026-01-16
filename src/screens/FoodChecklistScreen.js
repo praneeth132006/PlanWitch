@@ -1,16 +1,18 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
-    Modal, Animated
+    Modal, Animated, ActivityIndicator, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
 import Icon from '../components/Icon';
+import { generateFoodRecommendations } from '../services/aiService';
 
 export default function FoodChecklistScreen() {
     const { colors } = useTheme();
-    const { tripInfo } = useTravelContext();
+    // Destructure new Context methods for persistence
+    const { tripInfo, foodItems, addFoodItem, toggleFoodItem, deleteFoodItem } = useTravelContext();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     // Animation refs
@@ -50,55 +52,94 @@ export default function FoodChecklistScreen() {
         }
     }, [tripInfo?.destination]);
 
-    // Local state for food items
-    const [foodItems, setFoodItems] = useState({});
-
     // Modal State
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [newItemName, setNewItemName] = useState('');
+    const [newItemType, setNewItemType] = useState(null); // 'Veg' | 'Non-Veg' | null
+
+    // AI State
+    const [aiModalVisible, setAiModalVisible] = useState(false);
+    const [isAiGenerating, setIsAiGenerating] = useState(false);
+    const [aiSuggestions, setAiSuggestions] = useState([]);
 
     const openAddModal = (place) => {
         setSelectedPlace(place);
         setNewItemName('');
+        setNewItemType(null);
         setModalVisible(true);
     };
 
-    const handleAddItem = () => {
+    const handleAddItem = async () => {
         if (!newItemName.trim() || !selectedPlace) return;
 
-        setFoodItems(prev => ({
-            ...prev,
-            [selectedPlace]: [
-                ...(prev[selectedPlace] || []),
-                { id: Date.now().toString(), name: newItemName.trim(), tried: false }
-            ]
-        }));
+        // Use Context method -> Persists to DB
+        await addFoodItem(selectedPlace, newItemName.trim(), newItemType);
         setModalVisible(false);
     };
 
-    const toggleTried = (place, itemId) => {
-        setFoodItems(prev => ({
-            ...prev,
-            [place]: prev[place].map(item =>
-                item.id === itemId ? { ...item, tried: !item.tried } : item
-            )
-        }));
-    };
-
-    const deleteItem = (place, itemId) => {
-        setFoodItems(prev => ({
-            ...prev,
-            [place]: prev[place].filter(item => item.id !== itemId)
-        }));
+    // Derived helpers for UI, filtering the global persisted list by place
+    const getPlaceItems = (place) => {
+        return foodItems.filter(item => item.place === place);
     };
 
     const getPlaceStats = (place) => {
-        const items = foodItems[place] || [];
+        const items = getPlaceItems(place);
         return {
             total: items.length,
             tried: items.filter(i => i.tried).length
         };
+    };
+
+    const handleAiSuggest = async () => {
+        if (places.length === 0) {
+            Alert.alert('No Places', 'Add destinations to your trip first.');
+            return;
+        }
+
+        setIsAiGenerating(true);
+        try {
+            const res = await generateFoodRecommendations(places);
+            if (res.success && res.recommendations) {
+                setAiSuggestions(res.recommendations);
+                setAiModalVisible(true);
+            } else {
+                Alert.alert('AI Error', 'Could not generate recommendations properly.');
+            }
+        } catch (error) {
+            Alert.alert('AI Error', error.message || 'Failed to connect to AI.');
+        } finally {
+            setIsAiGenerating(false);
+        }
+    };
+
+    const handleAddAiItem = async (placeName, itemName, itemType) => {
+        // Find matching place in our list (relaxed match)
+        const targetPlace = places.find(p => p.toLowerCase().includes(placeName.toLowerCase()) || placeName.toLowerCase().includes(p.toLowerCase())) || places[0];
+
+        // Check availability in Global State
+        const exists = foodItems.some(i => i.place === targetPlace && i.name.toLowerCase() === itemName.toLowerCase());
+        if (exists) return;
+
+        await addFoodItem(targetPlace, itemName, itemType);
+    };
+
+    const handleAddAllAiItems = () => {
+        let addedCount = 0;
+        aiSuggestions.forEach(rec => {
+            rec.items.forEach(async (item) => {
+                const targetPlace = places.find(p => p.toLowerCase().includes(rec.place.toLowerCase()) || rec.place.toLowerCase().includes(p.toLowerCase())) || places[0];
+                const exists = foodItems.some(fi => fi.place === targetPlace && fi.name.toLowerCase() === item.name.toLowerCase());
+
+                if (!exists) {
+                    await addFoodItem(targetPlace, item.name, item.type);
+                    addedCount++;
+                }
+            });
+        });
+
+        Alert.alert('Success', `Items added to your checklist!`);
+        setAiModalVisible(false);
     };
 
     return (
@@ -111,6 +152,21 @@ export default function FoodChecklistScreen() {
                 </Text>
             </View>
 
+            <TouchableOpacity
+                style={[styles.aiButton, isAiGenerating && { opacity: 0.7 }]}
+                onPress={handleAiSuggest}
+                disabled={isAiGenerating}
+            >
+                {isAiGenerating ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                    <>
+                        <Icon name="sparkles" size={16} color="#fff" style={{ marginRight: 6 }} />
+                        <Text style={styles.aiButtonText}>AI Suggest Food</Text>
+                    </>
+                )}
+            </TouchableOpacity>
+
             <ScrollView
                 style={styles.mainScroll}
                 contentContainerStyle={styles.mainScrollContent}
@@ -120,7 +176,6 @@ export default function FoodChecklistScreen() {
                 {places.length === 0 && (
                     <View style={styles.emptyHero}>
                         <View style={styles.emptyHeroGlobe}>
-                            {/* Use emoji text instead of Icon for 'food' to be safe against asset crashes */}
                             <Text style={{ fontSize: 50 }}>🍽️</Text>
                             <Animated.View style={[styles.emptyHeroRing, { transform: [{ scale: pulseAnim }] }]} />
                         </View>
@@ -132,7 +187,7 @@ export default function FoodChecklistScreen() {
                 {/* Timeline-style List */}
                 <View style={styles.timeline}>
                     {places.map((place, index) => {
-                        const items = foodItems[place] || [];
+                        const items = getPlaceItems(place);
                         const hasItems = items.length > 0;
                         const isLast = index === places.length - 1;
                         const stats = getPlaceStats(place);
@@ -186,10 +241,20 @@ export default function FoodChecklistScreen() {
                                                     <View key={item.id} style={[styles.itemCard, item.tried && styles.itemCardTried]}>
                                                         <TouchableOpacity
                                                             style={[styles.checkBox, item.tried && styles.checkBoxActive]}
-                                                            onPress={() => toggleTried(place, item.id)}
+                                                            onPress={() => toggleFoodItem(item.id)}
                                                         >
                                                             {item.tried && <Icon name="check" size={12} color="#fff" />}
                                                         </TouchableOpacity>
+
+                                                        {/* Veg/Non-Veg Indicator */}
+                                                        {item.type && (
+                                                            <View style={[{
+                                                                width: 16, height: 16, borderWidth: 1, borderColor: 'green',
+                                                                alignItems: 'center', justifyContent: 'center', marginRight: 10
+                                                            }, item.type === 'Non-Veg' && { borderColor: 'red' }]}>
+                                                                <View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'green' }, item.type === 'Non-Veg' && { backgroundColor: 'red' }]} />
+                                                            </View>
+                                                        )}
 
                                                         <Text style={[styles.itemName, item.tried && styles.itemNameTried]}>
                                                             {item.name}
@@ -197,7 +262,7 @@ export default function FoodChecklistScreen() {
 
                                                         <TouchableOpacity
                                                             style={styles.deleteBtn}
-                                                            onPress={() => deleteItem(place, item.id)}
+                                                            onPress={() => deleteFoodItem(item.id)}
                                                         >
                                                             <Icon name="close" size={16} color={colors.textMuted} />
                                                         </TouchableOpacity>
@@ -234,7 +299,33 @@ export default function FoodChecklistScreen() {
                             value={newItemName}
                             onChangeText={setNewItemName}
                             autoFocus={false}
+                            selectionColor={colors.text}
                         />
+
+                        {/* Veg/Non-Veg Selector */}
+                        <View style={{ flexDirection: 'row', marginBottom: 20, gap: 12 }}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.typeBtn,
+                                    newItemType === 'Veg' && { borderColor: 'green', backgroundColor: 'rgba(0, 128, 0, 0.1)' }
+                                ]}
+                                onPress={() => setNewItemType(newItemType === 'Veg' ? null : 'Veg')}
+                            >
+                                <View style={[styles.dot, { backgroundColor: 'green' }]} />
+                                <Text style={[styles.typeBtnText, newItemType === 'Veg' && { color: 'green' }]}>Veg</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[
+                                    styles.typeBtn,
+                                    newItemType === 'Non-Veg' && { borderColor: 'red', backgroundColor: 'rgba(255, 0, 0, 0.1)' }
+                                ]}
+                                onPress={() => setNewItemType(newItemType === 'Non-Veg' ? null : 'Non-Veg')}
+                            >
+                                <View style={[styles.dot, { backgroundColor: 'red' }]} />
+                                <Text style={[styles.typeBtnText, newItemType === 'Non-Veg' && { color: 'red' }]}>Non-Veg</Text>
+                            </TouchableOpacity>
+                        </View>
 
                         <View style={styles.modalButtons}>
                             <TouchableOpacity
@@ -249,6 +340,85 @@ export default function FoodChecklistScreen() {
                                 disabled={!newItemName.trim()}
                             >
                                 <Text style={styles.modalBtnTextAdd}>Add Item</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* AI Results Modal */}
+            <Modal
+                transparent
+                visible={aiModalVisible}
+                animationType="slide"
+                onRequestClose={() => setAiModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { maxHeight: '85%' }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                            <Text style={styles.modalTitle}>Famous Food ✨</Text>
+                            <TouchableOpacity onPress={() => setAiModalVisible(false)}>
+                                <Icon name="close" size={24} color={colors.text} />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.modalSubtitle}>Famous dishes to try</Text>
+
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            {aiSuggestions.map((rec, idx) => (
+                                <View key={idx} style={{ marginBottom: 20 }}>
+                                    <Text style={{ color: colors.text, fontSize: 16, fontWeight: 'bold', marginBottom: 10, marginTop: 4 }}>📍 {rec.place}</Text>
+                                    {rec.items.map((item, iIdx) => {
+                                        // Check via global list
+                                        const targetPlace = places.find(p => p.toLowerCase().includes(rec.place.toLowerCase()) || rec.place.toLowerCase().includes(p.toLowerCase())) || places[0];
+                                        const added = foodItems.some(fi => fi.place === targetPlace && fi.name.toLowerCase() === item.name.toLowerCase());
+
+                                        return (
+                                            <View key={iIdx} style={{
+                                                flexDirection: 'row', alignItems: 'center', backgroundColor: colors.bg,
+                                                padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.primaryBorder, marginBottom: 8
+                                            }}>
+                                                <View style={{ flex: 1 }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                        <View style={[{
+                                                            width: 16, height: 16, borderWidth: 1, borderColor: 'green',
+                                                            alignItems: 'center', justifyContent: 'center', marginRight: 8
+                                                        }, item.type === 'Non-Veg' && { borderColor: 'red' }]}>
+                                                            <View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'green' }, item.type === 'Non-Veg' && { backgroundColor: 'red' }]} />
+                                                        </View>
+                                                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{item.name}</Text>
+                                                    </View>
+                                                    <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2, marginRight: 8 }}>{item.description}</Text>
+                                                </View>
+                                                <TouchableOpacity
+                                                    style={[{ backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }, added && { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.primaryBorder }]}
+                                                    disabled={added}
+                                                    onPress={() => handleAddAiItem(rec.place, item.name, item.type)}
+                                                >
+                                                    <Text style={[{ color: colors.bg, fontSize: 12, fontWeight: 'bold' }, added && { color: colors.textMuted }]}>
+                                                        {added ? 'Added' : 'Add'}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        );
+                                    })}
+                                </View>
+                            ))}
+                        </ScrollView>
+
+                        {/* Add All Button */}
+                        <View style={{ paddingTop: 12, paddingBottom: 4, borderTopWidth: 1, borderTopColor: colors.primaryBorder }}>
+                            <TouchableOpacity
+                                style={{
+                                    backgroundColor: colors.primary,
+                                    paddingVertical: 14,
+                                    borderRadius: 12,
+                                    alignItems: 'center'
+                                }}
+                                onPress={handleAddAllAiItems}
+                            >
+                                <Text style={{ color: colors.bg, fontWeight: 'bold', fontSize: 16 }}>
+                                    Add All Suggested Items
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -363,6 +533,26 @@ const createStyles = (colors) => StyleSheet.create({
         color: colors.primary,
         fontSize: 20,
         fontWeight: 'bold'
+    },
+    aiButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.primary,
+        marginHorizontal: 20,
+        marginBottom: 10,
+        paddingVertical: 12,
+        borderRadius: 12,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4
+    },
+    aiButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 15
     },
 
     // Empty Card state for a place
@@ -485,12 +675,34 @@ const createStyles = (colors) => StyleSheet.create({
     input: {
         backgroundColor: colors.bg,
         borderWidth: 1,
-        borderColor: colors.primaryBorder,
+        borderColor: '#4B5563', // Hardcoded Gray Fix
         borderRadius: 12,
         padding: 14,
         fontSize: 16,
         color: colors.text,
         marginBottom: 20
+    },
+    typeBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.textMuted,
+        backgroundColor: colors.bg
+    },
+    typeBtnText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.textMuted,
+        marginLeft: 8
+    },
+    dot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5
     },
     modalButtons: {
         flexDirection: 'row',
@@ -517,7 +729,7 @@ const createStyles = (colors) => StyleSheet.create({
         alignItems: 'center'
     },
     modalBtnTextAdd: {
-        color: '#fff',
+        color: colors.bg,
         fontWeight: 'bold'
     }
 });

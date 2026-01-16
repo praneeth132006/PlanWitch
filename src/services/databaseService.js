@@ -397,6 +397,58 @@ export const deletePackingItemFromDB = async (itemId, tripId = null, ownerId = n
   await remove(ref(database, path));
 };
 
+// ============ FOOD ITEMS ============
+export const saveFoodItem = async (item, tripId = null, ownerId = null) => {
+  const userId = ownerId || getUserId();
+  if (!userId) throw new Error('User not authenticated');
+
+  const isCurrent = !tripId || tripId === 'current';
+  const path = isCurrent
+    ? `users/${userId}/currentTrip/foodItems`
+    : `users/${userId}/trips/${tripId}/foodItems`;
+
+  const itemId = item.id || push(ref(database, path)).key;
+  await set(ref(database, `${path}/${itemId}`), { ...item, id: itemId });
+  return { ...item, id: itemId };
+};
+
+export const getFoodItems = async (tripId = null, ownerId = null) => {
+  const userId = ownerId || getUserId();
+  if (!userId) return [];
+
+  const isCurrent = !tripId || tripId === 'current';
+  const path = isCurrent
+    ? `users/${userId}/currentTrip/foodItems`
+    : `users/${userId}/trips/${tripId}/foodItems`;
+
+  const snapshot = await get(ref(database, path));
+  return snapshot.exists() ? Object.values(snapshot.val()) : [];
+};
+
+export const updateFoodItem = async (itemId, updates, tripId = null, ownerId = null) => {
+  const userId = ownerId || getUserId();
+  if (!userId) throw new Error('User not authenticated');
+
+  const isCurrent = !tripId || tripId === 'current';
+  const path = isCurrent
+    ? `users/${userId}/currentTrip/foodItems/${itemId}`
+    : `users/${userId}/trips/${tripId}/foodItems/${itemId}`;
+
+  await update(ref(database, path), updates);
+};
+
+export const deleteFoodItemFromDB = async (itemId, tripId = null, ownerId = null) => {
+  const userId = ownerId || getUserId();
+  if (!userId) throw new Error('User not authenticated');
+
+  const isCurrent = !tripId || tripId === 'current';
+  const path = isCurrent
+    ? `users/${userId}/currentTrip/foodItems/${itemId}`
+    : `users/${userId}/trips/${tripId}/foodItems/${itemId}`;
+
+  await remove(ref(database, path));
+};
+
 // ============ ITINERARY ============
 // ============ ITINERARY ============
 export const saveItineraryItem = async (item, tripId = null, ownerId = null) => {

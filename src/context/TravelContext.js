@@ -43,6 +43,10 @@ export const useTravelContext = () => {
       setExpenses: () => { },
       addExpense: () => { },
       setPackingItems: () => { },
+      foodItems: [],
+      addFoodItem: () => { },
+      toggleFoodItem: () => { },
+      deleteFoodItem: () => { },
       setItinerary: () => { },
       setCurrency: () => { },
       clearTrip: async () => { },
@@ -74,6 +78,7 @@ export const TravelProvider = ({ children }) => {
   const [budget, setBudgetState] = useState({ total: 0, categories: {} });
   const [expenses, setExpenses] = useState([]);
   const [packingItems, setPackingItems] = useState([]);
+  const [foodItems, setFoodItems] = useState([]);
   const [itinerary, setItinerary] = useState([]);
   const [tripHistory, setTripHistory] = useState([]);
   const [allTrips, setAllTrips] = useState([]);
@@ -231,6 +236,10 @@ export const TravelProvider = ({ children }) => {
       const savedPackingItems = await DB.getPackingItems(currentTrip?.id);
       setPackingItems(savedPackingItems);
 
+      // Load food items (persisted)
+      const savedFoodItems = await DB.getFoodItems(currentTrip?.id, currentTrip?.ownerId || user?.uid);
+      setFoodItems(savedFoodItems);
+
       // Load itinerary
       const savedItinerary = await DB.getItinerary(currentTrip?.id, currentTrip?.ownerId || user?.uid);
       setItinerary(savedItinerary);
@@ -345,7 +354,7 @@ export const TravelProvider = ({ children }) => {
 
   // Add packing item
   const addPackingItem = async (item) => {
-    const newItem = { ...item, id: Date.now().toString(), packed: false };
+    const newItem = { ...item, id: Date.now().toString() + Math.random().toString(36).substr(2, 9), packed: false };
     setPackingItems(prev => [...prev, newItem]);
 
     if (isAuthenticated) {
@@ -383,6 +392,54 @@ export const TravelProvider = ({ children }) => {
         await DB.deletePackingItemFromDB(id, tripInfo.id);
       } catch (error) {
         console.error('Error deleting packing item:', error);
+      }
+    }
+  };
+
+  // --- FOOD ITEMS ---
+  const addFoodItem = async (place, name, type) => {
+    const newItem = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      place,
+      name,
+      type,
+      tried: false
+    };
+
+    setFoodItems(prev => [...prev, newItem]);
+
+    if (isAuthenticated) {
+      try {
+        await DB.saveFoodItem(newItem, tripInfo.id, tripOwnerId);
+      } catch (error) {
+        console.error('Error saving food item:', error);
+      }
+    }
+  };
+
+  const toggleFoodItem = async (id) => {
+    const item = foodItems.find(i => i.id === id);
+    if (!item) return;
+
+    setFoodItems(prev => prev.map(i => i.id === id ? { ...i, tried: !i.tried } : i));
+
+    if (isAuthenticated) {
+      try {
+        await DB.updateFoodItem(id, { tried: !item.tried }, tripInfo.id, tripOwnerId);
+      } catch (error) {
+        console.error('Error updating food item:', error);
+      }
+    }
+  };
+
+  const deleteFoodItem = async (id) => {
+    setFoodItems(prev => prev.filter(item => item.id !== id));
+
+    if (isAuthenticated) {
+      try {
+        await DB.deleteFoodItemFromDB(id, tripInfo.id, tripOwnerId);
+      } catch (error) {
+        console.error('Error deleting food item:', error);
       }
     }
   };
@@ -493,6 +550,7 @@ export const TravelProvider = ({ children }) => {
       setBudgetState({ total: 0, categories: {} });
       setExpenses([]);
       setPackingItems([]);
+      setFoodItems([]);
       setItinerary([]);
 
       if (isAuthenticated) {
@@ -537,16 +595,18 @@ export const TravelProvider = ({ children }) => {
 
       // Load data for this trip
       if (isAuthenticated) {
-        const [savedBudget, savedExpenses, savedPacking, savedItinerary] = await Promise.all([
+        const [savedBudget, savedExpenses, savedPacking, savedFoodItems, savedItinerary] = await Promise.all([
           DB.getBudget(trip.id, owner),
           DB.getExpenses(trip.id, owner),
           DB.getPackingItems(trip.id), // Fetch ONLY my own packing items
+          DB.getFoodItems(trip.id, owner),
           DB.getItinerary(trip.id, owner)
         ]);
 
         setBudgetState(savedBudget || { total: 0, categories: {} });
         setExpenses(savedExpenses || []);
         setPackingItems(savedPacking || []);
+        setFoodItems(savedFoodItems || []); // Accessing the 4th element (index 3) correctly requires variable assignment above, fixing variable name in next line
         setItinerary(savedItinerary || []);
       }
 
@@ -909,8 +969,15 @@ export const TravelProvider = ({ children }) => {
       getTotalExpenses, getExpensesByCategory,
       packingItems,
       addPackingItem,
+      setPackingItems, // Export setter if needed, but mainly helper functions
       togglePackingItem,
       deletePackingItem,
+      // --- FOOD ITEMS EXPORT ---
+      foodItems,
+      addFoodItem,
+      toggleFoodItem,
+      deleteFoodItem,
+      // -------------------------
       itinerary,
       addItineraryItem,
       deleteItineraryItem,

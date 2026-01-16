@@ -143,16 +143,18 @@ export const generateTripItinerary = async (destination, days, budget, interests
     }
 };
 
-// Generate packing list
+// Generate packing list with weather context
 export const generatePackingList = async (destination, month, duration, type) => {
-    console.log(`[AI Service] Generating real packing list for ${destination}`);
+    console.log(`[AI Service] Generating real packing list for ${destination} in ${month}`);
 
-    const prompt = `Create a packing list for a ${duration}-day ${type} trip to ${destination} in the month of ${month}.
-    Return ONLY a JSON object with this exact structure:
+    const prompt = `Create a smart packing list for a ${duration}-day ${type} trip to ${destination} in ${month}.
+    CRITICAL: You MUST consider the typical weather and climate of ${destination} during ${month} (e.g., if it's monsoon, suggest rain gear; if winter, heavy coats).
+    
+    Return ONLY a JSON object with this exact structure, categorizing items logically:
     {
       "success": true,
       "recommendations": [
-        { "category": "Category Name", "items": ["Item 1", "Item 2"] }
+        { "category": "Category Name", "items": ["Item 1 (Context note if needed)", "Item 2"] }
       ]
     }`;
 
@@ -160,6 +162,35 @@ export const generatePackingList = async (destination, month, duration, type) =>
         return await callGemini(prompt);
     } catch (error) {
         console.error('[AI Service] Packing Gemini Error:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Generate food recommendations (Veg/Non-Veg)
+export const generateFoodRecommendations = async (destinations) => {
+    const placesList = Array.isArray(destinations) ? destinations.join(', ') : destinations;
+    console.log(`[AI Service] Generating food recommendations for ${placesList}`);
+
+    const prompt = `Suggest famous local food items for a trip to: ${placesList}.
+    For EACH location or the region in general, provide a mix of Vegetarian and Non-Vegetarian famous dishes.
+    
+    Return ONLY a JSON object with this exact structure:
+    {
+      "success": true,
+      "recommendations": [
+        {
+            "place": "Place Name", 
+            "items": [
+                 { "name": "Dish Name", "type": "Veg" | "Non-Veg", "description": "Short yummy description" }
+            ]
+        }
+      ]
+    }`;
+
+    try {
+        return await callGemini(prompt);
+    } catch (error) {
+        console.error('[AI Service] Food Gemini Error:', error);
         return { success: false, error: error.message };
     }
 };

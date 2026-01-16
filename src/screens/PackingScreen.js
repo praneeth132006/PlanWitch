@@ -80,13 +80,13 @@ export default function PackingScreen() {
     setIsGenerating(true);
     try {
       // Get month from tripInfo.startDate (format: "DD MMM YYYY")
-      const monthRegex = /[a-zA-Z]+/;
-      const monthMatch = tripInfo.startDate?.match(monthRegex);
-      const month = monthMatch ? monthMatch[0] : 'Jan';
+      // Get robust date context (Month + Year or full date string)
+      // e.g., "15 Jun 2026" gives better context than just "Jun"
+      const dateContext = tripInfo.startDate || 'Upcoming Trip';
 
       const res = await generatePackingList(
         tripInfo.destination || 'Selected Destination',
-        month,
+        dateContext,
         1, // Hardcoded duration for now or calculate from tripInfo
         tripInfo.tripType || 'solo'
       );
@@ -156,9 +156,6 @@ export default function PackingScreen() {
             <Icon name="packing" size={24} color={colors.text} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Packing List</Text>
           </View>
-          <Text style={styles.headerSubtitle}>
-            {tripInfo.destination ? `For ${tripInfo.destination}` : 'Pack smart, travel light'}
-          </Text>
         </View>
         <TouchableOpacity
           style={[styles.aiSuggestBtn, isGenerating && { opacity: 0.7 }]}
@@ -528,7 +525,7 @@ const createStyles = (colors) => StyleSheet.create({
   scrollContent: { paddingBottom: 20 },
 
   // Header
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
+  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
   headerTitle: { color: colors.text, fontSize: 24, fontWeight: 'bold' },
   headerSubtitle: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
 
