@@ -44,14 +44,14 @@ const AI_QUESTIONS = [
   },
   {
     id: 'primary_transport',
-    question: 'Primary transport',
-    type: 'option',
+    question: 'Transport modes included',
+    type: 'multi-option',
     options: ['Flight', 'Train', 'Bus', 'Car', 'Bike']
   },
   {
     id: 'local_transport',
-    question: 'Local transport preference',
-    type: 'option',
+    question: 'Local transport preferences',
+    type: 'multi-option',
     options: ['Public transport', 'Cab', 'Rental bike']
   }
 ];
@@ -84,6 +84,7 @@ export default function BudgetScreen() {
   const [aiModalVisible, setAiModalVisible] = useState(false);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [multiSelection, setMultiSelection] = useState([]); // For multi-select questions
   const [isGenerating, setIsGenerating] = useState(false);
   const [rangeMin, setRangeMin] = useState('');
   const [rangeMax, setRangeMax] = useState('');
@@ -111,7 +112,16 @@ export default function BudgetScreen() {
     setCurrentQIndex(0);
     setRangeMin('');
     setRangeMax('');
+    setMultiSelection([]);
     setAiModalVisible(true);
+  };
+
+  const handleBack = () => {
+    if (currentQIndex > 0) {
+      const prevIndex = currentQIndex - 1;
+      setCurrentQIndex(prevIndex);
+      setMultiSelection([]);
+    }
   };
 
   const handleAiAnswer = (value) => {
@@ -126,31 +136,56 @@ export default function BudgetScreen() {
     }
   };
 
+  const toggleMultiSelect = (value) => {
+    setMultiSelection(prev => {
+      if (prev.includes(value)) return prev.filter(v => v !== value);
+      return [...prev, value];
+    });
+  };
+
+  const submitMultiSelect = () => {
+    if (multiSelection.length === 0) {
+      Alert.alert('Selection Required', 'Please select at least one option.');
+      return;
+    }
+    const currentQ = AI_QUESTIONS[currentQIndex];
+    const newAnswers = { ...answers, [currentQ.id]: multiSelection.join(', ') };
+    setAnswers(newAnswers);
+    setMultiSelection([]);
+
+    if (currentQIndex < AI_QUESTIONS.length - 1) {
+      setCurrentQIndex(currentQIndex + 1);
+    } else {
+      submitAiPlan(newAnswers);
+    }
+  };
+
   const handleRangeSubmit = () => {
     if (!rangeMin || !rangeMax) {
       Alert.alert('Required', 'Please enter both min and max values');
       return;
     }
+    if (parseInt(rangeMax) <= parseInt(rangeMin)) {
+      Alert.alert('Invalid Range', 'Max budget must be greater than Min budget.');
+      return;
+    }
     const newAnswers = { ...answers, budget_min: rangeMin, budget_max: rangeMax };
     setAnswers(newAnswers);
-    setCurrentQIndex(currentQIndex + 1);
+
+    if (currentQIndex < AI_QUESTIONS.length - 1) {
+      setCurrentQIndex(currentQIndex + 1);
+    } else {
+      submitAiPlan(newAnswers);
+    }
   };
 
   const submitAiPlan = async (finalAnswers) => {
     setIsGenerating(true);
     try {
       const destination = tripInfo.destination || 'Unknown';
+      let duration = 3;
+      if (tripInfo.startDate && tripInfo.endDate) duration = 5;
 
-      // Calculate duration
-      let duration = 3; // Default
-      if (tripInfo.startDate && tripInfo.endDate) {
-        const start = new Date(tripInfo.startDate);
-        const end = new Date(tripInfo.endDate); // This needs parsing if format is dd MMM yyyy
-        // Assuming simplistic check or fallback
-        duration = 5;
-      }
-
-      // Travelers count
       let travelers = 1;
       if (Array.isArray(tripInfo.participants)) travelers = tripInfo.participants.length;
       else if (tripInfo.participants) travelers = Object.keys(tripInfo.participants).length;
@@ -158,19 +193,24 @@ export default function BudgetScreen() {
       const result = await generateBudgetPlan(destination, duration, travelers, finalAnswers);
 
       if (result.success && result.categories) {
-        // Apply Budget
         setBudget({
           total: result.total || 0,
           categories: result.categories
         });
 
-        // Save preferences if needed
-        if (saveTripPreferences) {
-          saveTripPreferences(finalAnswers);
-        }
+        if (saveTripPreferences) saveTripPreferences(finalAnswers);
 
         setAiModalVisible(false);
-        Alert.alert('Budget Generated!', `AI has allocated ${currency.symbol}${result.total} for your trip based on your preferences.`);
+
+        // Show AI Analysis Message
+        setTimeout(() => {
+          Alert.alert(
+            result.feasible ? 'Budget Plan Created' : 'Budget Warning',
+            result.analysis_message || `AI has allocated ${currency.symbol}${result.total} for your trip.`,
+            [{ text: 'OK' }]
+          );
+        }, 500);
+
       } else {
         Alert.alert('Error', 'AI could not generate a budget plan. Please try again.');
       }
@@ -248,6 +288,13 @@ export default function BudgetScreen() {
   const remainingBudget = (budget.total || 0) - totalSpent;
   const spentPercentage = budget.total > 0 ? (totalSpent / budget.total) * 100 : 0;
 
+  // Calculate Per Person
+  let travelerCount = 1;
+  if (Array.isArray(tripInfo.participants)) travelerCount = Math.max(1, tripInfo.participants.length);
+  else if (tripInfo.participants) travelerCount = Math.max(1, Object.keys(tripInfo.participants).length);
+
+  const perPersonBudget = (budget.total || 0) / travelerCount;
+
   const getStatusColor = (pct) => {
     if (pct > 90) return '#EF4444';
     if (pct > 75) return '#F59E0B';
@@ -311,6 +358,14 @@ export default function BudgetScreen() {
             </View>
           </View>
 
+          {/* Per Person Display (New Section) */}
+          <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border || '#333' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: '600' }}>Budget Per Person ({travelerCount})</Text>
+              <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>{safeFormat(perPersonBudget)}</Text>
+            </View>
+          </View>
+
           {/* Allocation Warning */}
           {unallocated !== 0 && Math.abs(unallocated) > 1 && (
             <View style={styles.allocationWarning}>
@@ -345,10 +400,17 @@ export default function BudgetScreen() {
             />
           ))}
 
-          <TouchableOpacity style={styles.newCatBtn} onPress={() => { setEditingCategory(null); setNewCategory({ key: '', label: '', icon: 'packing', color: '#6B7280', tip: '5-10%' }); setShowCategoryModal(true); }}>
-            <Icon name="add" size={24} color={colors.primary} style={{ marginRight: 8 }} />
-            <Text style={styles.newCatText}>Add New Category</Text>
-          </TouchableOpacity>
+          {/* Removed "Add New Category" Button */}
+        </View>
+
+        {/* Disclaimer Footer */}
+        <View style={{ marginTop: 30, padding: 16, backgroundColor: colors.card, borderRadius: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+            <Icon name="task" size={20} color={colors.textMuted} style={{ marginTop: 2, marginRight: 10 }} />
+            <Text style={{ color: colors.textMuted, fontSize: 12, lineHeight: 18, flex: 1 }}>
+              Note: This budget is an AI-generated estimate based on your preferences, number of travelers ({travelerCount}), destination costs, and typical spending patterns. Actual costs may vary.
+            </Text>
+          </View>
         </View>
 
         <View style={{ height: 100 }} />
@@ -420,16 +482,28 @@ export default function BudgetScreen() {
               </View>
             ) : (
               <>
-                {/* Progress Bar for AI Questions */}
-                <View style={{ height: 4, backgroundColor: colors.cardLight, borderRadius: 2, marginBottom: 20, overflow: 'hidden' }}>
-                  <View style={{ height: '100%', backgroundColor: colors.primary, width: `${((currentQIndex + 1) / AI_QUESTIONS.length) * 100}%` }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                  {currentQIndex > 0 ? (
+                    <TouchableOpacity onPress={handleBack} style={styles.navBackBtn}>
+                      {/* FIXED ICON: "back" instead of "arrow-left" */}
+                      <Icon name="back" size={20} color={colors.text} />
+                    </TouchableOpacity>
+                  ) : <View style={{ width: 40 }} />}
+
+                  {/* Removed the 'Step X of Y' Header as requested */}
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    {/* Empty center to keep alignment if needed, or we can just remove this block */}
+                  </View>
+
+                  <View style={{ width: 40 }} />
                 </View>
 
-                <Text style={styles.aiQuestionTitle}>{AI_QUESTIONS[currentQIndex]?.question}</Text>
+                {/* Added margin to compensate for removed header visual balance */}
+                <Text style={[styles.aiQuestionTitle, { marginTop: 0 }]}>{AI_QUESTIONS[currentQIndex]?.question}</Text>
 
                 {/* Q1: Range Input */}
                 {AI_QUESTIONS[currentQIndex]?.type === 'range' && (
-                  <View style={{ marginTop: 20 }}>
+                  <View style={{ marginTop: 10 }}>
                     <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: colors.textMuted, marginBottom: 8, fontSize: 12 }}>MIN ({currency.symbol})</Text>
@@ -440,6 +514,7 @@ export default function BudgetScreen() {
                           placeholderTextColor={colors.textMuted + '50'}
                           value={rangeMin}
                           onChangeText={setRangeMin}
+                          selectionColor={colors.textMuted} // Hardcoded to muted text to avoid system yellow
                         />
                       </View>
                       <View style={{ flex: 1 }}>
@@ -451,19 +526,21 @@ export default function BudgetScreen() {
                           placeholderTextColor={colors.textMuted + '50'}
                           value={rangeMax}
                           onChangeText={setRangeMax}
+                          selectionColor={colors.textMuted}
                         />
                       </View>
                     </View>
                     <TouchableOpacity style={styles.aiNextBtn} onPress={handleRangeSubmit}>
                       <Text style={styles.aiNextBtnText}>Next Step</Text>
-                      <Icon name="arrow-right" size={20} color="#fff" />
+                      {/* FIXED ICON: Using "back" rotated 180deg since "arrow-right" doesn't exist */}
+                      <Icon name="back" size={20} color={colors.bg} style={{ transform: [{ rotate: '180deg' }] }} />
                     </TouchableOpacity>
                   </View>
                 )}
 
-                {/* Q2+: Options */}
+                {/* Q: Single Option */}
                 {AI_QUESTIONS[currentQIndex]?.type === 'option' && (
-                  <View style={{ marginTop: 20, gap: 12 }}>
+                  <View style={{ marginTop: 10, gap: 12 }}>
                     {AI_QUESTIONS[currentQIndex]?.options.map(opt => (
                       <TouchableOpacity
                         key={opt}
@@ -471,17 +548,45 @@ export default function BudgetScreen() {
                         onPress={() => handleAiAnswer(opt)}
                       >
                         <Text style={styles.aiOptionText}>{opt}</Text>
-                        <Icon name="chevron-right" size={16} color={colors.textMuted} />
+                        {/* No Icon Here */}
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
 
+                {/* Q: Multi Option */}
+                {AI_QUESTIONS[currentQIndex]?.type === 'multi-option' && (
+                  <View style={{ marginTop: 10 }}>
+                    <View style={{ gap: 12, marginBottom: 20 }}>
+                      {AI_QUESTIONS[currentQIndex]?.options.map(opt => {
+                        const isSelected = multiSelection.includes(opt);
+                        return (
+                          <TouchableOpacity
+                            key={opt}
+                            style={[styles.aiOptionBtn, isSelected && { borderColor: colors.primary, backgroundColor: colors.primary + '20' }]}
+                            onPress={() => toggleMultiSelect(opt)}
+                          >
+                            <div style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <Text style={[styles.aiOptionText, isSelected && { color: colors.primary }]}>{opt}</Text>
+                            </div>
+                            {isSelected && <Icon name="check" size={18} color={colors.primary} />}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    <TouchableOpacity style={styles.aiNextBtn} onPress={submitMultiSelect}>
+                      <Text style={styles.aiNextBtnText}>Continue</Text>
+                      {/* FIXED ICON */}
+                      <Icon name="back" size={20} color={colors.bg} style={{ transform: [{ rotate: '180deg' }] }} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
                 <TouchableOpacity
-                  style={styles.aiCloseBtn}
+                  style={styles.aiCancelBtn}
                   onPress={() => setAiModalVisible(false)}
                 >
-                  <Text style={{ color: colors.textMuted }}>Cancel</Text>
+                  <Text style={styles.aiCancelBtnText}>Cancel</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -566,15 +671,77 @@ const createStyles = (colors) => StyleSheet.create({
   aiBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
   // AI Modal
-  aiModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
-  aiModalContent: { backgroundColor: colors.card, padding: 24, borderRadius: 24, minHeight: 300 },
-  aiQuestionTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 8, textAlign: 'center' },
-  aiRangeInput: { backgroundColor: colors.bg, padding: 14, borderRadius: 12, color: colors.text, fontSize: 18, fontWeight: 'bold', textAlign: 'center', borderWidth: 1, borderColor: colors.primaryBorder },
-  aiNextBtn: { backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 16, marginTop: 10 },
-  aiNextBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginRight: 8 },
-  aiOptionBtn: { backgroundColor: colors.bg, padding: 16, borderRadius: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: colors.primaryBorder },
-  aiOptionText: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  aiCloseBtn: { alignSelf: 'center', marginTop: 20, padding: 10 },
+  aiModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', padding: 20 },
+  aiModalContent: { backgroundColor: colors.card, padding: 24, borderRadius: 24, minHeight: 350 },
+  aiQuestionTitle: { fontSize: 22, fontWeight: 'bold', color: colors.text, marginBottom: 12, textAlign: 'center', marginTop: 10 },
+
+  aiRangeInput: {
+    backgroundColor: colors.bg,
+    padding: 16,
+    borderRadius: 16,
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: '#4B5563', // Hardcoded neutral gray
+    outlineStyle: 'none' // Important for web
+  },
+
+  aiNextBtn: {
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 20
+  },
+  aiNextBtnText: {
+    color: colors.bg, // Contrast text
+    fontSize: 16,
+    fontWeight: '800',
+    marginRight: 8
+  },
+
+  aiOptionBtn: {
+    backgroundColor: colors.bg,
+    padding: 18,
+    borderRadius: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.primaryBorder
+  },
+  aiOptionText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600'
+  },
+
+  aiCancelBtn: {
+    marginTop: 20,
+    alignSelf: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    backgroundColor: colors.bg,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder
+  },
+  aiCancelBtnText: {
+    color: colors.textMuted,
+    fontWeight: '700'
+  },
+
+  navBackBtn: {
+    padding: 8,
+    backgroundColor: colors.bg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder
+  },
 
   // Total Card
   totalCard: { backgroundColor: colors.card, borderRadius: 24, padding: 24, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
@@ -645,6 +812,7 @@ const createStyles = (colors) => StyleSheet.create({
 
   saveBtn: { backgroundColor: colors.primary, padding: 18, borderRadius: 20, alignItems: 'center', marginTop: 32 },
   saveBtnText: { color: 'black', fontSize: 16, fontWeight: '800' },
-  deleteBtn: { backgroundColor: '#EF444415', padding: 18, borderRadius: 20, alignItems: 'center', marginTop: 16 },
-  deleteBtnText: { color: '#EF4444', fontSize: 16, fontWeight: '700' },
+
+  deleteBtn: { backgroundColor: '#FEE2E2', padding: 18, borderRadius: 20, alignItems: 'center', marginTop: 16 },
+  deleteBtnText: { color: '#EF4444', fontSize: 16, fontWeight: '800' },
 });

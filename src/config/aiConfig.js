@@ -6,7 +6,7 @@ export const AI_CONFIG = {
     provider: 'gemini',
 
     // API Keys - Paste your key here
-    geminiKey: 'AIzaSyD2qh7Q4LgDuK2VcGJw6Lfftw-9PUDDBrQ', // secure-key
+    geminiKey: 'AIzaSyAR1bh64dTvgMbrF5kwY2APz76NgCEv9fw', // secure-key
     openaiKey: 'YOUR_OPENAI_API_KEY_HERE',
 
     // Model configuration

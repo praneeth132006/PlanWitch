@@ -113,37 +113,91 @@ export const TravelProvider = ({ children }) => {
   // Load data from Firebase when user logs in
   useEffect(() => {
     if (isAuthenticated && user) {
-      loadUserData().then(() => {
-        checkAndAutoEndTrips();
+      loadUserData().then((trips) => {
+        checkAndAutoEndTrips(trips);
       });
     } else {
       resetLocalState();
     }
   }, [isAuthenticated, user]);
 
-  const checkAndAutoEndTrips = async () => {
-    if (!tripInfo || !tripInfo.destination || !tripInfo.endDate) return;
+  // Check and auto-end ANY past trips
+  const checkAndAutoEndTrips = async (tripsToCheck) => {
+    const list = tripsToCheck || allTrips;
+    if (!list || list.length === 0) return;
 
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Parse endDate: "2 Jan 2026"
-      const parts = tripInfo.endDate.split(' ');
-      if (parts.length < 3) return;
+      let hasUpdates = false;
+      let updatedTrips = [...list];
+      const historyToAdd = [];
 
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const monthIndex = months.indexOf(parts[1]);
-      if (monthIndex === -1) return;
+      for (let i = 0; i < updatedTrips.length; i++) {
+        const trip = updatedTrips[i];
+        if (trip.isCompleted) continue; // Already done
 
-      const tripEndDate = new Date(parseInt(parts[2]), monthIndex, parseInt(parts[0]));
-      tripEndDate.setHours(0, 0, 0, 0);
+        // Parse date - Robust handling for ISO and formatted strings
+        let tripEndDate;
+        if (!trip.endDate) continue;
 
-      // If today is strictly after the end date, auto-end the trip
-      if (today > tripEndDate) {
-        console.log('Automatically ending trip as end date has passed:', tripInfo.destination);
-        await endTrip();
+        // Try parsing ISO string or standard date format directly
+        const parsedDate = new Date(trip.endDate);
+        if (!isNaN(parsedDate.getTime())) {
+          tripEndDate = parsedDate;
+        } else {
+          // Fallback for "2 Jan 2026" format
+          const parts = trip.endDate.split(' ');
+          if (parts.length >= 3) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthIndex = months.findIndex(m => m.toLowerCase().startsWith(parts[1].toLowerCase()));
+            if (monthIndex !== -1) {
+              tripEndDate = new Date(parseInt(parts[2]), monthIndex, parseInt(parts[0]));
+            }
+          }
+        }
+
+        if (!tripEndDate || isNaN(tripEndDate.getTime())) continue;
+
+        tripEndDate.setHours(0, 0, 0, 0);
+
+        // Check if expired
+        if (today > tripEndDate) {
+          console.log('[Context] Auto-completing expired trip:', trip.destination);
+
+          // Complete it
+          trip.isCompleted = true;
+          trip.completedAt = Date.now();
+          trip.completedDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+          hasUpdates = true;
+          historyToAdd.push(trip);
+
+          // If this is the ACTIVE trip, we need to end it properly to clear state
+          if (tripInfo && trip.id === tripInfo.id) {
+            console.log('[Context] The expired trip is currently active. Ending it.');
+            await endTrip();
+            // endTrip handles DB updates for itself, but we should continue loop if there are others
+          } else if (isAuthenticated) {
+            // Otherwise, just update the DB for this background trip
+            await DB.saveTrip(trip);
+            await DB.saveToHistory(trip);
+          }
+        }
       }
+
+      if (hasUpdates && isAuthenticated) {
+        // Refresh lists
+        const [trips, history] = await Promise.all([DB.getTrips(), DB.getTripHistory()]);
+        setAllTrips(trips);
+        setTripHistory(history.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0)));
+      } else if (hasUpdates) {
+        // Local only update
+        setAllTrips(updatedTrips);
+        setTripHistory(prev => [...historyToAdd, ...prev]);
+      }
+
     } catch (error) {
       console.error('Error in checkAndAutoEndTrips:', error);
     }
@@ -253,8 +307,10 @@ export const TravelProvider = ({ children }) => {
       setTripHistory(savedHistory.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0)));
 
       console.log('User data loaded successfully');
+      return savedTrips; // Return for immediate processing
     } catch (error) {
       console.error('Error loading user data:', error);
+      return [];
     } finally {
       setIsLoading(false);
     }
@@ -290,7 +346,8 @@ export const TravelProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        await DB.saveBudget(newBudget);
+        // Save to specific trip path to ensure persistence across reloads
+        await DB.saveBudget(newBudget, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error saving budget:', error);
       }

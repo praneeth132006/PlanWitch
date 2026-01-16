@@ -41,10 +41,7 @@ const callGemini = async (prompt, isJson = true) => {
 
     // List of reliable models to try if discovery isn't used
     const fallbackModels = [
-        { ver: 'v1', name: 'gemini-1.5-flash' },
         { ver: 'v1beta', name: 'gemini-1.5-flash' },
-        { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
-        { ver: 'v1', name: 'gemini-1.5-pro' },
         { ver: 'v1beta', name: 'gemini-1.5-pro' },
         { ver: 'v1beta', name: 'gemini-pro' }
     ];
@@ -52,64 +49,97 @@ const callGemini = async (prompt, isJson = true) => {
     let lastError = null;
 
     // Nuclear Fix 2.0: Try to discover available models on both v1 and v1beta
-    const versions = ['v1', 'v1beta'];
+    const versions = ['v1beta', 'v1'];
     for (const ver of versions) {
         try {
             console.log(`[AI Discovery] Attempting to list models on ${ver}...`);
             const listUrl = `https://generativelanguage.googleapis.com/${ver}/models?key=${apiKey}`;
             const listRes = await fetch(listUrl);
+
+            if (listRes.status === 403) {
+                const errText = await listRes.text();
+                // Critical Error: Key is invalid or blocked
+                throw new Error(`API_KEY_ERROR: ${errText.includes('leaked') ? 'API Key reported as leaked' : 'Invalid API Key'}`);
+            }
+
             if (listRes.ok) {
                 const listData = await listRes.json();
-                const supportModels = listData.models
-                    .filter(m => m.supportedGenerationMethods.includes('generateContent'))
-                    .map(m => m.name); // e.g., "models/gemini-1.5-flash"
+                // ... (filtering logic remains similar, or we can trust fallback if this fails)
+                const models = listData.models || [];
+                const chatModel = models.find(m => m.name.includes('gemini-1.5-flash') || m.name.includes('gemini-pro'));
 
-                if (supportModels.length > 0) {
-                    // Prioritize gemini-1.5-flash if available, otherwise just use the first
-                    const preferred = supportModels.find(m => m.includes('1.5-flash')) || supportModels[0];
-                    console.log(`[AI Discovery] Found ${supportModels.length} models on ${ver}. Using: ${preferred}`);
-                    const url = `https://generativelanguage.googleapis.com/${ver}/${preferred}:generateContent?key=${apiKey}`;
-                    return await executeGeminiRequest(url, prompt, isJson);
+                if (chatModel) {
+                    const modelName = chatModel.name.replace(`models/`, '');
+                    console.log(`[AI Discovery] Found model: ${modelName} on ${ver}`);
+                    fallbackModels.unshift({ ver, name: modelName });
+                    break; // Found a working version/model combo
                 }
             }
         } catch (e) {
-            console.warn(`[AI Discovery] Discovery on ${ver} failed.`, e.message);
+            console.warn(`[AI Discovery] Discovery failed on ${ver}:`, e.message);
+            if (e.message.includes('API_KEY_ERROR')) throw e; // Stop immediately if key is bad
         }
     }
 
-    // Brute force fallback loop if discovery fails
-    console.log('[AI Fallback] Discovery failed, entering brute force fallback mode...');
-    for (const attempt of fallbackModels) {
-        const url = `https://generativelanguage.googleapis.com/${attempt.ver}/models/${attempt.name}:generateContent?key=${apiKey}`;
+    // Try fallbacks
+    for (const model of fallbackModels) {
         try {
-            return await executeGeminiRequest(url, prompt, isJson);
-        } catch (err) {
-            console.error(`[AI Attempt Failed] ${attempt.name} on ${attempt.ver}:`, err.message);
-            lastError = err.message;
-            // Fatal errors (Auth) should stop the loop
-            if (err.message.includes('403') || err.message.includes('API_KEY_INVALID')) throw err;
+            const url = `https://generativelanguage.googleapis.com/${model.ver}/models/${model.name}:generateContent?key=${apiKey}`;
+
+            // ... construct body ...
+            const body = {
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 2048,
+                    ...(isJson ? { responseMimeType: "application/json" } : {})
+                }
+            };
+
+            console.log(`[AI Attempt] Trying ${model.name} on ${model.ver}...`);
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (response.status === 403) {
+                const errText = await response.text();
+                throw new Error(`API Key Invalid or Leaked: ${errText}`);
+            }
+
+            if (!response.ok) {
+                const errText = await response.text();
+                // If 404, just try next model
+                if (response.status === 404) {
+                    console.warn(`[AI Attempt Failed] ${model.name} 404 Not Found: ${errText}`);
+                    lastError = new Error(`Model ${model.name} not found`);
+                    continue;
+                }
+                throw new Error(`API Error ${response.status}: ${errText}`);
+            }
+
+            const data = await response.json();
+            if (!data.candidates || data.candidates.length === 0) {
+                throw new Error('No content generated');
+            }
+
+            let text = data.candidates[0].content.parts[0].text;
+            if (isJson) {
+                // Clean markdown
+                text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                return JSON.parse(text);
+            }
+            return text;
+
+        } catch (error) {
+            console.error(`[AI Attempt Failed] ${model.name} error:`, error);
+            lastError = error;
+            if (error.message.includes('API Key')) throw error; // Stop retry loop
         }
     }
 
-    // If we get here, all attempts failed
-    let finalMsg = "AI Connection Failed: All models returned errors.";
-    try {
-        const parsed = JSON.parse(lastError);
-        // prioritizing the leaked key message
-        if (parsed.error && parsed.error.message && parsed.error.message.includes('leaked')) {
-            throw new Error("Your API Key was reported as leaked/compromised. Please generate a new specific Gemini API Key in Google AI Studio.");
-        }
-        finalMsg = parsed.error?.message || lastError;
-    } catch (e) {
-        if (e.message.includes('leaked')) throw e;
-        /* ignore parse error */
-    }
-
-    if (lastError && lastError.includes('leaked')) {
-        throw new Error("Your API Key was reported as leaked/compromised. Please generate a new specific Gemini API Key in Google AI Studio.");
-    }
-
-    throw new Error(finalMsg);
+    throw lastError || new Error('All AI models failed. Please check your API key.');
 };
 
 // Generate trip itinerary
@@ -196,6 +226,7 @@ export const generateFoodRecommendations = async (destinations) => {
 };
 
 // Generate Budget Plan based on user questionnaire
+
 export const generateBudgetPlan = async (destination, duration, travelers, answers) => {
     console.log(`[AI Service] Generating budget for ${destination}`);
 
@@ -210,28 +241,34 @@ export const generateBudgetPlan = async (destination, duration, travelers, answe
     - Budget Range: ${answers.budget_min} to ${answers.budget_max}
     - Style: ${answers.preference}
     - Priority: ${answers.priority}
-    - Accommodation: ${answers.accommodation} (${answers.hotel_price})
-    - Transport To: ${answers.primary_transport}
+    - Accommodation Type: ${answers.accommodation} (Price Range: ${answers.hotel_price})
+    - Transport Modes: ${answers.primary_transport}
     - Local Transport: ${answers.local_transport}
 
-    Task:
-    1. Estimate a realistic TOTAL budget within the range (or close to it if range is unrealistic) based on the preferences.
-    2. Allocate this total into categories: 'accommodation', 'transport', 'food', 'activities', 'shopping', 'other'.
-    3. Ensure the allocation reflects the user's "Priority" (e.g. if Food is priority, allocate more there).
+    CRITICAL RULES:
+    1. Calculate the Realistic Total Cost (RTC) for this specific trip configuration (Destination + Duration + Travelers).
+    2. STRICTLY Compare RTC with the user's Max Budget (${answers.budget_max}).
+    3. FEASIBILITY CHECK:
+       - If RTC > ${answers.budget_max}: Set "feasible": false. The "total" MUST be the RTC (the actual needed amount). Message MUST start with "Insufficient Budget:" and explain the deficit.
+       - If RTC <= ${answers.budget_max}: Set "feasible": true. The "total" should be the RTC. Message should confirm sufficiency.
+    4. MATH CHECK: The Sum of "categories" values MUST equal the "total" field EXACTLY.
     
     Return ONLY a JSON object with this exact structure:
     {
       "success": true,
-      "total": 150000,
+      "feasible": true,
+      "total": 80000,
+      "per_person": 20000,
+      "analysis_message": "Insufficient Budget: Your budget of 5k is too low for 5 days in Dubai. You need at least 25k...",
       "categories": {
-        "accommodation": 50000,
-        "transport": 30000,
-        "food": 40000,
-        "activities": 20000,
-        "shopping": 5000,
-        "other": 5000
+        "accommodation": 30000,
+        "transport": 20000,
+        "food": 15000,
+        "activities": 10000,
+        "shopping": 2500,
+        "other": 2500
       },
-      "tips": ["Tip 1", "Tip 2 about saving money or spending wisely"]
+      "tips": ["Tip 1", "Tip 2"]
     }`;
 
     try {
