@@ -124,7 +124,7 @@ export const generateTripItinerary = async (destination, days, budget, travelers
         return new Promise(resolve => setTimeout(() => resolve(MOCK_ITINERARY), 2000));
     }
 
-    const { pace = 'Moderate', startTime = '09:00 AM' } = preferences;
+    const { pace = 'Moderate', startTime = '09:00 AM', endTime = '09:00 PM', locationDurations = {} } = preferences;
 
     const prompt = `
     Create a detailed ${days}-day travel itinerary for ${destination}.
@@ -132,9 +132,16 @@ export const generateTripItinerary = async (destination, days, budget, travelers
     Budget Level: ${budget}.
     Interests: ${interests}.
     Pace: ${pace}.
-    Daily Start Time: ${startTime}.
+    Daily Routine: Starts at ${startTime}, Ends at ${endTime}.
+    
+    Locations & Main Stops Duration (Days): 
+    ${Object.entries(locationDurations).map(([loc, days]) => `- ${loc}: ${days} days`).join('\n') || 'Standard allocation'}
 
-    CRITICAL: You must return a valid JSON object.
+    CRITICAL INSTRUCTIONS:
+    1. EXCLUDE travel time TO/FROM the destination (e.g., flight to ${destination}) from the daily activity list. Only include what happens AFTER arrival.
+    2. Respect the 'Starts at' and 'Ends at' times for daily activities.
+    3. If location durations are specified, strictly allocate days accordingly.
+    4. You must return a valid JSON object.
     
     Structure rules:
     - "type": Must be one of: 'flight', 'train', 'bus', 'car', 'hotel', 'checkin', 'checkout', 'breakfast', 'lunch', 'dinner', 'cafe', 'attraction', 'tour', 'shopping', 'nature', 'beach', 'museum', 'nightlife'.

@@ -27,18 +27,29 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const [showDatesModal, setShowDatesModal] = useState(false);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [showLocationEditModal, setShowLocationEditModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+
 
   // Edit states
   const [newBudget, setNewBudget] = useState(budget.total.toString());
   const [newTravelerName, setNewTravelerName] = useState('');
   const [travelers, setTravelers] = useState([]);
+  const [editStartDate, setEditStartDate] = useState(tripInfo.startDate || '');
+  const [editEndDate, setEditEndDate] = useState(tripInfo.endDate || '');
+  const [editLocations, setEditLocations] = useState({
+    origin: '',
+    destination: '',
+    stops: []
+  });
+
+  // Derived State
+  const isAdmin = tripInfo.tripType === 'friends' || tripInfo.tripType === 'family' || true; // Allow all for now or check ownerId
 
   useEffect(() => {
     // Show all travelers including self
     setTravelers(getAllTravelers());
   }, [tripInfo.participants, localParticipantId]);
-  const [editStartDate, setEditStartDate] = useState(tripInfo.startDate || '');
-  const [editEndDate, setEditEndDate] = useState(tripInfo.endDate || '');
 
   const fadeAnim = useState(new Animated.Value(0))[0];
   const scaleAnim = useState(new Animated.Value(0.9))[0];
@@ -85,6 +96,14 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const participantCount = tripInfo.participants?.length || 1;
   const remainingBudget = getRemainingBudget();
   const recentExpenses = expenses.slice(-2).reverse();
+
+  const SETTINGS_OPTIONS = [
+    { id: 'edit_dates', label: 'Edit Travel Dates', icon: 'calendar', page: 'BudgetScreen' },
+    { id: 'edit_locations', label: 'Edit Locations', icon: 'location', page: 'LocationScreen' },
+    { id: 'manage_travelers', label: 'Manage Travelers', icon: 'group', page: 'TravelersScreen' },
+    { id: 'end_trip', label: 'End Trip', icon: 'close-circle', page: 'EndTrip' },
+    { id: 'delete_trip', label: 'Delete Trip', icon: 'delete', page: 'DeleteTrip', danger: true },
+  ];
 
   const getCategoryInfo = (key) => {
     const categories = {
@@ -178,7 +197,49 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const goToItinerary = () => navigation.navigate('Itinerary');
   const goToExpenses = () => navigation.navigate('Expenses');
 
+  const handleSettingsOptionPress = (option) => {
+    setShowSettingsModal(false);
+    if (option.id === 'edit_dates') {
+      setEditStartDate(tripInfo.startDate || '');
+      setEditEndDate(tripInfo.endDate || '');
+      setShowDatesModal(true);
+    } else if (option.id === 'edit_locations') {
+      setEditLocations({
+        origin: tripInfo.origin?.name || tripInfo.start?.name || '',
+        destination: tripInfo.destination || '',
+        stops: tripInfo.stops ? [...tripInfo.stops] : []
+      });
+      setShowLocationEditModal(true);
+    } else if (option.id === 'manage_travelers') {
+      setTravelers(getAllTravelers());
+      setShowTravelersModal(true);
+    } else if (option.id === 'end_trip') {
+      setShowEndTripModal(true);
+    } else if (option.id === 'delete_trip') {
+      setShowDeleteModal(true);
+    }
+  };
 
+  const handleSaveLocations = async () => {
+    // Filter empty stops
+    const cleanStops = editLocations.stops.filter(s => s && s.trim().length > 0);
+
+    // Update local state
+    const updatedTrip = {
+      ...tripInfo,
+      destination: editLocations.destination,
+      origin: { ...tripInfo.origin, name: editLocations.origin }, // Preserve other origin data if any
+      start: { ...tripInfo.start, name: editLocations.origin }, // Legacy support
+      stops: cleanStops.map(s => ({ name: s, type: 'stop' })) // Ensure stops are objects
+    };
+
+    setTripInfo(updatedTrip); // Update context
+
+    // Persist to DB if owner
+    // if (isAdmin) { await DB.updateTrip(updatedTrip); } // Assuming DB.updateTrip exists or similar logic
+
+    setShowLocationEditModal(false);
+  };
 
   const handlePersonalizedPlan = () => {
     // Check if we have preferences. If not, go to wizard first.
@@ -533,14 +594,22 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
               <Pressable
                 style={styles.settingsItem}
-                onPress={() => { setShowSettingsModal(false); setShowBudgetModal(true); }}
+                onPress={() => {
+                  setShowSettingsModal(false);
+                  setEditLocations({
+                    origin: tripInfo.origin?.name || tripInfo.start?.name || '',
+                    destination: tripInfo.destination || '',
+                    stops: tripInfo.stops ? tripInfo.stops.map(s => typeof s === 'object' ? (s.name || '') : s) : []
+                  });
+                  setShowLocationEditModal(true);
+                }}
               >
                 <View style={[styles.settingsIconBg, { backgroundColor: '#10B98120' }]}>
-                  <Icon name="budget" size={20} color="#10B981" />
+                  <Icon name="location" size={20} color="#10B981" />
                 </View>
                 <View style={styles.settingsInfo}>
-                  <Text style={styles.settingsLabel}>Edit Budget</Text>
-                  <Text style={styles.settingsDesc}>Current: {formatCurrency(budget.total)}</Text>
+                  <Text style={styles.settingsLabel}>Edit Locations</Text>
+                  <Text style={styles.settingsDesc}>Origin, Destination & Stops</Text>
                 </View>
                 <Text style={styles.settingsArrow}>→</Text>
               </Pressable>
@@ -653,40 +722,96 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         </View>
       </Modal>
 
-      {/* Budget Modal */}
-      <Modal visible={showBudgetModal} transparent animationType="slide" onRequestClose={() => setShowBudgetModal(false)}>
+      {/* Location Edit Modal */}
+      <Modal visible={showLocationEditModal} transparent animationType="slide" onRequestClose={() => setShowLocationEditModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { maxHeight: '90%' }]}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>💰 Edit Budget</Text>
-              <Pressable onPress={() => setShowBudgetModal(false)} style={styles.modalCloseBtn}>
+              <Text style={styles.modalTitle}>� Edit Locations</Text>
+              <Pressable onPress={() => setShowLocationEditModal(false)} style={styles.modalCloseBtn}>
                 <Icon name="close" size={20} color={colors.textMuted} />
               </Pressable>
             </View>
 
-            <View style={styles.budgetEditSection}>
-              <Text style={styles.budgetEditLabel}>Total Trip Budget</Text>
-              <View style={styles.budgetInputRow}>
-                <Text style={styles.budgetCurrency}>{currency.symbol}</Text>
-                <TextInput
-                  style={[styles.budgetInputField, { outlineStyle: 'none' }]}
-                  value={newBudget}
-                  onChangeText={(text) => setNewBudget(text.replace(/[^0-9]/g, ''))}
-                  keyboardType="numeric"
-                  placeholder="0"
-                  placeholderTextColor={colors.textMuted}
-                />
-              </View>
-              <View style={styles.budgetInfo}>
-                <Text style={styles.budgetInfoText}>💳 Spent: {formatCurrency(getTotalExpenses())}</Text>
-                <Text style={styles.budgetInfoText}>📊 Remaining: {formatCurrency(parseFloat(newBudget || 0) - getTotalExpenses())}</Text>
-              </View>
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              <View style={styles.locationEditSection}>
+                {/* Origin */}
+                <View style={styles.locationInputGroup}>
+                  <Text style={styles.locationLabel}>Origin</Text>
+                  <View style={styles.locationInputWrapper}>
+                    <Icon name="location" size={20} color={colors.primary} style={styles.locationIcon} />
+                    <TextInput
+                      style={[styles.locationInput, { outlineStyle: 'none' }]}
+                      placeholder="Start Location"
+                      placeholderTextColor={colors.textMuted}
+                      value={editLocations.origin}
+                      onChangeText={(t) => setEditLocations(prev => ({ ...prev, origin: t }))}
+                    />
+                  </View>
+                </View>
 
-            <Pressable style={styles.saveButton} onPress={handleUpdateBudget}>
-              <Text style={styles.saveButtonText}>Save Budget</Text>
-            </Pressable>
+                {/* Destination */}
+                <View style={styles.locationInputGroup}>
+                  <Text style={styles.locationLabel}>Destination</Text>
+                  <View style={styles.locationInputWrapper}>
+                    <Icon name="flag" size={20} color={colors.primary} style={styles.locationIcon} />
+                    <TextInput
+                      style={[styles.locationInput, { outlineStyle: 'none' }]}
+                      placeholder="Final Destination"
+                      placeholderTextColor={colors.textMuted}
+                      value={editLocations.destination}
+                      onChangeText={(t) => setEditLocations(prev => ({ ...prev, destination: t }))}
+                    />
+                  </View>
+                </View>
+
+                {/* Stops */}
+                <View style={styles.locationInputGroup}>
+                  <Text style={styles.locationLabel}>Stops / Main Places</Text>
+                  <View style={styles.stopsList}>
+                    {editLocations.stops.map((stop, index) => (
+                      <View key={index} style={styles.stopItem}>
+                        <View style={styles.stopNumber}>
+                          <Text style={styles.stopNumberText}>{index + 1}</Text>
+                        </View>
+                        <TextInput
+                          style={[styles.locationInput, { outlineStyle: 'none', height: 'auto', paddingVertical: 4 }]}
+                          placeholder={`Stop ${index + 1}`}
+                          placeholderTextColor={colors.textMuted}
+                          value={stop}
+                          onChangeText={(t) => {
+                            const newStops = [...editLocations.stops];
+                            newStops[index] = t;
+                            setEditLocations(prev => ({ ...prev, stops: newStops }));
+                          }}
+                        />
+                        <Pressable
+                          style={styles.removeStopBtn}
+                          onPress={() => {
+                            const newStops = editLocations.stops.filter((_, i) => i !== index);
+                            setEditLocations(prev => ({ ...prev, stops: newStops }));
+                          }}
+                        >
+                          <Icon name="close" size={16} color={colors.textMuted} />
+                        </Pressable>
+                      </View>
+                    ))}
+                    <Pressable
+                      style={styles.addStopBtn}
+                      onPress={() => setEditLocations(prev => ({ ...prev, stops: [...prev.stops, ''] }))}
+                    >
+                      <Icon name="add" size={16} color={colors.primary} />
+                      <Text style={styles.addStopText}>Add Stop</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+
+              <Pressable style={styles.saveButton} onPress={handleSaveLocations}>
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              </Pressable>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1164,6 +1289,61 @@ const createStyles = (colors) => StyleSheet.create({
   },
   durationPreviewEmoji: { fontSize: 18 },
   durationPreviewText: { color: colors.primary, fontSize: 14, fontWeight: '500' },
+
+  // Location Edit styles
+  locationEditSection: { gap: 16, paddingBottom: 20 },
+  locationInputGroup: { gap: 8 },
+  locationLabel: { color: colors.textMuted, fontSize: 13, fontWeight: '600', marginLeft: 4 },
+  locationInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardLight,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    height: 56
+  },
+  locationIcon: { marginRight: 12 },
+  locationInput: { flex: 1, color: colors.text, fontSize: 16, height: '100%' },
+
+  stopsList: { gap: 10, marginTop: 8 },
+  stopItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardLight,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  stopNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10
+  },
+  stopNumberText: { color: colors.primary, fontSize: 12, fontWeight: 'bold' },
+  stopName: { flex: 1, color: colors.text, fontSize: 14 },
+  removeStopBtn: {
+    padding: 8
+  },
+  addStopBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    borderRadius: 12
+  },
+  addStopText: { color: colors.primary, marginLeft: 8, fontWeight: '600' },
+
   joinedStatus: { color: colors.primary, fontSize: 11, fontWeight: '600', marginTop: 2 },
   waitingStatus: { color: '#F59E0B', fontSize: 11, fontWeight: '600', marginTop: 2 },
 });

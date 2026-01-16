@@ -9,6 +9,7 @@ import { useTravelContext } from '../context/TravelContext';
 import { isValidTripCode } from '../utils/tripCodeGenerator';
 import Icon from '../components/Icon';
 import Popover15 from '../components/ui/Popover15';
+import Button06 from '../components/ui/Button06';
 
 const { width } = Dimensions.get('window');
 
@@ -751,28 +752,19 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
           maxLength={6}
         />
         <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.cancelButton,
-              { flex: 1, marginTop: 0, paddingVertical: 12, backgroundColor: colors.cardLight, borderRadius: 12, borderWidth: 1, borderColor: colors.primaryBorder },
-              pressed && { opacity: 0.8 }
-            ]}
+          <Button06
+            title="Cancel"
+            variant="secondary"
             onPress={resetJoinModal}
-          >
-            <Text style={[styles.cancelButtonText, { fontSize: 14, fontWeight: '600', color: colors.textMuted }]}>Cancel</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
-              styles.joinButton,
-              { flex: 1, paddingVertical: 12, borderRadius: 12 },
-              !tripCode.trim() && styles.joinButtonDisabled,
-              pressed && styles.buttonPressed
-            ]}
+            style={{ flex: 1 }}
+          />
+          <Button06
+            title="Find Trip"
+            variant="primary"
             onPress={handleJoinTripNext}
             disabled={!tripCode.trim()}
-          >
-            <Text style={[styles.joinButtonText, { fontSize: 14 }]}>Find Trip</Text>
-          </Pressable>
+            style={{ flex: 1 }}
+          />
         </View>
       </Popover15>
     </SafeAreaView>

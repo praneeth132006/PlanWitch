@@ -11,6 +11,7 @@ import TimePickerModal from '../components/TimePickerModal';
 import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
 import { generateTripItinerary } from '../services/aiService';
+import DatePicker12 from '../components/ui/DatePicker12';
 
 const { width } = Dimensions.get('window');
 
@@ -114,7 +115,9 @@ export default function MapScreen() {
   const [aiPreferences, setAiPreferences] = useState({
     pace: 'Moderate',
     interests: [],
-    startTime: '09:00 AM'
+    startTime: '09:00 AM',
+    endTime: '09:00 PM',
+    locationDurations: {}
   });
 
   // Custom Alert State
@@ -591,7 +594,7 @@ export default function MapScreen() {
       {/* AI Preferences Modal */}
       <Modal visible={aiModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { height: 'auto', maxHeight: '80%' }]}>
+          <View style={[styles.modalContent, { height: '90%', maxHeight: '90%' }]}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
               <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>✨ AI Trip Planner</Text>
@@ -600,7 +603,97 @@ export default function MapScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+
+              {/* 1. Trip Timings */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Trip Timings</Text>
+              <View style={{ marginBottom: 20, backgroundColor: colors.cardLight, padding: 16, borderRadius: 16 }}>
+                <Text style={{ color: colors.textMuted, fontSize: 13, marginBottom: 12, fontStyle: 'italic' }}>
+                  Exclude start and end travel time from the itinerary generation.
+                </Text>
+
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.text, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>Starts At</Text>
+                    <DatePicker12
+                      mode="time"
+                      value={(() => {
+                        const d = new Date();
+                        const [time, period] = (aiPreferences.startTime || '09:00 AM').split(' ');
+                        const [hours, minutes] = time.split(':');
+                        let h = parseInt(hours);
+                        if (period === 'PM' && h !== 12) h += 12;
+                        if (period === 'AM' && h === 12) h = 0;
+                        d.setHours(h, parseInt(minutes), 0, 0);
+                        return d;
+                      })()}
+                      onChange={(date) => setAiPreferences(prev => ({
+                        ...prev,
+                        startTime: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      }))}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.text, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>Ends At</Text>
+                    <DatePicker12
+                      mode="time"
+                      value={(() => {
+                        const d = new Date();
+                        const [time, period] = (aiPreferences.endTime || '09:00 PM').split(' ');
+                        const [hours, minutes] = time.split(':');
+                        let h = parseInt(hours);
+                        if (period === 'PM' && h !== 12) h += 12;
+                        if (period === 'AM' && h === 12) h = 0;
+                        d.setHours(h, parseInt(minutes), 0, 0);
+                        return d;
+                      })()}
+                      onChange={(date) => setAiPreferences(prev => ({
+                        ...prev,
+                        endTime: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      }))}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* 2. Detailed Places Duration */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Places & Duration</Text>
+              <View style={{ marginBottom: 24, gap: 10 }}>
+                {tripInfo.stops && tripInfo.stops.length > 0 ? (
+                  tripInfo.stops.map((stop, index) => {
+                    const stopName = typeof stop === 'object' ? (stop.name || `Stop ${index + 1}`) : stop;
+                    return (
+                      <View key={index} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, padding: 12, borderRadius: 12 }}>
+                        <Text style={{ flex: 1, color: colors.text, fontSize: 14, fontWeight: '500' }}>{stopName}</Text>
+                        <TextInput
+                          style={{
+                            backgroundColor: colors.bg,
+                            color: colors.text,
+                            padding: 8,
+                            borderRadius: 8,
+                            width: 80,
+                            textAlign: 'center',
+                            borderWidth: 1,
+                            borderColor: colors.border
+                          }}
+                          placeholder="Days"
+                          placeholderTextColor={colors.textMuted}
+                          keyboardType="numeric"
+                          value={aiPreferences.locationDurations?.[stopName] || ''}
+                          onChangeText={(t) => setAiPreferences(prev => ({
+                            ...prev,
+                            locationDurations: { ...prev.locationDurations, [stopName]: t }
+                          }))}
+                        />
+                      </View>
+                    );
+                  })
+                ) : (
+                  <Text style={{ color: colors.textMuted, fontSize: 14 }}>No main stops added yet. Add stops in settings to plan per location.</Text>
+                )}
+              </View>
+
+              {/* 3. Pace */}
               <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Trip Pace</Text>
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
                 {PACE_OPTIONS.map(pace => (
@@ -625,6 +718,7 @@ export default function MapScreen() {
                 ))}
               </View>
 
+              {/* 4. Interests */}
               <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Interests</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 30 }}>
                 {INTEREST_TAGS.map(tag => {
@@ -658,7 +752,8 @@ export default function MapScreen() {
                   borderRadius: 16,
                   alignItems: 'center',
                   flexDirection: 'row',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  marginBottom: 30
                 }}
                 onPress={handleGenerateItinerary}
                 disabled={isAiGenerating}
@@ -668,14 +763,10 @@ export default function MapScreen() {
                 ) : (
                   <>
                     <Icon name="sparkles" size={20} color="white" />
-                    <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>Generate Itinerary</Text>
+                    <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>Generate Timed Itinerary</Text>
                   </>
                 )}
               </TouchableOpacity>
-              <Text style={{ textAlign: 'center', color: colors.textMuted, fontSize: 12, marginTop: 12 }}>
-                This will add new stops to your existing plan.
-              </Text>
-              <View style={{ height: 40 }} />
             </ScrollView>
           </View>
         </View>
