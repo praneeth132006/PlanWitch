@@ -9,6 +9,7 @@ import { AlertProvider } from './src/context/AlertContext';
 import MainNavigator from './src/navigation/MainNavigator';
 import AuthScreen from './src/screens/AuthScreen';
 import AlertSystem from './src/components/AlertSystem';
+import AppLoading from './src/components/AppLoading';
 import { Platform } from 'react-native';
 
 // Error Boundary Component
@@ -51,18 +52,24 @@ const errorStyles = StyleSheet.create({
 
 function AppContent() {
   const { colors, isDark } = useTheme();
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, initializing } = useAuth();
+  const [showSplash, setShowSplash] = React.useState(true);
 
-  // Show loading screen while checking auth state
-  if (loading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.bg }]}>
-        <Text style={styles.loadingEmoji}>📍</Text>
-        <Text style={[styles.loadingText, { color: colors.text }]}>RouteMate</Text>
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
-        <Text style={[styles.loadingHint, { color: colors.textMuted }]}>Loading...</Text>
-      </View>
-    );
+  React.useEffect(() => {
+    // Show splash for at least 2 seconds if initializing or loading
+    if (!initializing && !loading) {
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+      }, 2000); // 2 seconds minimum splash for a premium feel
+      return () => clearTimeout(timer);
+    } else {
+      setShowSplash(true);
+    }
+  }, [initializing, loading]);
+
+  // Show premium loading screen
+  if (showSplash || initializing) {
+    return <AppLoading />;
   }
 
   return (
