@@ -9,7 +9,8 @@ const ICON_PATHS = {
     home: require('../../assets/icons/mycollection/png/001-travel.png'),
     budget: require('../../assets/icons/mycollection/png/062-budget.png'),
     expenses: require('../../assets/icons/mycollection/png/060-expenses.png'),
-    packing: require('../../assets/icons/mycollection/png/206-packing.png'),
+    packing: require('../../assets/icons/mycollection/png/181-travel-bag-3.png'), // Updated as requested
+    travel_bag: require('../../assets/icons/mycollection/png/181-travel-bag-3.png'), // Added alias
     itinerary: require('../../assets/icons/mycollection/png/102-calendar.png'),
     calendar: require('../../assets/icons/mycollection/png/102-calendar.png'),
     profile: require('../../assets/icons/mycollection/png/056-profile-avatar.png'),
@@ -32,7 +33,9 @@ const ICON_PATHS = {
     notification: require('../../assets/icons/mycollection/png/041-notification-alert.png'),
     calendar: require('../../assets/icons/mycollection/png/102-calendar.png'),
     clock: require('../../assets/icons/mycollection/png/148-hourglass.png'),
+    hourglass: require('../../assets/icons/mycollection/png/148-hourglass.png'), // Added alias
     location: require('../../assets/icons/mycollection/png/081-location.png'),
+    compass: require('../../assets/icons/mycollection/png/086-compass-5.png'), // Added compass
     flight_takeoff: require('../../assets/icons/mycollection/png/188-airplane.png'),
     flight_land: require('../../assets/icons/mycollection/png/188-airplane.png'),
     map: require('../../assets/icons/mycollection/png/121-map.png'),
@@ -53,6 +56,7 @@ const ICON_PATHS = {
     flight: require('../../assets/icons/mycollection/png/188-airplane.png'),
     airplane: require('../../assets/icons/mycollection/png/188-airplane.png'),
     train: require('../../assets/icons/mycollection/png/180-train.png'),
+    pen: require('../../assets/icons/mycollection/png/pen.png'),
     bus: require('../../assets/icons/mycollection/png/173-bus.png'),
     car: require('../../assets/icons/mycollection/png/009-road-trip.png'),
     taxi: require('../../assets/icons/mycollection/png/168-motorcycle.png'),

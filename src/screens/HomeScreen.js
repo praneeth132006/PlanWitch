@@ -30,6 +30,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [showLocationEditModal, setShowLocationEditModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showNameEditModal, setShowNameEditModal] = useState(false);
 
 
   // Edit states
@@ -43,6 +44,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
     stops: [],          // Array of place objects
     endLocation: null   // Full place object with coords
   });
+  const [editTripName, setEditTripName] = useState(tripInfo.name || '');
 
   // Derived State
   const isAdmin = tripInfo.tripType === 'friends' || tripInfo.tripType === 'family' || true; // Allow all for now or check ownerId
@@ -131,6 +133,20 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
       return diffDays > 0 ? diffDays : 0;
     } catch {
       return 0;
+    }
+  };
+
+  const handleUpdateName = async () => {
+    if (!editTripName.trim()) {
+      Alert.alert('Required', 'Please enter a trip name');
+      return;
+    }
+    try {
+      await setTripInfo({ ...tripInfo, name: editTripName.trim() });
+      setShowNameEditModal(false);
+    } catch (error) {
+      console.error('Error updating trip name:', error);
+      Alert.alert('Error', 'Failed to update trip name');
     }
   };
 
@@ -403,10 +419,12 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
           <View style={styles.boxedInfoCard}>
             <View style={styles.cardHeader}>
               <View>
-                {/* Trip Name Display */}
-                <Text style={styles.cardTripName} numberOfLines={2}>
-                  {tripInfo.name || tripInfo.destination || 'My Adventure'}
-                </Text>
+                <Pressable onPress={() => { setEditTripName(tripInfo.name || ''); setShowNameEditModal(true); }} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingRight: 4 }}>
+                  <Text style={[styles.cardTripName, { flex: 1 }]} numberOfLines={2}>
+                    {tripInfo.name || tripInfo.destination || 'My Adventure'}
+                  </Text>
+                  <Icon name="pen" size={20} color={colors.primary} style={{ marginLeft: 12, opacity: 0.8 }} />
+                </Pressable>
                 <View style={styles.tagRow}>
                   <View style={styles.typeTag}>
                     <Text style={styles.typeTagText}>{(tripInfo.tripType || 'Solo').toUpperCase()}</Text>
@@ -600,9 +618,10 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                 onPress={() => {
                   setShowSettingsModal(false);
                   setEditLocations({
-                    origin: tripInfo.origin?.name || tripInfo.start?.name || '',
-                    destination: tripInfo.destination || '',
-                    stops: tripInfo.stops ? tripInfo.stops.map(s => typeof s === 'object' ? (s.name || '') : s) : []
+                    origin: tripInfo.origin || null,
+                    destination: tripInfo.destination || '', // Kept as string for secondary ref if needed
+                    stops: tripInfo.stops || [],
+                    endLocation: tripInfo.endLocation || null
                   });
                   setShowLocationEditModal(true);
                 }}
@@ -959,6 +978,41 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         title="Select End Date"
         minDate={editStartDate}
       />
+
+      {/* Name Edit Modal */}
+      <Modal visible={showNameEditModal} transparent animationType="slide" onRequestClose={() => setShowNameEditModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '40%' }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>✏️ Rename Trip</Text>
+              <Pressable onPress={() => setShowNameEditModal(false)} style={styles.modalCloseBtn}>
+                <Icon name="close" size={20} color={colors.textMuted} />
+              </Pressable>
+            </View>
+
+            <View style={{ marginBottom: 24 }}>
+              <Text style={styles.locationLabel}>Trip Name</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.bg, color: colors.text, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.primaryBorder, outlineStyle: 'none' }]}
+                value={editTripName}
+                onChangeText={setEditTripName}
+                placeholder="Enter trip name..."
+                placeholderTextColor={colors.textMuted}
+                autoFocus={true}
+              />
+            </View>
+
+            <Pressable
+              style={[styles.saveButton, !editTripName.trim() && { opacity: 0.5 }]}
+              onPress={handleUpdateName}
+              disabled={!editTripName.trim()}
+            >
+              <Text style={styles.saveButtonText}>Save Changes</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView >
   );
 }

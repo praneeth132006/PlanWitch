@@ -192,31 +192,8 @@ export default function BudgetScreen() {
   };
 
   const submitAiPlan = async (finalAnswers) => {
-    // Check if budget data exists
-    const hasData = (budget.total > 0 && budget.total != '0') || Object.keys(budget.categories || {}).length > 0;
-
-    if (hasData) {
-      setAiModalVisible(false);
-      showAlert(
-        'Existing Budget Found',
-        'You already have a budget plan. Do you want to replace it completely or merge the new AI suggestions?',
-        'info',
-        () => {
-          // Replace
-          executeAiBudget(finalAnswers, true);
-        },
-        () => hideAlert(),
-        () => {
-          // Merge
-          executeAiBudget(finalAnswers, false);
-        },
-        'Replace All',
-        'Cancel',
-        'Merge / Add'
-      );
-    } else {
-      executeAiBudget(finalAnswers, true);
-    }
+    // Automatically replace existing budget - Silent Update
+    executeAiBudget(finalAnswers, true);
   };
 
   const executeAiBudget = async (finalAnswers, isReplace) => {

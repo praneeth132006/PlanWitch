@@ -329,6 +329,13 @@ export const TravelProvider = ({ children }) => {
 
     setTripInfoState(newInfo);
 
+    // Sync allTrips list immediately
+    setAllTrips(prev => {
+      if (!newInfo.id) return prev;
+      const filtered = prev.filter(t => t.id !== newInfo.id);
+      return [newInfo, ...filtered];
+    });
+
     // Save to Firebase
     if (isAuthenticated && newInfo.destination) {
       try {

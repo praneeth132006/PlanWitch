@@ -94,7 +94,7 @@ const generateDays = (startDate, endDate) => {
   return days;
 };
 
-export default function MapScreen() {
+export default function MapScreen({ onBackToHome, onSetScreen }) {
   const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary } = useTravelContext();
   const { colors } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
@@ -413,13 +413,21 @@ export default function MapScreen() {
               {tripInfo.destination || 'Your Trip'} • {tripDays.length} Days
             </Text>
           </View>
-          <TouchableOpacity
-            style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '15', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: colors.primary + '30' }}
-            onPress={() => setAiModalVisible(true)}
-          >
-            <Icon name="sparkle" size={18} color={colors.primary} />
-            <Text style={{ marginLeft: 6, color: colors.primary, fontWeight: '700', fontSize: 13 }}>AI Plan</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity
+              style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.primaryBorder }}
+              onPress={onBackToHome}
+            >
+              <Icon name="settings" size={20} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '15', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: colors.primary + '30' }}
+              onPress={() => setAiModalVisible(true)}
+            >
+              <Icon name="sparkle" size={18} color={colors.primary} />
+              <Text style={{ marginLeft: 6, color: colors.primary, fontWeight: '700', fontSize: 13 }}>AI Plan</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Trip Summary Card - Moved Inside ScrollView */}
@@ -564,10 +572,10 @@ export default function MapScreen() {
                                   </View>
                                   <View style={styles.stopActions}>
                                     <TouchableOpacity style={styles.stopEditBtn} onPress={() => openEditModal(stop)}>
-                                      <Icon name="edit" size={16} color={colors.textMuted} />
+                                      <Icon name="pen" size={14} color={colors.primary} />
                                     </TouchableOpacity>
-                                    <TouchableOpacity style={[styles.stopDeleteBtn, { marginLeft: 12 }]} onPress={() => deleteItineraryItem(stop.id)}>
-                                      <Text style={styles.stopDeleteIcon}>×</Text>
+                                    <TouchableOpacity style={styles.stopDeleteBtn} onPress={() => deleteItineraryItem(stop.id)}>
+                                      <Icon name="close" size={14} color="#EF4444" />
                                     </TouchableOpacity>
                                   </View>
                                 </View>
@@ -963,13 +971,13 @@ const createStyles = (colors) => StyleSheet.create({
   tipText: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
 
   // Timeline
-  timeline: { paddingHorizontal: 20 },
+  timeline: { paddingHorizontal: 12 },
   daySection: { marginBottom: 8 },
   dayCard: { flexDirection: 'row' },
-  dayCardLeft: { alignItems: 'center', width: 40 },
-  dayBadge: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.card, borderWidth: 2, borderColor: colors.primaryBorder, alignItems: 'center', justifyContent: 'center' },
+  dayCardLeft: { alignItems: 'center', width: 30 },
+  dayBadge: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.card, borderWidth: 2, borderColor: colors.primaryBorder, alignItems: 'center', justifyContent: 'center' },
   dayBadgeActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  dayBadgeText: { color: colors.text, fontSize: 14, fontWeight: 'bold' },
+  dayBadgeText: { color: colors.text, fontSize: 12, fontWeight: 'bold' },
   dayBadgeTextActive: { color: colors.bg },
   dayConnector: { width: 2, flex: 1, backgroundColor: colors.primaryBorder, marginVertical: 4 },
   dayCardContent: { flex: 1, marginLeft: 12, paddingBottom: 16 },
@@ -996,7 +1004,7 @@ const createStyles = (colors) => StyleSheet.create({
   // Stops Timeline
   stopsTimeline: { gap: 10 },
   stopWrapper: { flexDirection: 'row' },
-  stopTimeContainer: { width: 48, alignItems: 'center' },
+  stopTimeContainer: { width: 32, alignItems: 'center' },
   stopTimeText: { color: colors.primary, fontSize: 10, fontWeight: '600' },
   stopTimeLine: { width: 2, flex: 1, marginTop: 4, marginBottom: -4, borderRadius: 1 },
 
@@ -1012,10 +1020,10 @@ const createStyles = (colors) => StyleSheet.create({
   stopTypeBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   stopTypeBadgeText: { fontSize: 10, fontWeight: '600' },
   stopDuration: { color: colors.textMuted, fontSize: 10 },
-  stopActions: { flexDirection: 'row', alignItems: 'center', position: 'absolute', top: 4, right: 4 },
-  stopEditBtn: { padding: 4 },
-  stopDeleteBtn: { padding: 4 },
-  stopDeleteIcon: { color: colors.textMuted, fontSize: 18 },
+  stopActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stopEditBtn: { padding: 6, backgroundColor: colors.primary + '15', borderRadius: 6, borderWidth: 1, borderColor: colors.primary + '30' },
+  stopDeleteBtn: { padding: 6, backgroundColor: '#EF444415', borderRadius: 6, borderWidth: 1, borderColor: '#EF444430' },
+  stopDeleteIcon: { color: '#EF4444', fontSize: 16 },
   stopDetailRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   stopDetailIcon: { fontSize: 11, marginRight: 6 },
   stopDetailText: { color: colors.textMuted, fontSize: 11, flex: 1 },

@@ -94,7 +94,7 @@ const AppLoading = () => {
                 {/* Orbiting Icons */}
                 <Animated.View style={[styles.iconsContainer, { transform: [{ rotate: spin }] }]}>
                     {renderOrbitingIcon('nature', 45, 140)}
-                    {renderOrbitingIcon('logo', 135, 140)}
+                    {renderOrbitingIcon('hourglass', 135, 140)}
                     {renderOrbitingIcon('beach', 225, 140)}
                     {renderOrbitingIcon('packing', 315, 140)}
                 </Animated.View>
@@ -102,7 +102,7 @@ const AppLoading = () => {
                 {/* Center Content */}
                 <View style={styles.centerCircleWrapper}>
                     <Animated.View style={[styles.centerCircle, { backgroundColor: colors.card, borderColor: colors.primary + '40', transform: [{ scale: pulseAnim }] }]}>
-                        <Icon name="logo" size={80} />
+                        <Icon name="hourglass" size={80} />
                     </Animated.View>
                 </View>
             </View>

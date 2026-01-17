@@ -1,8 +1,16 @@
-import CustomAlert from '../components/CustomAlert';
+import React, { useState, useMemo } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
+  Modal, Animated, ActivityIndicator, Pressable
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
+import { useTravelContext } from '../context/TravelContext';
+import Icon from '../components/Icon';
+import { CustomAlert } from '../components/CustomAlert';
+import { generatePackingList } from '../services/aiService';
 
-// ... (existing imports)
-
-export default function PackingScreen() {
+export default function PackingScreen({ onBackToHome, onSetScreen }) {
   const {
     packingItems = [],
     addPackingItem,

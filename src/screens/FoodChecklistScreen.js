@@ -93,27 +93,8 @@ export default function FoodChecklistScreen() {
             return;
         }
 
-        // Check if items exist
-        if (foodItems.length > 0) {
-            setAiModalVisible(false);
-
-            showAlert('Existing Items Found', 'You already have items in your food list. Do you want to replace them completely or add new suggestions?', 'info', {
-                onConfirm: () => {
-                    // Replace
-                    executeAiFoodGeneration(true);
-                },
-                onCancel: () => hideAlert(), // Cancel button
-                onNeutral: () => {
-                    // Merge
-                    executeAiFoodGeneration(false);
-                },
-                confirmText: 'Replace All',
-                neutralText: 'Add / Merge',
-                cancelText: 'Cancel',
-            });
-        } else {
-            executeAiFoodGeneration(true);
-        }
+        // Automatically merge/append to existing list - Silent Update
+        executeAiFoodGeneration(false);
     };
 
     const executeAiFoodGeneration = async (isReplace) => {
@@ -125,7 +106,7 @@ export default function FoodChecklistScreen() {
             const stopNames = stops.map(s => typeof s === 'object' ? (s.name || s.formatted_address || 'Stop') : s);
             const uniqueLocations = [...new Set([tripInfo.destination, ...stopNames])].filter(Boolean);
 
-            const result = await generateFoodSuggestions( // Changed to generateFoodSuggestions
+            const result = await generateFoodRecommendations(
                 uniqueLocations,
                 aiPreferences.dietary || 'Any',
                 aiPreferences.spiciness || 'Medium'

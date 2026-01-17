@@ -47,7 +47,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
   const [tripCode, setTripCode] = useState('');
   const [showAllTrips, setShowAllTrips] = useState(false); // Default to closed as requested
   const [centerIconIndex, setCenterIconIndex] = useState(0);
-  const rotationIcons = ['v012', 'v182', 'v183', 'v184', 'v187', 'v189', 'v190'];
+  const rotationIcons = ['v012', 'compass', 'v183', 'v184', 'v187', 'v189', 'v190'];
 
   const fadeAnim = useState(new Animated.Value(0))[0];
   const scaleAnim1 = useState(new Animated.Value(0.8))[0];
@@ -163,7 +163,8 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
     if (tripInfo && tripInfo.destination) {
       // Find the same trip in our stable list to get latest data (expenses, etc)
       const matchingTrip = sortedActive.find(t => t.id === tripInfo.id || (t.destination === tripInfo.destination && t.startDate === tripInfo.startDate));
-      return matchingTrip || { ...tripInfo, id: tripInfo.id || 'current', totalExpenses: getTotalExpenses() };
+      // Prioritize tripInfo for the latest edits (like name changes), but backfill with matchingTrips for any missing data
+      return matchingTrip ? { ...matchingTrip, ...tripInfo } : { ...tripInfo, id: tripInfo.id || 'current', totalExpenses: getTotalExpenses() };
     }
 
     // B. Fallback: Soonest upcoming trip

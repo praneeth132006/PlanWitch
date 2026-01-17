@@ -69,44 +69,49 @@ function TabNavigator({ onBackToHome, onSetScreen }) {
       </Tab.Screen>
       <Tab.Screen
         name="Itinerary"
-        component={MapScreen}
         options={{
           tabBarLabel: 'Itinerary',
           tabBarIcon: ({ focused, color }) => <TabIcon name="itinerary" focused={focused} color={color} />,
         }}
-      />
+      >
+        {(props) => <MapScreen {...props} onBackToHome={onBackToHome} onSetScreen={onSetScreen} />}
+      </Tab.Screen>
       <Tab.Screen
         name="Expenses"
-        component={ExpenseScreen}
         options={{
           tabBarLabel: 'Expenses',
           tabBarIcon: ({ focused, color }) => <TabIcon name="expenses" focused={focused} color={color} />,
         }}
-      />
+      >
+        {(props) => <ExpenseScreen {...props} onBackToHome={onBackToHome} onSetScreen={onSetScreen} />}
+      </Tab.Screen>
       <Tab.Screen
         name="Budget"
-        component={BudgetScreen}
         options={{
           tabBarLabel: 'Budget',
           tabBarIcon: ({ focused, color }) => <TabIcon name="budget" focused={focused} color={color} />,
         }}
-      />
+      >
+        {(props) => <BudgetScreen {...props} onBackToHome={onBackToHome} onSetScreen={onSetScreen} />}
+      </Tab.Screen>
       <Tab.Screen
         name="Packing"
-        component={PackingScreen}
         options={{
           tabBarLabel: 'Packing',
           tabBarIcon: ({ focused, color }) => <TabIcon name="packing" focused={focused} color={color} />,
         }}
-      />
+      >
+        {(props) => <PackingScreen {...props} onBackToHome={onBackToHome} onSetScreen={onSetScreen} />}
+      </Tab.Screen>
       <Tab.Screen
         name="Food"
-        component={FoodChecklistScreen}
         options={{
           tabBarLabel: 'Food',
           tabBarIcon: ({ focused, color }) => <TabIcon name="food" focused={focused} color={color} />,
         }}
-      />
+      >
+        {(props) => <FoodChecklistScreen {...props} onBackToHome={onBackToHome} onSetScreen={onSetScreen} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }

@@ -250,7 +250,14 @@ export const generateBudgetPlan = async (answers) => {
 - Transport: ${answers.primary_transport || 'Flight'}, Local: ${answers.local_transport || 'Cab'}
 
     CRITICAL INSTRUCTIONS:
-1. CALCULATE REALISTIC MINIMUM COST properly(Do not hallunicate low numbers):
+    1. RESEARCH & PRECISION:
+       Simulate real-time research using these specific resources to get the most sophisticated and precise budget possible:
+       - STAYS: Use https://www.makemytrip.com/hotels/, https://www.booking.com/, and https://www.google.com/travel/ to estimate realistic accommodation costs for ${answers.destination}.
+       - TRANSPORT: Use https://www.makemytrip.com/flights/ and https://www.skyscanner.co.in/ for inter-city travel, and Google Travel for local transport estimates.
+       - GENERAL: Use https://www.google.com/travel/ for a comprehensive view of all costs (activities, food, etc.).
+       - If specific data is hard to fetch, use your internal knowledge to simulate the most current market rates for these platforms.
+
+    2. CALCULATE REALISTIC MINIMUM COST properly(Do not hallunicate low numbers):
 - Accommodation: Min ${duration} * ${answers.hotel_price?.split('-')[0] || 2000} (Min 2000 / night)
 - Food: Min ${duration} * ${participantsCount} * 1000(Min 1000 / person / day)
     - Transport: Flight / Train cost + Local travel(Min 500 / day)
