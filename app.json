@@ -13,7 +13,7 @@
     "assetBundlePatterns": [
       "**/*"
     ],
-    "icon": "./assets/icons/mycollection/png/routemate_logo.png",
+    "icon": "./assets/icons/mycollection/png/app_icon.png",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.routemate.app"
@@ -21,7 +21,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0D0D0D",
-        "foregroundImage": "./assets/icons/mycollection/png/routemate_logo.png"
+        "foregroundImage": "./assets/icons/mycollection/png/app_icon.png"
       },
       "package": "com.routemate.app",
       "googleServicesFile": "./google-services.json"
@@ -29,7 +29,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/icons/mycollection/png/routemate_logo.png",
+      "favicon": "./assets/icons/mycollection/png/app_icon.png",
       "pwa": {
         "name": "RouteMate",
         "shortName": "RouteMate",
@@ -38,9 +38,9 @@
         "themeColor": "#FFD2AD",
         "display": "standalone",
         "orientation": "portrait",
-        "icon": "./assets/icons/mycollection/png/routemate_logo.png",
+        "icon": "./assets/icons/mycollection/png/app_icon.png",
         "splash": {
-          "image": "./assets/icons/mycollection/png/routemate_logo.png",
+          "image": "./assets/icons/mycollection/png/app_icon.png",
           "resizeMode": "contain",
           "backgroundColor": "#0D0D0D"
         }

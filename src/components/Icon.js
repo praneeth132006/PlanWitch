@@ -4,7 +4,8 @@ import { Image, View, StyleSheet } from 'react-native';
 // Icon paths mapping - VERIFIED PNG FILENAMES
 const ICON_PATHS = {
     // Navigation/General
-    logo: require('../../assets/icons/mycollection/png/routemate_logo.png'), // NEW LOGO
+    logo: require('../../assets/icons/mycollection/png/app_icon.png'), // UPDATED LOGO
+    app_icon: require('../../assets/icons/mycollection/png/app_icon.png'), // ADDED APP ICON
     home: require('../../assets/icons/mycollection/png/001-travel.png'),
     budget: require('../../assets/icons/mycollection/png/062-budget.png'),
     expenses: require('../../assets/icons/mycollection/png/060-expenses.png'),

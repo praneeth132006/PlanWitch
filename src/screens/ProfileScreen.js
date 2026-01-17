@@ -860,10 +860,8 @@ export default function ProfileScreen({ onBack, onOpenTrip }) {
         <AnimatedCard delay={450}>
           <View style={styles.footer}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-              <Icon name="route" size={24} color={colors.primary} style={{ marginRight: 6 }} />
               <Text style={styles.appLogo}>RouteMate</Text>
             </View>
-            <Text style={styles.version}>Version 1.0.0</Text>
             <Text style={styles.copyright}>Made with ❤️ for travelers</Text>
           </View>
         </AnimatedCard>

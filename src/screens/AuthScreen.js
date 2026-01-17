@@ -167,7 +167,7 @@ export default function AuthScreen() {
           {/* Header (Premium Logo) */}
           <View style={styles.header}>
             <View style={styles.logoBadge}>
-              <Icon name="route" size={42} color={colors.primary} />
+              <Icon name="logo" size={42} color={colors.primary} />
             </View>
             <Text style={styles.appName}>RouteMate</Text>
             <Text style={styles.tagline}>Discover your next adventure</Text>

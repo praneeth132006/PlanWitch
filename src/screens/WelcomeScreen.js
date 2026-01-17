@@ -495,7 +495,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
       {/* Header with Profile */}
       <View style={styles.topBar}>
         <View style={styles.logoContainer}>
-          <Icon name="route" size={28} color={colors.primary} style={{ marginRight: 8 }} />
+          <Icon name="logo" size={28} color={colors.primary} style={{ marginRight: 8 }} />
           <Text style={styles.logoText}>RouteMate</Text>
         </View>
         <Pressable style={({ pressed }) => [styles.profileButton, pressed && { opacity: 0.7 }]} onPress={handleProfilePress}>
@@ -683,7 +683,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Icon name="route" size={20} color={colors.textMuted} style={{ marginBottom: 8 }} />
+          <Icon name="logo" size={20} color={colors.textMuted} style={{ marginBottom: 8 }} />
           <Text style={styles.footerText}>RouteMate</Text>
           <Text style={styles.footerVersion}>Version 1.0.0</Text>
         </View>
