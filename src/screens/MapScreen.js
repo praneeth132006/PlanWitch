@@ -242,18 +242,9 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     let totalLocationDays = 0;
     if (tripInfo.stops && tripInfo.stops.length > 0) {
       tripInfo.stops.forEach((stop, index) => {
-        // Improved stop name extraction (matching HomeScreen logic)
-        let stopName = `Stop ${index + 1}`;
-        if (typeof stop === 'object') {
-          stopName = stop.name || stop.formatted_address || stop.description || stop.fullAddress || stopName;
-          // Try to get just the city/place name part
-          if (stop.formatted_address) stopName = stop.formatted_address.split(',')[0];
-          else if (stop.name) stopName = stop.name;
-        } else if (typeof stop === 'string') {
-          stopName = stop;
-        }
-
-        const days = parseInt(aiPreferences.locationDurations?.[stopName]) || 0;
+        // Use index-based key matching the input field
+        const durationKey = `stop_${index}`;
+        const days = parseInt(aiPreferences.locationDurations?.[durationKey]) || 0;
         totalLocationDays += days;
       });
     }
@@ -781,6 +772,8 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                 {tripInfo.stops && tripInfo.stops.length > 0 ? (
                   tripInfo.stops.map((stop, index) => {
                     const stopName = typeof stop === 'object' ? (stop.name || `Stop ${index + 1}`) : stop;
+                    // Use index-based key to support duplicate place names
+                    const durationKey = `stop_${index}`;
                     return (
                       <View key={index} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, padding: 12, borderRadius: 12 }}>
                         <Text style={{ flex: 1, color: colors.text, fontSize: 14, fontWeight: '500' }}>{stopName}</Text>
@@ -799,10 +792,10 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                           placeholder="Days"
                           placeholderTextColor={colors.textMuted}
                           keyboardType="numeric"
-                          value={aiPreferences.locationDurations?.[stopName] || ''}
+                          value={aiPreferences.locationDurations?.[durationKey] || ''}
                           onChangeText={(t) => setAiPreferences(prev => ({
                             ...prev,
-                            locationDurations: { ...prev.locationDurations, [stopName]: t }
+                            locationDurations: { ...prev.locationDurations, [durationKey]: t }
                           }))}
                         />
                       </View>
