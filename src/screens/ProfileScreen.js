@@ -15,7 +15,9 @@ import {
   Linking,
   LayoutAnimation,
   UIManager,
+  Modal,
 } from 'react-native';
+
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -27,6 +29,8 @@ import { useAuth } from '../context/AuthContext';
 import { useTravelContext } from '../context/TravelContext';
 import { useAlert } from '../context/AlertContext';
 import Icon from '../components/Icon';
+import premiumIcon from '../../assets/icons/mycollection/png/premium.png';
+import SubscriptionScreen from './SubscriptionScreen';
 
 const AVATARS = [
   'man7', 'profile_avatar', 'man1', 'woman1', 'man2', 'woman2', 'man3', 'woman3',
@@ -71,6 +75,7 @@ const AnimatedCard = ({ children, style, onPress, delay = 0 }) => {
     }).start();
   };
 
+
   const Component = onPress ? TouchableOpacity : View;
 
   return (
@@ -88,7 +93,8 @@ const AnimatedCard = ({ children, style, onPress, delay = 0 }) => {
   );
 };
 
-export default function ProfileScreen({ onBack, onOpenTrip }) {
+export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
+  /* const navigation = useNavigation(); - Removed to prevent initialization error */
   const { colors, isDark, toggleTheme, setTheme, currentTheme, availableThemes } = useTheme();
   const { user, signOut, updateUserProfile, resetPassword, deleteAccount } = useAuth();
   const { showAlert } = useAlert();
@@ -100,6 +106,7 @@ export default function ProfileScreen({ onBack, onOpenTrip }) {
     allTrips,
     deleteTripFromHistory,
     switchToTrip,
+    userPlan,
   } = useTravelContext();
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -125,6 +132,51 @@ export default function ProfileScreen({ onBack, onOpenTrip }) {
     displayName: user?.displayName || '',
     avatar: 'profile',
   });
+
+
+  // Animation values for custom popover
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const subModalFade = useRef(new Animated.Value(0)).current;
+  const subModalScale = useRef(new Animated.Value(0.9)).current;
+  const subModalTranslateY = useRef(new Animated.Value(100)).current;
+
+  const openSubscriptionModal = () => {
+    setShowSubscriptionModal(true);
+    Animated.parallel([
+      Animated.timing(subModalFade, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(subModalScale, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.spring(subModalTranslateY, {
+        toValue: 0,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const closeSubscriptionModal = () => {
+    Animated.parallel([
+      Animated.timing(subModalFade, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(subModalTranslateY, {
+        toValue: 50,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setShowSubscriptionModal(false));
+  };
 
   // FAQ Data
   const faqData = [
@@ -246,6 +298,8 @@ export default function ProfileScreen({ onBack, onOpenTrip }) {
       useNativeDriver: true,
     }).start();
   }, []);
+
+
 
   const handleSignOut = async () => {
     try {
@@ -618,8 +672,57 @@ export default function ProfileScreen({ onBack, onOpenTrip }) {
     )
   );
 
+  const renderSubscriptionModal = () => (
+    showSubscriptionModal && (
+      <View style={[StyleSheet.absoluteFill, { zIndex: 1000, justifyContent: 'center', alignItems: 'center' }]}>
+        {/* Backdrop */}
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              opacity: subModalFade
+            }
+          ]}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={closeSubscriptionModal}
+          />
+        </Animated.View>
+
+        {/* Popover Content */}
+        <Animated.View
+          style={{
+            width: '90%',
+            height: '85%',
+            backgroundColor: '#111',
+            borderRadius: 24,
+            overflow: 'hidden',
+            opacity: subModalFade,
+            transform: [
+              { scale: subModalScale },
+              { translateY: subModalTranslateY }
+            ],
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 20 },
+            shadowOpacity: 0.5,
+            shadowRadius: 30,
+            elevation: 10,
+            borderWidth: 1,
+            borderColor: '#333'
+          }}
+        >
+          <SubscriptionScreen navigation={{ goBack: closeSubscriptionModal }} isPopover={true} />
+        </Animated.View>
+      </View>
+    )
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {renderSubscriptionModal()}
       {/* Gradient Header */}
       <Animated.View
         style={[
@@ -691,6 +794,29 @@ export default function ProfileScreen({ onBack, onOpenTrip }) {
             )}
           </View>
         </AnimatedCard>
+
+
+
+        {/* Upgrade Banner for Free Users */}
+        {userPlan !== 'pro' && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: '#F59E0B' }]}>Premium</Text>
+            <AnimatedCard delay={250} onPress={openSubscriptionModal}>
+              <View style={styles.settingItem}>
+                <View style={styles.settingLeft}>
+                  <View style={[styles.settingIconBg, { backgroundColor: '#F59E0B20' }]}>
+                    <Image source={premiumIcon} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                  </View>
+                  <View style={styles.settingInfo}>
+                    <Text style={[styles.settingLabel, { color: '#F59E0B' }]}>Upgrade to Pro</Text>
+                    <Text style={styles.settingValue}>Unlock unlimited trips & AI features</Text>
+                  </View>
+                </View>
+                <Text style={[styles.settingArrow, { color: '#F59E0B' }]}>›</Text>
+              </View>
+            </AnimatedCard>
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Trip Management</Text>
@@ -868,193 +994,204 @@ export default function ProfileScreen({ onBack, onOpenTrip }) {
       </ScrollView>
 
       {/* Edit Profile Modal */}
-      {showEditModal && (
-        <View style={styles.fullScreenOverlay}>
-          <View style={[styles.dialogContainer, { maxWidth: 400 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Profile</Text>
-              <TouchableOpacity onPress={() => setShowEditModal(false)}>
-                <Text style={styles.modalClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
+      {
+        showEditModal && (
+          <View style={styles.fullScreenOverlay}>
+            <View style={[styles.dialogContainer, { maxWidth: 400 }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit Profile</Text>
+                <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                  <Text style={styles.modalClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
 
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Display Name</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={editForm.displayName}
-                onChangeText={(text) => setEditForm({ ...editForm, displayName: text })}
-                placeholder="Enter your name"
-                placeholderTextColor={colors.textMuted}
-              />
+              <View style={styles.modalBody}>
+                <Text style={styles.inputLabel}>Display Name</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editForm.displayName}
+                  onChangeText={(text) => setEditForm({ ...editForm, displayName: text })}
+                  placeholder="Enter your name"
+                  placeholderTextColor={colors.textMuted}
+                />
 
-              <Text style={[styles.inputLabel, { marginTop: 16 }]}>Email</Text>
-              <View style={styles.disabledInput}>
-                <Text style={styles.disabledInputText}>{user?.email}</Text>
-                <Text style={styles.disabledBadge}>Cannot change</Text>
+                <Text style={[styles.inputLabel, { marginTop: 16 }]}>Email</Text>
+                <View style={styles.disabledInput}>
+                  <Text style={styles.disabledInputText}>{user?.email}</Text>
+                  <Text style={styles.disabledBadge}>Cannot change</Text>
+                </View>
+              </View>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => setShowEditModal(false)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalSaveBtn}
+                  onPress={handleUpdateProfile}
+                >
+                  <Text style={styles.modalSaveText}>Save Changes</Text>
+                </TouchableOpacity>
               </View>
             </View>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => setShowEditModal(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalSaveBtn}
-                onPress={handleUpdateProfile}
-              >
-                <Text style={styles.modalSaveText}>Save Changes</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        </View>
-      )}
+        )
+      }
 
       {/* Currency Picker Modal */}
-      {showCurrencyPicker && (
-        <View style={styles.fullScreenOverlay}>
-          <View style={[styles.dialogContainer, { maxHeight: '70%', maxWidth: 400 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Currency</Text>
-              <TouchableOpacity onPress={() => setShowCurrencyPicker(false)}>
-                <Text style={styles.modalClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.currencyList}>
-              {currencies?.map((curr) => (
-                <TouchableOpacity
-                  key={curr.code}
-                  style={[
-                    styles.currencyItem,
-                    currency?.code === curr.code && styles.currencyItemActive
-                  ]}
-                  onPress={() => {
-                    setCurrency(curr);
-                    setShowCurrencyPicker(false);
-                  }}
-                >
-                  <Text style={styles.currencyFlag}>{curr.flag}</Text>
-                  <View style={styles.currencyInfo}>
-                    <Text style={styles.currencyCode}>{curr.code}</Text>
-                    <Text style={styles.currencyName}>{curr.name}</Text>
-                  </View>
-                  <Text style={styles.currencySymbol}>{curr.symbol}</Text>
-                  {currency?.code === curr.code && (
-                    <View style={styles.currencyCheck}>
-                      <Text style={styles.currencyCheckText}>✓</Text>
-                    </View>
-                  )}
+      {
+        showCurrencyPicker && (
+          <View style={styles.fullScreenOverlay}>
+            <View style={[styles.dialogContainer, { maxHeight: '70%', maxWidth: 400 }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Currency</Text>
+                <TouchableOpacity onPress={() => setShowCurrencyPicker(false)}>
+                  <Text style={styles.modalClose}>✕</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
+
+              <ScrollView style={styles.currencyList}>
+                {currencies?.map((curr) => (
+                  <TouchableOpacity
+                    key={curr.code}
+                    style={[
+                      styles.currencyItem,
+                      currency?.code === curr.code && styles.currencyItemActive
+                    ]}
+                    onPress={() => {
+                      setCurrency(curr);
+                      setShowCurrencyPicker(false);
+                    }}
+                  >
+                    <Text style={styles.currencyFlag}>{curr.flag}</Text>
+                    <View style={styles.currencyInfo}>
+                      <Text style={styles.currencyCode}>{curr.code}</Text>
+                      <Text style={styles.currencyName}>{curr.name}</Text>
+                    </View>
+                    <Text style={styles.currencySymbol}>{curr.symbol}</Text>
+                    {currency?.code === curr.code && (
+                      <View style={styles.currencyCheck}>
+                        <Text style={styles.currencyCheckText}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
-        </View>
-      )}
+        )
+      }
 
       {/* Avatar Picker Modal */}
-      {showAvatarPicker && (
-        <View style={styles.fullScreenOverlay}>
-          <View style={[styles.dialogContainer, { maxWidth: 400 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Choose Avatar</Text>
-              <TouchableOpacity onPress={() => setShowAvatarPicker(false)}>
-                <Text style={styles.modalClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.avatarGrid}>
-              {AVATARS.map((avatar, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.avatarOption,
-                    selectedAvatar === avatar && styles.avatarOptionActive
-                  ]}
-                  onPress={async () => {
-                    setSelectedAvatar(avatar);
-                    setShowAvatarPicker(false);
-                    // Also fire update immediately to persist
-                    await updateUserProfile({
-                      displayName: user?.displayName || '',
-                      photoURL: avatar
-                    });
-                  }}
-                >
-                  <Icon name={avatar} size={32} color={colors.primary} />
+      {
+        showAvatarPicker && (
+          <View style={styles.fullScreenOverlay}>
+            <View style={[styles.dialogContainer, { maxWidth: 400 }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Choose Avatar</Text>
+                <TouchableOpacity onPress={() => setShowAvatarPicker(false)}>
+                  <Text style={styles.modalClose}>✕</Text>
                 </TouchableOpacity>
-              ))}
+              </View>
+
+              <View style={styles.avatarGrid}>
+                {AVATARS.map((avatar, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.avatarOption,
+                      selectedAvatar === avatar && styles.avatarOptionActive
+                    ]}
+                    onPress={async () => {
+                      setSelectedAvatar(avatar);
+                      setShowAvatarPicker(false);
+                      // Also fire update immediately to persist
+                      await updateUserProfile({
+                        displayName: user?.displayName || '',
+                        photoURL: avatar
+                      });
+                    }}
+                  >
+                    <Icon name={avatar} size={32} color={colors.primary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           </View>
-        </View>
-      )}
+        )
+      }
 
       {/* Theme Picker Modal */}
-      {showThemePicker && (
-        <View style={styles.fullScreenOverlay}>
-          <View style={[styles.dialogContainer, { maxHeight: '70%', height: '70%', maxWidth: 400 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Choose Theme</Text>
-              <TouchableOpacity onPress={() => setShowThemePicker(false)}>
-                <Text style={styles.modalClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.themeList} showsVerticalScrollIndicator={false}>
-              {availableThemes?.map((theme) => (
-                <TouchableOpacity
-                  key={theme.id}
-                  style={[
-                    styles.themeItem,
-                    currentTheme === theme.id && styles.themeItemActive
-                  ]}
-                  onPress={() => {
-                    setTheme(theme.id);
-                    setShowThemePicker(false);
-                  }}
-                >
-                  <View style={styles.themeIconContainer}>
-                    <Text style={styles.themeIcon}>{theme.icon}</Text>
-                  </View>
-                  <View style={styles.themeInfo}>
-                    <Text style={styles.themeName}>{theme.name}</Text>
-                    <Text style={styles.themeDescription}>{theme.description}</Text>
-                    <View style={styles.themeColorPreview}>
-                      <View style={[styles.colorDot, { backgroundColor: theme.colors.primary }]} />
-                      <View style={[styles.colorDot, { backgroundColor: theme.colors.secondary }]} />
-                      <View style={[styles.colorDot, { backgroundColor: theme.colors.bg }]} />
-                      <View style={[styles.colorDot, { backgroundColor: theme.colors.card }]} />
-                    </View>
-                  </View>
-                  {currentTheme === theme.id && (
-                    <View style={styles.themeCheck}>
-                      <Text style={styles.themeCheckText}>✓</Text>
-                    </View>
-                  )}
+      {
+        showThemePicker && (
+          <View style={styles.fullScreenOverlay}>
+            <View style={[styles.dialogContainer, { maxHeight: '70%', height: '70%', maxWidth: 400 }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Choose Theme</Text>
+                <TouchableOpacity onPress={() => setShowThemePicker(false)}>
+                  <Text style={styles.modalClose}>✕</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      )}
+              </View>
 
-      {renderTripListModal(
-        showHistoryModal,
-        setShowHistoryModal,
-        'Trip History',
-        tripHistory,
-        'No completed trips yet.',
-        '🏝️'
-      )}
+              <ScrollView style={styles.themeList} showsVerticalScrollIndicator={false}>
+                {availableThemes?.map((theme) => (
+                  <TouchableOpacity
+                    key={theme.id}
+                    style={[
+                      styles.themeItem,
+                      currentTheme === theme.id && styles.themeItemActive
+                    ]}
+                    onPress={() => {
+                      setTheme(theme.id);
+                      setShowThemePicker(false);
+                    }}
+                  >
+                    <View style={styles.themeIconContainer}>
+                      <Text style={styles.themeIcon}>{theme.icon}</Text>
+                    </View>
+                    <View style={styles.themeInfo}>
+                      <Text style={styles.themeName}>{theme.name}</Text>
+                      <Text style={styles.themeDescription}>{theme.description}</Text>
+                      <View style={styles.themeColorPreview}>
+                        <View style={[styles.colorDot, { backgroundColor: theme.colors.primary }]} />
+                        <View style={[styles.colorDot, { backgroundColor: theme.colors.secondary }]} />
+                        <View style={[styles.colorDot, { backgroundColor: theme.colors.bg }]} />
+                        <View style={[styles.colorDot, { backgroundColor: theme.colors.card }]} />
+                      </View>
+                    </View>
+                    {currentTheme === theme.id && (
+                      <View style={styles.themeCheck}>
+                        <Text style={styles.themeCheckText}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        )
+      }
+
+
+      {
+        renderTripListModal(
+          showHistoryModal,
+          setShowHistoryModal,
+          'Trip History',
+          tripHistory,
+          'No completed trips yet.',
+          '🏝️'
+        )
+      }
 
       {renderDeleteModal()}
       {renderLegalModal()}
       {renderFaqModal()}
       {renderRatingModal()}
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 

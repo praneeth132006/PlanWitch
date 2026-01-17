@@ -178,7 +178,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
     });
   };
 
-  const { getUniqueTripCode } = useTravelContext();
+  const { getUniqueTripCode, checkFeatureAccess } = useTravelContext();
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
@@ -353,6 +353,13 @@ export default function TripSetupScreen({ onComplete, onBack }) {
   };
 
   const addFriend = () => {
+    // Check limit (current friends count)
+    const access = checkFeatureAccess('add_traveler', tripData.friends.length);
+    if (!access.allowed) {
+      Alert.alert('Limit Reached', access.reason);
+      return;
+    }
+
     if (tripData.newFriendName.trim()) {
       setTripData({
         ...tripData,
@@ -387,6 +394,14 @@ export default function TripSetupScreen({ onComplete, onBack }) {
   };
 
   const addFamilyMember = (familyIndex, name, relation) => {
+    // Calculate total family members across all families for limit
+    const totalMembers = tripData.families.reduce((sum, f) => sum + f.members.length, 0);
+    const access = checkFeatureAccess('add_traveler', totalMembers);
+    if (!access.allowed) {
+      Alert.alert('Limit Reached', access.reason);
+      return;
+    }
+
     const updatedFamilies = [...tripData.families];
     updatedFamilies[familyIndex].members.push({
       name: name.trim(),

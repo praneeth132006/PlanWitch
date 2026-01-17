@@ -49,7 +49,14 @@
     "scheme": "routemate",
     "plugins": [
       "@react-native-firebase/app",
-      "@react-native-firebase/crashlytics"
+      "@react-native-firebase/crashlytics",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-1266748452983907~1522508148",
+          "iosAppId": "ca-app-pub-1266748452983907~1522508148"
+        }
+      ]
     ]
   }
 }

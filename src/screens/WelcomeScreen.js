@@ -11,6 +11,7 @@ import Icon from '../components/Icon';
 import Popover15 from '../components/ui/Popover15';
 import Button06 from '../components/ui/Button06';
 import PremiumButton from '../components/PremiumButton';
+import AdBanner from '../components/AdBanner';
 
 const { width } = Dimensions.get('window');
 
@@ -682,6 +683,9 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
             ))}
           </View>
         </Animated.View>
+
+        {/* Ad Banner */}
+        <AdBanner />
 
         {/* Footer */}
         <View style={styles.footer}>

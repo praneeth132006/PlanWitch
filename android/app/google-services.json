@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "739103871364",
+    "firebase_url": "https://routemate-6a885-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "routemate-6a885",
+    "storage_bucket": "routemate-6a885.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:739103871364:android:78d7c7989aa94822244dd1",
+        "android_client_info": {
+          "package_name": "com.routemate.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "739103871364-8dbqif6ogn8fiiqf4j5gb0h17fj7gdq0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCe3UjVQXIQDD6zl39rfOcpGSNzOtVPMFk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "739103871364-8dbqif6ogn8fiiqf4j5gb0h17fj7gdq0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

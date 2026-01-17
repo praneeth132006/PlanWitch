@@ -55,6 +55,8 @@ export const useTravelContext = () => {
       userPlan: 'free',
       saveTripPreferences: () => { },
       toggleUserPlan: () => { },
+      CONSTANTS: { FREE_TRIP_LIMIT: 3, FREE_TRAVELER_LIMIT: 5 },
+      checkFeatureAccess: () => true,
     };
   }
   return context;
@@ -90,6 +92,38 @@ export const TravelProvider = ({ children }) => {
   // New State for AI Personalization
   const [tripPreferences, setTripPreferences] = useState({});
   const [userPlan, setUserPlan] = useState('free'); // 'free' or 'pro'
+
+  const toggleUserPlan = () => {
+    setUserPlan(prev => prev === 'free' ? 'pro' : 'free');
+  };
+
+  const CONSTANTS = {
+    FREE_TRIP_LIMIT: 3,
+    FREE_TRAVELER_LIMIT: 5
+  };
+
+  const checkFeatureAccess = (feature, currentCount = 0) => {
+    if (userPlan === 'pro') return { allowed: true };
+
+    switch (feature) {
+      case 'ai_planning':
+        return { allowed: false, reason: 'Upgrade to Pro to use AI Planning.' };
+      case 'new_trip':
+        // Count active trips
+        const activeTrips = allTrips.filter(t => !t.isCompleted).length;
+        if (activeTrips >= CONSTANTS.FREE_TRIP_LIMIT) {
+          return { allowed: false, reason: `Free limit reached (${CONSTANTS.FREE_TRIP_LIMIT} active trips). Upgrade to create more.` };
+        }
+        return { allowed: true };
+      case 'add_traveler':
+        if (currentCount >= CONSTANTS.FREE_TRAVELER_LIMIT) {
+          return { allowed: false, reason: `Free limit reached (${CONSTANTS.FREE_TRAVELER_LIMIT} travelers). Upgrade to add more.` };
+        }
+        return { allowed: true };
+      default:
+        return { allowed: true };
+    }
+  };
 
 
 
@@ -888,9 +922,7 @@ export const TravelProvider = ({ children }) => {
 
   // --- AI Personalization & Subscription ---
 
-  const toggleUserPlan = () => {
-    setUserPlan(prev => prev === 'free' ? 'pro' : 'free');
-  };
+
 
   const saveTripPreferences = async (preferences) => {
     setTripPreferences(preferences);

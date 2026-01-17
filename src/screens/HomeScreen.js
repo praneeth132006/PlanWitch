@@ -11,12 +11,13 @@ import Calendar from '../components/Calendar';
 import TripMap from '../components/TripMap';
 import PlacesAutocomplete from '../components/PlacesAutocomplete';
 import { generateDestinationInfo } from '../services/aiService';
+import BannerAd from '../components/BannerAd';
 
 export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const {
     tripInfo, setTripInfo, budget, setBudget, getTotalExpenses, getRemainingBudget,
     packingItems, itinerary, expenses, clearTrip, endTrip, formatCurrency, currency, isLoading, deleteTrip,
-    getAllTravelers, localParticipantId, tripPreferences
+    getAllTravelers, localParticipantId, tripPreferences, checkFeatureAccess
   } = useTravelContext();
   const { colors } = useTheme();
   const navigation = useNavigation();
@@ -312,7 +313,21 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
     setShowLocationEditModal(false);
   };
 
+
   const handlePersonalizedPlan = () => {
+    const access = checkFeatureAccess('ai_planning');
+    if (!access.allowed) {
+      Alert.alert(
+        'Pro Feature',
+        access.reason,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Upgrade', onPress: () => navigation.navigate('Subscription') }
+        ]
+      );
+      return;
+    }
+
     // Check if we have preferences. If not, go to wizard first.
     // We check for some key field like 'style' to know if wizard was done.
     if (!tripPreferences || !tripPreferences.style) {
@@ -1016,6 +1031,11 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
           </View>
         </View>
       </Modal>
+
+      {/* Banner Ad at bottom of screen if free */}
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+        <BannerAd />
+      </View>
     </SafeAreaView >
   );
 }

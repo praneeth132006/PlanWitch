@@ -21,6 +21,7 @@ import FoodChecklistScreen from '../screens/FoodChecklistScreen';
 import AIPersonalizedPlanScreen from '../screens/AIPersonalizedPlanScreen';
 import TripPreferencesScreen from '../screens/TripPreferencesScreen';
 import Icon from '../components/Icon';
+import SubscriptionScreen from '../screens/SubscriptionScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -270,7 +271,7 @@ export default function MainNavigator() {
   }
 
   if (currentScreen === 'Profile') {
-    return <ProfileScreen onBack={handleBackToHome} onOpenTrip={handleMyTrip} />;
+    return <ProfileScreen onBack={handleBackToHome} onOpenTrip={handleMyTrip} onNavigate={setCurrentScreen} />;
   }
 
   if (currentScreen === 'TripDashboard') {
@@ -279,6 +280,10 @@ export default function MainNavigator() {
 
   if (currentScreen === 'AIPersonalizedPlan') {
     return <AIPersonalizedPlanScreen navigation={{ goBack: handleBackToHome, navigate: setCurrentScreen }} />;
+  }
+
+  if (currentScreen === 'Subscription') {
+    return <SubscriptionScreen navigation={{ goBack: () => setCurrentScreen('Profile'), navigate: setCurrentScreen }} />;
   }
 
   if (currentScreen === 'JoinSelection') {
