@@ -102,6 +102,19 @@ const PremiumButton = ({
                 text: { color: '#000000', fontWeight: 'bold' },
                 iconColor: '#000000',
             },
+            white: {
+                button: {
+                    backgroundColor: '#FFFFFF',
+                    borderWidth: 0,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                    elevation: 4,
+                },
+                text: { color: '#000000', fontWeight: 'bold' },
+                iconColor: '#000000',
+            },
         };
         return variants[variant] || variants.primary;
     };

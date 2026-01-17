@@ -496,11 +496,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                     <Text style={styles.tripTypeLabel}>{mode.label}</Text>
                     <Text style={styles.tripTypeDesc}>{mode.description}</Text>
                   </View>
-                  {tripData.mode === mode.key && (
-                    <View style={[styles.tripTypeCheck, { backgroundColor: colors.primary }]}>
-                      <Icon name="check" size={14} color="#FFF" />
-                    </View>
-                  )}
+
                 </Pressable>
               ))}
             </View>

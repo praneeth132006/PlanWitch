@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import DatePickerModal from '../components/DatePickerModal';
 import { auth } from '../config/firebase';
 import Icon from '../components/Icon';
+import Calendar from '../components/Calendar';
 import TripMap from '../components/TripMap';
 import PlacesAutocomplete from '../components/PlacesAutocomplete';
 import { generateDestinationInfo } from '../services/aiService';
@@ -111,7 +112,6 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
             setTripInfo(prev => ({ ...prev, aiDescription: result.info }));
           }
         } catch (e) {
-          console.log('Error fetching AI description:', e);
         }
       }
     };
@@ -249,10 +249,24 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
       setShowDatesModal(true);
     } else if (option.id === 'edit_locations') {
       // Initialize with full place objects from tripInfo
+      // Helper to ensure we have a valid place object structure
+      const normalizePlace = (place) => {
+        if (!place) return null;
+        // If it's already an object with keys we expect, return it
+        if (typeof place === 'object' && (place.name || place.fullAddress || place.place_id)) return place;
+        // If it's a string (legacy data), convert to basic object
+        if (typeof place === 'string') return { name: place, fullAddress: place };
+        return place;
+      };
+
+      const normalizedOrigin = normalizePlace(tripInfo.origin || tripInfo.start);
+      const normalizedEnd = normalizePlace(tripInfo.endLocation);
+      const normalizedStops = (tripInfo.stops || []).map(normalizePlace).filter(Boolean);
+
       setEditLocations({
-        origin: tripInfo.origin || tripInfo.start || null,
-        stops: tripInfo.stops ? [...tripInfo.stops] : [],
-        endLocation: tripInfo.endLocation || null
+        origin: normalizedOrigin,
+        stops: normalizedStops,
+        endLocation: normalizedEnd
       });
       setShowLocationEditModal(true);
     } else if (option.id === 'manage_travelers') {
@@ -263,6 +277,17 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
     } else if (option.id === 'delete_trip') {
       setShowDeleteModal(true);
     }
+  };
+
+  const handleUpdateDatesV2 = (startStr, endStr) => {
+    // startStr and endStr come from Calendar "DD MMM YYYY"
+    // Update tripInfo directly
+    setTripInfo(prev => ({
+      ...prev,
+      startDate: startStr,
+      endDate: endStr || startStr
+    }));
+    setShowDatesModal(false);
   };
 
   const handleSaveLocations = async () => {
@@ -464,7 +489,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               {/* Removed Settings Icon Button */}
             </View>
 
-            <Text style={styles.cardDescription} numberOfLines={3}>
+            <Text style={styles.cardDescription}>
               {tripInfo.aiDescription || `Get ready for an unforgettable journey to ${tripInfo.destination || 'your destination'}. You're all set to explore ${mainLocationsCount} amazing places.`}
             </Text>
 
@@ -510,8 +535,8 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         <Animated.View style={[styles.participantsSection, { opacity: fadeAnim }]}>
           <View style={styles.sectionHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Icon name="group" size={20} color={colors.primary} style={{ marginRight: 8 }} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Travelers</Text>
+              <Icon name="group" size={24} color={colors.primary} style={{ marginRight: 10 }} />
+              <Text style={{ fontSize: 24, fontWeight: '800', color: colors.text }}>Travelers</Text>
             </View>
             <TouchableOpacity onPress={() => setShowTravelersModal(true)}>
               <Text style={styles.viewMoreText}>Edit →</Text>
@@ -600,6 +625,8 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
           </View>
         </Animated.View>
         {/* )} */}
+
+
 
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -709,66 +736,16 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
       </Modal>
 
       {/* Edit Dates Modal */}
-      <Modal visible={showDatesModal} transparent animationType="slide" onRequestClose={() => setShowDatesModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>📅 Edit Travel Dates</Text>
-              <Pressable onPress={() => setShowDatesModal(false)} style={styles.modalCloseBtn}>
-                <Icon name="close" size={20} color={colors.textMuted} />
-              </Pressable>
-            </View>
-
-            <View style={styles.datesEditSection}>
-              <Pressable
-                style={styles.dateEditCard}
-                onPress={() => setShowStartDatePicker(true)}
-              >
-                <View style={styles.dateEditIcon}>
-                  <Text style={styles.dateEditEmoji}>🛫</Text>
-                </View>
-                <View style={styles.dateEditContent}>
-                  <Text style={styles.dateEditLabel}>Start Date</Text>
-                  <Text style={styles.dateEditValue}>{editStartDate || 'Select date'}</Text>
-                </View>
-                <Text style={styles.dateEditArrow}>→</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.dateEditCard}
-                onPress={() => setShowEndDatePicker(true)}
-              >
-                <View style={styles.dateEditIcon}>
-                  <Text style={styles.dateEditEmoji}>🛬</Text>
-                </View>
-                <View style={styles.dateEditContent}>
-                  <Text style={styles.dateEditLabel}>End Date</Text>
-                  <Text style={styles.dateEditValue}>{editEndDate || 'Select date'}</Text>
-                </View>
-                <Text style={styles.dateEditArrow}>→</Text>
-              </Pressable>
-
-              {editStartDate && editEndDate && (
-                <View style={styles.durationPreview}>
-                  <Text style={styles.durationPreviewEmoji}>📆</Text>
-                  <Text style={styles.durationPreviewText}>
-                    Trip duration will be updated
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <Pressable
-              style={[styles.saveButton, (!editStartDate || !editEndDate) && { opacity: 0.5 }]}
-              onPress={handleUpdateDates}
-              disabled={!editStartDate || !editEndDate}
-            >
-              <Text style={styles.saveButtonText}>Save Dates</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+      {/* Edit Dates Modal -> Now using Calendar */}
+      <Calendar
+        visible={showDatesModal}
+        onClose={() => setShowDatesModal(false)}
+        onSelect={handleUpdateDatesV2}
+        mode="range"
+        initialStartDate={tripInfo.startDate ? new Date(tripInfo.startDate) : new Date()}
+        initialEndDate={tripInfo.endDate ? new Date(tripInfo.endDate) : null}
+        minDate={new Date()}
+      />
 
       {/* Location Edit Modal */}
       <Modal visible={showLocationEditModal} transparent animationType="slide" onRequestClose={() => setShowLocationEditModal(false)}>

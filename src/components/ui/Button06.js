@@ -18,7 +18,9 @@ const Button06 = ({
     variant = 'primary',
     disabled = false,
     style,
-    icon
+    icon,
+    backgroundColor,
+    textColor
 }) => {
     const { colors } = useTheme();
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -105,6 +107,7 @@ const Button06 = ({
                 style={[
                     styles.button,
                     variantStyles.container,
+                    backgroundColor && { backgroundColor },
                     disabled && styles.disabled
                 ]}
                 onPress={onPress}
@@ -114,7 +117,7 @@ const Button06 = ({
                 activeOpacity={0.9}
             >
                 {icon && <View style={styles.iconWrapper}>{icon}</View>}
-                <Text style={[styles.text, variantStyles.text, disabled && styles.disabledText]}>
+                <Text style={[styles.text, variantStyles.text, textColor && { color: textColor }, disabled && styles.disabledText]}>
                     {title}
                 </Text>
             </TouchableOpacity>

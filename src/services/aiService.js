@@ -432,10 +432,9 @@ export const generateDestinationInfo = async (destination) => {
     }
 
     const prompt = `
-    Write a short, exciting, and personalized 2-sentence description for a trip to ${destination}.
-    Focus on the vibe, culture, and what makes it special.
-    Do not use generic phrases like "hidden gems".
-    Make it sound vibrant and premium.
+    Write a vibrant, exciting description for a trip to ${destination}.
+    MAX 15 WORDS.
+    Focus on the vibe and culture.
 
     Return ONLY this JSON:
     {
@@ -452,3 +451,40 @@ export const generateDestinationInfo = async (destination) => {
     }
 };
 
+
+export const generateTripSuggestions = async (destination, duration, travelers, interests) => {
+    if (!AI_CONFIG.geminiKey) {
+        return {
+            success: true,
+            suggestions: [
+                { title: "Local Cuisine Tour", desc: "Try the best street food in town.", icon: "restaurant" },
+                { title: "Hidden Photography Spots", desc: "Capture unique angles of the city.", icon: "camera" },
+                { title: "Cultural Workshop", desc: "Learn pottery or traditional arts.", icon: "palette" }
+            ]
+        };
+    }
+
+    const prompt = `
+    Based on a trip to ${destination} for ${duration} days with ${travelers} (Interests: ${interests || 'General'}),
+    suggest 3 unique, specific, and exciting things to do or know.
+    - Not generic advice.
+    - "icon" should be a valid material icon name (e.g., hiking, camera, restaurant, grade, etc.).
+
+    Return ONLY this JSON:
+    {
+        "success": true,
+        "suggestions": [
+            { "title": "Catchy Title", "desc": "Short exciting description (max 10 words).", "icon": "star" },
+            { "title": "Catchy Title", "desc": "Short exciting description.", "icon": "star" },
+            { "title": "Catchy Title", "desc": "Short exciting description.", "icon": "star" }
+        ]
+    }
+    `;
+
+    try {
+        return await callGemini(prompt, true);
+    } catch (error) {
+        console.error("AI Suggestions Error:", error);
+        return { success: false, error: error.message };
+    }
+};

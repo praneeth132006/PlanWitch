@@ -10,6 +10,7 @@ import { isValidTripCode } from '../utils/tripCodeGenerator';
 import Icon from '../components/Icon';
 import Popover15 from '../components/ui/Popover15';
 import Button06 from '../components/ui/Button06';
+import PremiumButton from '../components/PremiumButton';
 
 const { width } = Dimensions.get('window');
 
@@ -759,9 +760,9 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
             onPress={resetJoinModal}
             style={{ flex: 1 }}
           />
-          <Button06
+          <PremiumButton
             title="Find Trip"
-            variant="primary"
+            variant="white"
             onPress={handleJoinTripNext}
             disabled={!tripCode.trim()}
             style={{ flex: 1 }}

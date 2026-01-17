@@ -411,7 +411,6 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
           onPress={() => setAiModalVisible(true)}
           variant="gradient"
           size="small"
-          icon="sparkles"
           loading={isAiGenerating}
           disabled={isAiGenerating}
         />

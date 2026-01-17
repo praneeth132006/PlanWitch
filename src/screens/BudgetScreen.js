@@ -410,7 +410,6 @@ export default function BudgetScreen() {
           onPress={startAiPlan}
           variant="gradient"
           size="small"
-          icon="sparkles"
           loading={isGenerating}
           disabled={isGenerating}
         />
