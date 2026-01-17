@@ -9,6 +9,7 @@ import { useTravelContext } from '../context/TravelContext';
 import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
 import { generateFoodRecommendations } from '../services/aiService';
+import PremiumButton from '../components/PremiumButton';
 
 export default function FoodChecklistScreen() {
     const { colors } = useTheme();
@@ -99,7 +100,7 @@ export default function FoodChecklistScreen() {
 
     const executeAiFoodGeneration = async (isReplace) => {
         setAiModalVisible(false);
-        setIsAiGenerating(true); // Use isAiGenerating
+        setIsAiGenerating(true);
 
         try {
             const stops = tripInfo.stops || [];
@@ -108,43 +109,46 @@ export default function FoodChecklistScreen() {
 
             const result = await generateFoodRecommendations(
                 uniqueLocations,
-                aiPreferences.dietary || 'Any',
-                aiPreferences.spiciness || 'Medium'
+                'Any'
             );
 
-            if (result.success && result.suggestions) {
+            // Check for both possible field names from the AI response
+            const recommendations = result.recommendations || result.suggestions || [];
+
+            if (result.success && recommendations.length > 0) {
                 let addedCount = 0;
 
                 // If replacing, first delete all existing items
                 if (isReplace) {
-                    // Create a copy of IDs to avoid issues with modifying array during iteration
                     const currentFoodItemIds = foodItems.map(item => item.id);
                     for (const id of currentFoodItemIds) {
                         await deleteFoodItem(id);
                     }
                 }
 
-                for (const item of result.suggestions) {
-                    // Find matching place in our list (relaxed match)
-                    const targetPlace = places.find(p => p.toLowerCase().includes(item.location.toLowerCase()) || item.location.toLowerCase().includes(p.toLowerCase()) ||
-                        p.split(' ').some(word => item.location.toLowerCase().includes(word)) ||
-                        item.location.split(' ').some(word => p.toLowerCase().includes(word))
-                    ) || places[0]; // Fallback to first place if no match
+                // The AI returns recommendations grouped by place with items array
+                for (const placeData of recommendations) {
+                    const targetPlace = places.find(p =>
+                        p.toLowerCase().includes((placeData.place || '').toLowerCase()) ||
+                        (placeData.place || '').toLowerCase().includes(p.toLowerCase())
+                    ) || places[0];
 
-                    // Basic duplicate check for Merge (only if not replacing)
-                    const exists = !isReplace && foodItems.some(existing =>
-                        existing.place === targetPlace &&
-                        existing.name.toLowerCase() === item.name.toLowerCase()
-                    );
+                    // Iterate over items in this place
+                    const items = placeData.items || [];
+                    for (const item of items) {
+                        const exists = !isReplace && foodItems.some(existing =>
+                            existing.place === targetPlace &&
+                            existing.name.toLowerCase() === item.name.toLowerCase()
+                        );
 
-                    if (!exists) {
-                        // Normalize type to proper case: 'veg' -> 'Veg', 'non-veg' -> 'Non-Veg'
-                        let normalizedType = item.type;
-                        if (typeof item.type === 'string') {
-                            normalizedType = item.type.toLowerCase().includes('non') ? 'Non-Veg' : 'Veg';
+                        if (!exists) {
+                            let normalizedType = item.type;
+                            if (typeof item.type === 'string') {
+                                normalizedType = item.type.toLowerCase().includes('non') ? 'Non-Veg' : 'Veg';
+                            }
+                            await addFoodItem(targetPlace, item.name, normalizedType);
+                            addedCount++;
                         }
-                        await addFoodItem(targetPlace, item.name, normalizedType);
-                        addedCount++;
                     }
                 }
                 showAlert('Success', `${addedCount} items added to your checklist!`, 'success');
@@ -229,20 +233,16 @@ export default function FoodChecklistScreen() {
                 </Text>
             </View>
 
-            <TouchableOpacity
-                style={[styles.aiButton, isAiGenerating && { opacity: 0.7 }]}
-                onPress={handleGenerateSuggestions} // Updated to new handler
+            <PremiumButton
+                title={isAiGenerating ? 'Generating...' : 'AI Suggestions'}
+                onPress={handleGenerateSuggestions}
+                variant="gradient"
+                size="medium"
+                icon="bulb"
+                loading={isAiGenerating}
                 disabled={isAiGenerating}
-            >
-                {isAiGenerating ? (
-                    <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
-                ) : (
-                    <Icon name="sparkles" size={18} color="#fff" style={{ marginRight: 8 }} />
-                )}
-                <Text style={styles.aiButtonText}>
-                    {isAiGenerating ? 'Generating...' : 'AI Suggestions'}
-                </Text>
-            </TouchableOpacity>
+                style={{ marginTop: 12, marginHorizontal: 16 }}
+            />
 
             <ScrollView
                 style={styles.mainScroll}

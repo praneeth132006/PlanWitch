@@ -9,6 +9,29 @@ import { useTravelContext } from '../context/TravelContext';
 import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
 import { generatePackingList } from '../services/aiService';
+import PremiumButton from '../components/PremiumButton';
+
+const PACKING_CATEGORIES = [
+  { key: 'essentials', label: 'Essentials', icon: 'passport', color: '#EF4444', emoji: '📋' },
+  { key: 'clothing', label: 'Clothing', icon: 'packing', color: '#3B82F6', emoji: '👔' },
+  { key: 'toiletries', label: 'Toiletries', icon: 'bathtub', color: '#10B981', emoji: '🧴' },
+  { key: 'electronics', label: 'Electronics', icon: 'mobile', color: '#F59E0B', emoji: '📱' },
+  { key: 'documents', label: 'Documents', icon: 'passport', color: '#8B5CF6', emoji: '📄' },
+  { key: 'health', label: 'Health', icon: 'health', color: '#EC4899', emoji: '💊' },
+  { key: 'accessories', label: 'Accessories', icon: 'shopping', color: '#14B8A6', emoji: '🎒' },
+  { key: 'other', label: 'Other', icon: 'other', color: '#6B7280', emoji: '📦' },
+];
+
+const QUICK_ADD_ITEMS = {
+  essentials: ['Passport', 'Wallet', 'Phone', 'Keys', 'Cash', 'ID Card'],
+  clothing: ['T-Shirts', 'Pants', 'Underwear', 'Socks', 'Jacket', 'Sleepwear'],
+  toiletries: ['Toothbrush', 'Toothpaste', 'Shampoo', 'Deodorant', 'Sunscreen', 'Razor'],
+  electronics: ['Charger', 'Power Bank', 'Headphones', 'Camera', 'Adapter', 'Laptop'],
+  documents: ['Tickets', 'Insurance', 'Hotel Booking', 'Visa', 'Itinerary'],
+  health: ['Medications', 'First Aid Kit', 'Vitamins', 'Hand Sanitizer'],
+  accessories: ['Sunglasses', 'Watch', 'Belt', 'Hat', 'Umbrella', 'Bag'],
+  other: ['Snacks', 'Books', 'Games', 'Gifts', 'Notebook'],
+};
 
 export default function PackingScreen({ onBackToHome, onSetScreen }) {
   const {
@@ -211,21 +234,18 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
             <Text style={styles.headerTitle}>Packing List</Text>
           </View>
         </View>
-        <TouchableOpacity
-          style={[styles.aiSuggestBtn, isGenerating && { opacity: 0.7 }]}
-          onPress={handleAiSuggest}
-          disabled={isGenerating}
-        >
-          {isGenerating ? (
-            <Text style={styles.aiBtnText}>Thinking...</Text>
-          ) : (
-            <>
-              <Text style={styles.aiBtnIcon}>✨</Text>
-              <Text style={styles.aiBtnText}>AI Suggest</Text>
-            </>
-          )}
-        </TouchableOpacity>
       </View>
+
+      <PremiumButton
+        title={isGenerating ? 'Thinking...' : 'AI Suggest'}
+        onPress={handleAiSuggest}
+        variant="gradient"
+        size="medium"
+        icon="bulb"
+        loading={isGenerating}
+        disabled={isGenerating}
+        style={{ marginTop: 8, marginHorizontal: 20, marginBottom: 12 }}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Progress Card */}
