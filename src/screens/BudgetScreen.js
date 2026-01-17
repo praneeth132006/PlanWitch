@@ -192,7 +192,37 @@ export default function BudgetScreen() {
   };
 
   const submitAiPlan = async (finalAnswers) => {
+    // Check if budget data exists
+    const hasData = (budget.total > 0 && budget.total != '0') || Object.keys(budget.categories || {}).length > 0;
+
+    if (hasData) {
+      setAiModalVisible(false);
+      showAlert(
+        'Existing Budget Found',
+        'You already have a budget plan. Do you want to replace it completely or merge the new AI suggestions?',
+        'info',
+        () => {
+          // Replace
+          executeAiBudget(finalAnswers, true);
+        },
+        () => hideAlert(),
+        () => {
+          // Merge
+          executeAiBudget(finalAnswers, false);
+        },
+        'Replace All',
+        'Cancel',
+        'Merge / Add'
+      );
+    } else {
+      executeAiBudget(finalAnswers, true);
+    }
+  };
+
+  const executeAiBudget = async (finalAnswers, isReplace) => {
     setIsGenerating(true);
+    setAiModalVisible(true); // Keep modal visible for loading state
+
     try {
       const destination = tripInfo.destination || 'Unknown';
       let duration = 3;
@@ -259,9 +289,31 @@ export default function BudgetScreen() {
       }
 
       // CASE 2: Budget is SUFFICIENT (feasible = true)
+
+      let newCategories = result.categories;
+      let newTotal = result.total || 0;
+
+      if (!isReplace) {
+        // Merge Logic: Keep existing categories, add new ones if key doesn't exist
+        // OR update existing ones? User said "remove duplicate" -> implies keep unique.
+        // We will prioritize EXISTING user data for conflicts, but add NEW AI categories.
+
+        const mergedCats = { ...budget.categories };
+        Object.entries(result.categories).forEach(([key, value]) => {
+          if (!mergedCats[key]) {
+            mergedCats[key] = value;
+          }
+        });
+        newCategories = mergedCats;
+        // Recalculate total if merged? Or just set max budget?
+        // Let's set total to max(existing total, new total) or just sum?
+        // Usually total is a constraint. Let's keep the higher constraint.
+        newTotal = Math.max(parseFloat(budget.total) || 0, newTotal);
+      }
+
       setBudget({
-        total: result.total || 0,
-        categories: result.categories
+        total: newTotal,
+        categories: newCategories
       });
 
       if (saveTripPreferences) saveTripPreferences(finalAnswers);

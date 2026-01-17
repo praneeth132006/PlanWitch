@@ -19,6 +19,34 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
     useEffect(() => {
         if (Platform.OS !== 'web') return;
 
+        // Load Google Maps script dynamically
+        const loadGoogleMapsScript = () => {
+            return new Promise((resolve, reject) => {
+                if (window.google && window.google.maps) {
+                    resolve();
+                    return;
+                }
+
+                const GOOGLE_MAPS_API_KEY = GOOGLE_MAPS_CONFIG.apiKey;
+                const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+                if (existingScript) {
+                    existingScript.addEventListener('load', resolve);
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
+                script.async = true;
+                script.defer = true;
+                script.onload = () => {
+                    console.log('Google Maps script loaded in TripMap');
+                    resolve();
+                };
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        };
+
         // Web Initialization with Retry
         const checkGoogleMaps = () => {
             if (window.google && window.google.maps) {
@@ -53,17 +81,22 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
             return false;
         };
 
-        if (!checkGoogleMaps()) {
-            const interval = setInterval(() => {
-                if (checkGoogleMaps()) {
-                    clearInterval(interval);
-                }
-            }, 500);
+        loadGoogleMapsScript()
+            .then(() => {
+                if (!checkGoogleMaps()) {
+                    const interval = setInterval(() => {
+                        if (checkGoogleMaps()) {
+                            clearInterval(interval);
+                        }
+                    }, 500);
 
-            // Stop checking after 10 seconds
-            setTimeout(() => clearInterval(interval), 10000);
-            return () => clearInterval(interval);
-        }
+                    // Stop checking after 10 seconds
+                    setTimeout(() => clearInterval(interval), 10000);
+                }
+            })
+            .catch(error => {
+                console.error('Failed to load Google Maps script in TripMap:', error);
+            });
     }, []);
 
     // Extract update logic to function so we can call it from init

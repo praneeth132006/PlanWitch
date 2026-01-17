@@ -24,8 +24,10 @@ export const CustomAlert = ({
     type = 'info',
     onConfirm,
     onCancel,
+    onNeutral, // New Prop
     confirmText = 'OK',
-    cancelText = 'Cancel'
+    cancelText = 'Cancel',
+    neutralText = '' // New Prop
 }) => {
     const { colors } = useTheme();
 
@@ -73,18 +75,27 @@ export const CustomAlert = ({
                         <View style={styles.buttonRow}>
                             {onCancel && (
                                 <TouchableOpacity
-                                    style={[styles.button, styles.cancelButton, { borderColor: colors.border }]}
+                                    style={[styles.button, styles.cancelButton, { borderColor: colors.border, flex: 1 }]}
                                     onPress={onCancel}
                                 >
                                     <Text style={{ color: colors.text }}>{cancelText}</Text>
                                 </TouchableOpacity>
                             )}
 
+                            {onNeutral && (
+                                <TouchableOpacity
+                                    style={[styles.button, styles.neutralButton, { backgroundColor: colors.secondary || '#4B5563', flex: 1 }]}
+                                    onPress={onNeutral}
+                                >
+                                    <Text style={[styles.confirmText, { color: '#fff', fontSize: 13 }]}>{neutralText}</Text>
+                                </TouchableOpacity>
+                            )}
+
                             <TouchableOpacity
-                                style={[styles.button, { backgroundColor: getColor(), flex: onCancel ? 1 : 0, minWidth: 100 }]}
+                                style={[styles.button, { backgroundColor: getColor(), flex: 1, minWidth: 80 }]}
                                 onPress={onConfirm}
                             >
-                                <Text style={styles.confirmText}>{confirmText}</Text>
+                                <Text style={[styles.confirmText, (onCancel || onNeutral) && { fontSize: 13 }]}>{confirmText}</Text>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -137,25 +148,32 @@ const styles = StyleSheet.create({
     },
     buttonRow: {
         flexDirection: 'row',
-        gap: 12,
+        gap: 8,
         width: '100%',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        paddingHorizontal: 4
     },
     button: {
         paddingVertical: 12,
-        paddingHorizontal: 20,
+        paddingHorizontal: 8,
         borderRadius: 12,
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        minHeight: 48
     },
     cancelButton: {
         flex: 1,
         backgroundColor: 'transparent',
         borderWidth: 1
     },
+    neutralButton: {
+        flex: 1,
+        marginHorizontal: 2
+    },
     confirmText: {
         color: 'white',
-        fontWeight: '600',
-        fontSize: 16
+        fontWeight: 'bold',
+        fontSize: 15,
+        textAlign: 'center'
     }
 });

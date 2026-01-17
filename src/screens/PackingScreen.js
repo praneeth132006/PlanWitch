@@ -1,37 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import {
-  View, Text, ScrollView, TextInput, TouchableOpacity,
-  Modal, StyleSheet, Dimensions, Alert, Image
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTravelContext } from '../context/TravelContext';
-import { useTheme } from '../context/ThemeContext';
-import Icon from '../components/Icon';
-import { generatePackingList } from '../services/aiService';
+import CustomAlert from '../components/CustomAlert';
 
-const { width } = Dimensions.get('window');
-
-const PACKING_CATEGORIES = [
-  { key: 'essentials', label: 'Essentials', icon: 'packing', color: '#EF4444' },
-  { key: 'clothing', label: 'Clothing', icon: 'shopping', color: '#3B82F6' },
-  { key: 'toiletries', label: 'Toiletries', icon: 'bathtub', color: '#10B981' },
-  { key: 'electronics', label: 'Electronics', icon: 'mobile', color: '#8B5CF6' },
-  { key: 'documents', label: 'Documents', icon: 'ticket', color: '#F59E0B' },
-  { key: 'accessories', label: 'Accessories', icon: 'camera', color: '#EC4899' },
-  { key: 'health', label: 'Health', icon: 'health', color: '#06B6D4' },
-  { key: 'other', label: 'Other', icon: 'other', color: '#6B7280' },
-];
-
-const QUICK_ADD_ITEMS = {
-  essentials: ['Passport', 'Wallet', 'Phone', 'Keys', 'Cash', 'Credit Cards'],
-  clothing: ['T-Shirts', 'Pants', 'Underwear', 'Socks', 'Jacket', 'Sleepwear'],
-  toiletries: ['Toothbrush', 'Toothpaste', 'Shampoo', 'Soap', 'Deodorant', 'Sunscreen'],
-  electronics: ['Charger', 'Power Bank', 'Earphones', 'Camera', 'Adapter', 'Laptop'],
-  documents: ['ID Card', 'Tickets', 'Hotel Booking', 'Insurance', 'Visa', 'Itinerary'],
-  accessories: ['Watch', 'Sunglasses', 'Belt', 'Bag', 'Umbrella', 'Hat'],
-  health: ['Medicines', 'First Aid', 'Vitamins', 'Hand Sanitizer', 'Masks', 'Tissues'],
-  other: ['Snacks', 'Books', 'Travel Pillow', 'Lock', 'Pen', 'Notebook'],
-};
+// ... (existing imports)
 
 export default function PackingScreen() {
   const {
@@ -49,6 +18,28 @@ export default function PackingScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState([]);
+
+  // Custom Alert State
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null,
+    onCancel: null,
+    onNeutral: null,
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    neutralText: ''
+  });
+
+  const showAlert = (title, message, type = 'info', onConfirm = null, onCancel = null, onNeutral = null, confirmText = 'OK', cancelText = 'Cancel', neutralText = '') => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm, onCancel, onNeutral, confirmText, cancelText, neutralText });
+  };
+
+  const hideAlert = () => {
+    setAlertConfig(prev => ({ ...prev, visible: false }));
+  };
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -77,28 +68,83 @@ export default function PackingScreen() {
   };
 
   const handleAiSuggest = async () => {
+    // Check if items exist
+    if (packingItems.length > 0) {
+      showAlert(
+        'Existing Items Found',
+        'You already have items in your packing list. Do you want to replace them completely or add new suggestions?',
+        'info',
+        () => {
+          // Replace
+          executeAiPackingGenerate(true);
+        },
+        () => hideAlert(),
+        () => {
+          // Merge
+          executeAiPackingGenerate(false);
+        },
+        'Replace All',
+        'Cancel',
+        'Add / Merge'
+      );
+    } else {
+      executeAiPackingGenerate(true);
+    }
+  };
+
+  const executeAiPackingGenerate = async (isReplace) => {
     setIsGenerating(true);
+    hideAlert();
+
+    // If Replace, we should clear items directly or after success?
+    // If we clear now and fail, user loses data.
+    // Let's passed "isReplace" down to the next step (Modal handling)
+    // Actually, generating just GETS suggestions. 
+    // The "Replace" action should probably happen when we apply them? 
+    // OR we clear now to indicate "Fresh Start".
+    // Following FoodChecklist pattern: 
+    // We will store "isReplace" intention if we want to auto-add.
+    // BUT PackingScreen shows a modal first.
+    // If I select "Replace", I probably expect the list to be cleared.
+    // Let's clear it IF success, OR clear it now?
+    // Safer to clear AFTER success of generation, but BEFORE showing suggestions?
+    // Or let's pass `shouldReplace` to the modal state?
+    // For simplicity and alignment with request:
+    // "option ... to update ... by completely removing ... or add above"
+    // So if "Replace", we will clear the list when showing the suggestions? 
+    // Or we clear it now?
+    // Let's clear it NOW if user confirmed "Replace All". 
+    // Wait, if I clear now, it's destructive before API success. 
+    // Let's do it after API success.
+
     try {
-      // Get month from tripInfo.startDate (format: "DD MMM YYYY")
-      // Get robust date context (Month + Year or full date string)
-      // e.g., "15 Jun 2026" gives better context than just "Jun"
       const dateContext = tripInfo.startDate || 'Upcoming Trip';
 
       const res = await generatePackingList(
         tripInfo.destination || 'Selected Destination',
         dateContext,
-        1, // Hardcoded duration for now or calculate from tripInfo
+        1,
         tripInfo.tripType || 'solo'
       );
 
       if (res.success) {
+        if (isReplace) {
+          // Clear existing items
+          // We need to delete all. optimizing by deleting IDs.
+          // Note: This relies on state updates processing.
+          const ids = packingItems.map(i => i.id);
+          ids.forEach(id => deletePackingItem(id));
+        }
+
         setAiSuggestions(res.recommendations);
         setShowAiModal(true);
+      } else {
+        showAlert('AI Error', 'Could not generate suggestions.', 'error');
       }
     } catch (error) {
       console.error('AI Suggest Error:', error);
-      Alert.alert('AI Error', 'Failed to get suggestions: ' + (error.message || 'Unknown error'));
-      setAiSuggestions([]); // Clear invalid state if any
+      showAlert('AI Error', 'Failed to get suggestions: ' + (error.message || 'Unknown error'), 'error');
+      setAiSuggestions([]);
     } finally {
       setIsGenerating(false);
     }
@@ -516,6 +562,19 @@ export default function PackingScreen() {
           </View>
         </View>
       </Modal>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        onNeutral={alertConfig.onNeutral}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+        neutralText={alertConfig.neutralText}
+      />
     </SafeAreaView>
   );
 }

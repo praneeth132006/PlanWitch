@@ -152,60 +152,59 @@ export const generateTripItinerary = async (destination, days, budget, travelers
 
     const { pace = 'Moderate', startTime = '09:00 AM', endTime = '09:00 PM', locationDurations = {} } = preferences;
 
-    const prompt = `
-    Create a detailed ${days}-day travel itinerary for ${destination}.
-    Group: ${travelers} travelers.
-    Budget Level: ${budget}.
-    Interests: ${interests}.
-    Pace: ${pace}.
-    Daily Routine: Starts at ${startTime}, Ends at ${endTime}.
-    
-    Locations & Main Stops Duration (Days): 
-    ${Object.entries(locationDurations).map(([loc, days]) => `- ${loc}: ${days} days`).join('\n') || 'Standard allocation'}
+    const locationContext = Object.entries(locationDurations)
+        .map(([loc, days]) => `- ${loc}: ${days} days`)
+        .join('\n') || 'Standard allocation';
 
-    CRITICAL INSTRUCTIONS:
-    1. EXCLUDE travel time TO/FROM the destination (e.g., flight to ${destination}) from the daily activity list. Only include what happens AFTER arrival.
-    2. Respect the 'Starts at' and 'Ends at' times for daily activities.
-    3. If location durations are specified, strictly allocate days accordingly.
-    4. You must return a valid JSON object.
-    5. IMPORTANT: Each activity's time MUST be SEQUENTIAL and CHRONOLOGICAL. Each activity should start AFTER the previous one ends (previous time + duration). Never have two activities at the same time. Space activities logically throughout the day from start to end time.
-    
-    Structure rules:
-    - "type": Must be one of: 'flight', 'train', 'bus', 'car', 'hotel', 'checkin', 'checkout', 'breakfast', 'lunch', 'dinner', 'cafe', 'attraction', 'tour', 'shopping', 'nature', 'beach', 'museum', 'nightlife'.
-    - "time": Use "HH:MM AM/PM" format. Times MUST progress sequentially through the day.
-    - "cost": Estimated cost per person in local currency (number only).
-    - "duration": Duration in hours (e.g. "2 hours").
+    const prompt = `Generate a highly detailed and logical day-by-day travel itinerary for a ${days}-day trip to ${destination}.
+      Budget Level: ${budget}
+      Travelers: ${travelers}
+      Interests: ${interests}
+      Trip Strategy: ${pace} pace.
 
-    Return ONLY this JSON:
-    {
+      CRITICAL TIMING & LOGIC RULES:
+      1. Each day MUST start strictly at ${startTime} and end around ${endTime}.
+      2. Events MUST be in STRICT CHRONOLOGICAL order.
+      3. NO overlapping events. Every activity MUST start after the previous one's end time.
+      4. Add 15-30 mins buffer for travel between different locations.
+      5. NO REDUNDANT ACTIVITIES. Do not visit the same place or suggest similar "snacks/tea" multiple times on the same day unless it's a very different context.
+      6. Use realistic durations (e.g., 1.5-2 hours for museums, 1 hour for meals).
+      
+      Per Location Breakdown:
+      ${locationContext}
+
+      CRITICAL INSTRUCTIONS:
+      - EXCLUDE all travel time TO/FROM the destination (e.g., flights/trains to ${destination}). Only plan from the moment they are AT the destination.
+      - If location durations are specified, strictly allocate days accordingly.
+      - You must return a valid JSON object.
+
+      Structure rules for activities:
+      - "type": Must be one of: 'flight', 'train', 'bus', 'car', 'hotel', 'checkin', 'checkout', 'breakfast', 'lunch', 'dinner', 'cafe', 'attraction', 'tour', 'shopping', 'nature', 'beach', 'museum', 'nightlife'.
+      - "time": Use "HH:MM AM/PM" format. Times MUST progress sequentially through the day.
+      - "cost": Estimated cost per person in local currency (number only).
+      - "duration": Duration in hours (e.g. "2 hours").
+
+      Return ONLY this JSON:
+      {
         "success": true,
         "itinerary": [
-            {
-                "day": 1,
-                "title": "Day Theme/Area Name",
-                "activities": [
-                    { 
-                        "time": "10:00 AM", 
-                        "type": "checkin", 
-                        "title": "Arrive & Check-in", 
-                        "description": "Hotel check-in details", 
-                        "location": "City Center",
-                        "duration": "1 hour",
-                        "cost": 0
-                    },
-                    { 
-                        "time": "11:30 AM", 
-                        "type": "attraction", 
-                        "title": "Famous Landmark", 
-                        "description": "Visit the iconic spot", 
-                        "location": "Address",
-                        "duration": "2 hours",
-                        "cost": 500
-                    }
-                ]
-            }
+          {
+            "day": 1,
+            "title": "Day Theme",
+            "activities": [
+              {
+                "time": "09:00 AM",
+                "title": "Activity Name",
+                "type": "attraction",
+                "duration": "2 hours",
+                "description": "...",
+                "location": "...",
+                "cost": 500
+              }
+            ]
+          }
         ]
-    }`;
+      }`;
 
     try {
         return await callGemini(prompt, true);
@@ -237,63 +236,63 @@ export const generateBudgetPlan = async (answers) => {
     const userMaxBudget = parseInt(answers.budget_max) || 50000;
 
     const prompt = `
-    You are an expert travel budget planner. Analyze and allocate budget for this trip:
+    You are an expert travel budget planner.Analyze and allocate budget for this trip:
     
     TRIP DETAILS:
-    - Destination: ${answers.destination}
-    - Duration: ${duration} days
+- Destination: ${answers.destination}
+- Duration: ${duration} days
     - Travelers: ${participantsCount}
-    - User's Maximum Budget: ${userMaxBudget} ${answers.currency || 'INR'}
+- User's Maximum Budget: ${userMaxBudget} ${answers.currency || 'INR'}
     - User's Minimum Budget: ${answers.budget_min || userMaxBudget * 0.8} ${answers.currency || 'INR'}
-    - Budget Preference: ${answers.preference || 'Mid'}
-    - Priority Spending: ${answers.priority || 'Experiences'}
-    - Accommodation: ${answers.accommodation || 'Hotel'} (${answers.hotel_price || '2000-5000'}/night)
-    - Transport: ${answers.primary_transport || 'Flight'}, Local: ${answers.local_transport || 'Cab'}
+        - Budget Preference: ${answers.preference || 'Mid'}
+- Priority Spending: ${answers.priority || 'Experiences'}
+- Accommodation: ${answers.accommodation || 'Hotel'} (${answers.hotel_price || '2000-5000'}/night)
+- Transport: ${answers.primary_transport || 'Flight'}, Local: ${answers.local_transport || 'Cab'}
 
     CRITICAL INSTRUCTIONS:
-    1. CALCULATE REALISTIC MINIMUM COST properly (Do not hallunicate low numbers):
-       - Accommodation: Min ${duration} * ${answers.hotel_price?.split('-')[0] || 2000} (Min 2000/night)
-       - Food: Min ${duration} * ${participantsCount} * 1000 (Min 1000/person/day)
-       - Transport: Flight/Train cost + Local travel (Min 500/day)
-       - Activities: Entry fees/tours (Min 500/day)
-       -> SUM these to get "realistic_cost".
+1. CALCULATE REALISTIC MINIMUM COST properly(Do not hallunicate low numbers):
+- Accommodation: Min ${duration} * ${answers.hotel_price?.split('-')[0] || 2000} (Min 2000 / night)
+- Food: Min ${duration} * ${participantsCount} * 1000(Min 1000 / person / day)
+    - Transport: Flight / Train cost + Local travel(Min 500 / day)
+        - Activities: Entry fees / tours(Min 500 / day)
+            -> SUM these to get "realistic_cost".
 
-    2. Compare "realistic_cost" vs "userMaxBudget" (${userMaxBudget}).
+    2. Compare "realistic_cost" vs "userMaxBudget"(${userMaxBudget}).
     
     IF realistic_cost > ${userMaxBudget}:
-       - YOU MUST SET "feasible": false
-       - Set "deficit": (realistic_cost - ${userMaxBudget})
-       - Still allocate categories but WITHIN user's max budget of ${userMaxBudget}
-       - Message: "Budget is too low. Min realistic cost is ${answers.currency} <realistic_cost>."
+- YOU MUST SET "feasible": false
+    - Set "deficit": (realistic_cost - ${userMaxBudget})
+- Still allocate categories but WITHIN user's max budget of ${userMaxBudget}
+    - Message: "Budget is too low. Min realistic cost is ${answers.currency} <realistic_cost>."
     
     IF realistic_cost <= ${userMaxBudget}:
-       - Set "feasible": true
-       - Set "surplus": (${userMaxBudget} - realistic_cost)
-       - Allocate based on realistic cost (not the full max)
-       - Message should confirm budget is sufficient.
+- Set "feasible": true
+    - Set "surplus": (${userMaxBudget} - realistic_cost)
+- Allocate based on realistic cost(not the full max)
+    - Message should confirm budget is sufficient.
     
     MATH RULE: Sum of ALL category values MUST EQUAL the "total" field EXACTLY.
     The "total" should NEVER exceed ${userMaxBudget}.
     
     Return ONLY this JSON:
-    {
-      "success": true,
-      "feasible": true or false,
-      "total": <number within user's budget>,
-      "realistic_cost": <actual estimated cost based on calculation>,
-      "deficit": <if feasible=false, how much more is needed>,
-      "surplus": <if feasible=true, how much extra budget user has>,
-      "per_person": <total / travelers>,
-      "analysis_message": "<detailed explanation>",
-      "categories": {
-        "accommodation": <number>,
-        "transport": <number>,
-        "food": <number>,
-        "activities": <number>,
-        "shopping": <number>,
-        "other": <number>
+{
+    "success": true,
+        "feasible": true or false,
+            "total": <number within user's budget>,
+    "realistic_cost": <actual estimated cost based on calculation>,
+        "deficit": <if feasible=false, how much more is needed>,
+        "surplus": <if feasible=true, how much extra budget user has>,
+        "per_person": <total / travelers>,
+        "analysis_message": "<detailed explanation>",
+            "categories": {
+                "accommodation": <number>,
+                    "transport": <number>,
+                        "food": <number>,
+                            "activities": <number>,
+                                "shopping": <number>,
+                                    "other": <number>
       },
-      "tips": ["tip1", "tip2"]
+                                    "tips": ["tip1", "tip2"]
     }`;
 
     try {
@@ -336,25 +335,25 @@ export const generatePackingList = async (destination, travelDate, duration, tri
     }
 
     const prompt = `
-    Create a packing list for a trip:
-    - Destination: ${destination}
-    - Travel Date: ${travelDate}
-    - Duration: ${duration} days
-    - Trip Type: ${tripType}
-    
-    Consider the weather, local customs, and essential items needed.
-    
-    Return ONLY this JSON format:
-    {
-      "success": true,
-      "recommendations": [
-        { "category": "Essentials", "items": ["item1", "item2", "item3"] },
-        { "category": "Clothing", "items": ["item1", "item2", "item3"] },
-        { "category": "Toiletries", "items": ["item1", "item2"] },
-        { "category": "Electronics", "items": ["item1", "item2"] },
-        { "category": "Documents", "items": ["item1", "item2"] },
-        { "category": "Health", "items": ["item1", "item2"] }
-      ]
+                                    Create a packing list for a trip:
+                                    - Destination: ${destination}
+                                    - Travel Date: ${travelDate}
+                                    - Duration: ${duration} days
+                                    - Trip Type: ${tripType}
+
+                                    Consider the weather, local customs, and essential items needed.
+
+                                    Return ONLY this JSON format:
+                                    {
+                                        "success": true,
+                                    "recommendations": [
+                                    {"category": "Essentials", "items": ["item1", "item2", "item3"] },
+                                    {"category": "Clothing", "items": ["item1", "item2", "item3"] },
+                                    {"category": "Toiletries", "items": ["item1", "item2"] },
+                                    {"category": "Electronics", "items": ["item1", "item2"] },
+                                    {"category": "Documents", "items": ["item1", "item2"] },
+                                    {"category": "Health", "items": ["item1", "item2"] }
+                                    ]
     }`;
 
     try {
@@ -386,27 +385,27 @@ export const generateFoodRecommendations = async (places, preferences) => {
     }
 
     const prompt = `
-    Suggest famous food items and must-try dishes for these locations: ${locationList}
-    Preferences: ${preferences || 'Both veg and non-veg'}
-    
-    CRITICAL INSTRUCTIONS:
-    1. "place": Must EXACTLY match one of the locations in the list: [${locationList}]. Do not group them.
-    2. "type": Must be EXACTLY either "Veg" or "Non-Veg" (Case sensitive, use dashes).
+                                    Suggest famous food items and must-try dishes for these locations: ${locationList}
+                                    Preferences: ${preferences || 'Both veg and non-veg'}
+
+                                    CRITICAL INSTRUCTIONS:
+                                    1. "place": Must EXACTLY match one of the locations in the list: [${locationList}]. Do not group them.
+                                    2. "type": Must be EXACTLY either "Veg" or "Non-Veg" (Case sensitive, use dashes).
        - If it contains meat/fish/egg -> "Non-Veg"
        - If it is vegetarian -> "Veg"
-    
-    Return ONLY this JSON format (one entry per location):
-    {
-      "success": true,
-      "recommendations": [
-        {
-          "place": "Location Name",
-          "items": [
-            { "name": "Dish Name", "type": "Veg", "mustTry": true },
-            { "name": "Dish Name 2", "type": "Non-Veg", "mustTry": false }
-          ]
+
+                                    Return ONLY this JSON format (one entry per location):
+                                    {
+                                        "success": true,
+                                    "recommendations": [
+                                    {
+                                        "place": "Location Name",
+                                    "items": [
+                                    {"name": "Dish Name", "type": "Veg", "mustTry": true },
+                                    {"name": "Dish Name 2", "type": "Non-Veg", "mustTry": false }
+                                    ]
         }
-      ]
+                                    ]
     }`;
 
     try {

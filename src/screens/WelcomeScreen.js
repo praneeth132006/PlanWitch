@@ -1060,7 +1060,21 @@ const createStyles = (colors) => StyleSheet.create({
   modalIcon: { fontSize: 40 },
   modalTitle: { fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 8, textAlign: 'center' },
   modalDescription: { fontSize: 14, color: colors.textMuted, textAlign: 'center', marginBottom: 24 },
-  codeInput: { width: '100%', backgroundColor: colors.cardLight, borderRadius: 16, padding: 20, fontSize: 24, fontWeight: 'bold', color: colors.text, textAlign: 'center', letterSpacing: 8, borderWidth: 2, borderColor: colors.primaryBorder, marginBottom: 20 },
+  codeInput: {
+    width: '100%',
+    backgroundColor: colors.cardLight,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+    textAlign: 'center',
+    letterSpacing: 2,
+    borderWidth: 2,
+    borderColor: colors.primaryBorder,
+    marginBottom: 20
+  },
 
   participantsList: { width: '100%', maxHeight: 300, marginBottom: 20 },
   participantItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, backgroundColor: colors.cardLight, marginBottom: 10, borderWidth: 1, borderColor: colors.primaryBorder },

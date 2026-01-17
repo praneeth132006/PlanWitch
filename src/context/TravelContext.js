@@ -503,7 +503,7 @@ export const TravelProvider = ({ children }) => {
 
   // Add itinerary item
   const addItineraryItem = async (item) => {
-    const newItem = { ...item, id: Date.now().toString() };
+    const newItem = { ...item, id: Date.now().toString() + Math.random().toString(36).substr(2, 9) };
     setItinerary(prev => [...prev, newItem]);
 
     if (isAuthenticated) {
@@ -1036,6 +1036,7 @@ export const TravelProvider = ({ children }) => {
       deleteFoodItem,
       // -------------------------
       itinerary,
+      setItinerary,
       addItineraryItem,
       deleteItineraryItem,
       updateItineraryItem,

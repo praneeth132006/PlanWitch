@@ -43,8 +43,8 @@ const STOP_TYPES = [
 
 // Helper to convert time to 24hr format for sorting
 const timeToMinutes = (timeStr) => {
-  if (!timeStr) return 9999; // Put items without time at the end
-  const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!timeStr) return 9999;
+  const match = timeStr.toString().match(/(\d+):(\d+)\s*(AM|PM)/i);
   if (!match) return 9999;
   let hours = parseInt(match[1]);
   const minutes = parseInt(match[2]);
@@ -95,13 +95,15 @@ const generateDays = (startDate, endDate) => {
 };
 
 export default function MapScreen() {
-  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers } = useTravelContext();
+  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary } = useTravelContext();
   const { colors } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [activeDay, setActiveDay] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [newStop, setNewStop] = useState({
     name: '', type: 'attraction', dayNumber: 1, time: '', notes: '', location: '',
     duration: '', cost: ''
@@ -121,10 +123,14 @@ export default function MapScreen() {
   });
 
   // Custom Alert State
-  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info', onConfirm: () => { }, onCancel: null, confirmText: 'OK', cancelText: 'Cancel' });
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false, title: '', message: '', type: 'info',
+    onConfirm: () => { }, onCancel: null, onNeutral: null,
+    confirmText: 'OK', cancelText: 'Cancel', neutralText: ''
+  });
 
-  const showAlert = (title, message, type = 'info', onConfirm = () => hideAlert(), onCancel = null, confirmText = 'OK', cancelText = 'Cancel') => {
-    setAlertConfig({ visible: true, title, message, type, onConfirm, onCancel, confirmText, cancelText });
+  const showAlert = (title, message, type = 'info', onConfirm = () => hideAlert(), onCancel = null, onNeutral = null, confirmText = 'OK', cancelText = 'Cancel', neutralText = '') => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm, onCancel, onNeutral, confirmText, cancelText, neutralText });
   };
 
   const hideAlert = () => {
@@ -153,16 +159,41 @@ export default function MapScreen() {
 
   const handleAddStop = () => {
     if (newStop.name.trim()) {
-      addItineraryItem({ ...newStop, dayNumber: selectedDay?.dayNumber || 1, latitude: 0, longitude: 0 });
+      if (isEditing) {
+        updateItineraryItem(editingId, { ...newStop, dayNumber: parseInt(selectedDay?.dayNumber || newStop.dayNumber) });
+      } else {
+        addItineraryItem({ ...newStop, dayNumber: parseInt(selectedDay?.dayNumber || 1), latitude: 0, longitude: 0 });
+      }
       setNewStop({ name: '', type: 'attraction', dayNumber: 1, time: '', notes: '', location: '', duration: '', cost: '' });
+      setIsEditing(false);
+      setEditingId(null);
       setModalVisible(false);
       setSelectedDay(null);
     }
   };
 
   const openAddModal = (day) => {
+    setIsEditing(false);
+    setEditingId(null);
     setSelectedDay(day);
-    setNewStop({ ...newStop, dayNumber: day.dayNumber });
+    setNewStop({ name: '', type: 'attraction', dayNumber: day.dayNumber, time: '', notes: '', location: '', duration: '', cost: '' });
+    setModalVisible(true);
+  };
+
+  const openEditModal = (stop) => {
+    setIsEditing(true);
+    setEditingId(stop.id);
+    setSelectedDay({ dayNumber: stop.dayNumber });
+    setNewStop({
+      name: stop.name,
+      type: stop.type,
+      dayNumber: stop.dayNumber,
+      time: stop.time || '',
+      notes: stop.notes || '',
+      location: stop.location || '',
+      duration: stop.duration || '',
+      cost: stop.cost || ''
+    });
     setModalVisible(true);
   };
 
@@ -170,9 +201,15 @@ export default function MapScreen() {
 
   // Sort stops by time
   const getStopsForDay = (dayNumber) => {
+    const numericDay = parseInt(dayNumber);
     return itinerary
-      .filter(s => s.dayNumber === dayNumber)
-      .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+      .filter(s => parseInt(s.dayNumber) === numericDay)
+      .sort((a, b) => {
+        const timeA = timeToMinutes(a.time);
+        const timeB = timeToMinutes(b.time);
+        if (timeA !== timeB) return timeA - timeB;
+        return (a.name || '').localeCompare(b.name || ''); // Stable sort for same time
+      });
   };
 
   const getCategoryStats = (dayNumber) => {
@@ -204,7 +241,17 @@ export default function MapScreen() {
     let totalLocationDays = 0;
     if (tripInfo.stops && tripInfo.stops.length > 0) {
       tripInfo.stops.forEach((stop, index) => {
-        const stopName = typeof stop === 'object' ? (stop.name || `Stop ${index + 1}`) : stop;
+        // Improved stop name extraction (matching HomeScreen logic)
+        let stopName = `Stop ${index + 1}`;
+        if (typeof stop === 'object') {
+          stopName = stop.name || stop.formatted_address || stop.description || stop.fullAddress || stopName;
+          // Try to get just the city/place name part
+          if (stop.formatted_address) stopName = stop.formatted_address.split(',')[0];
+          else if (stop.name) stopName = stop.name;
+        } else if (typeof stop === 'string') {
+          stopName = stop;
+        }
+
         const days = parseInt(aiPreferences.locationDurations?.[stopName]) || 0;
         totalLocationDays += days;
       });
@@ -219,6 +266,31 @@ export default function MapScreen() {
       return;
     }
 
+    // Check if itinerary already exists - Explicitly check length
+    if (itinerary && itinerary.length > 0) {
+      setAiModalVisible(false);
+      // Ask user to Replace or Merge
+      showAlert(
+        'Existing Itinerary Found',
+        'You already have items in your itinerary. Do you want to replace them completely with the new plan?',
+        'info',
+        () => {
+          // Replace: Clear existing and generate new
+          setItinerary([]);
+          executeAiGeneration(true, []);  // Pass empty array as 'current'
+        },
+        () => hideAlert(), // Cancel
+        null, // Removed Merge option
+        'Replace All',
+        'Cancel',
+        ''
+      );
+    } else {
+      executeAiGeneration(true, []);
+    }
+  };
+
+  const executeAiGeneration = async (isReplace, currentItems) => {
     setAiModalVisible(false);
     setIsAiGenerating(true);
 
@@ -250,31 +322,49 @@ export default function MapScreen() {
 
       if (result.success && result.itinerary) {
         let addedCount = 0;
+
+        // Use a Set to track added items to prevent self-duplicates in this batch
+        const addedSignatures = new Set();
+
         result.itinerary.forEach(day => {
           day.activities.forEach(activity => {
             // Map AI type to our STOP_TYPES
             let type = activity.type?.toLowerCase() || 'attraction';
-            // Ensure type exists in our list
             if (!STOP_TYPES.some(t => t.key === type)) {
-              // Fallback mapping
               if (type.includes('meal')) type = 'lunch';
               else if (type.includes('visit')) type = 'attraction';
               else type = 'attraction';
             }
 
-            addItineraryItem({
-              dayNumber: day.day,
-              name: activity.title,
-              type: type,
-              time: activity.time,
-              notes: activity.description,
-              location: activity.location || '',
-              duration: activity.duration || '',
-              cost: activity.cost ? activity.cost.toString() : '',
-              latitude: 0,
-              longitude: 0 // Placeholder
+            // Robust Duplicate Check
+            const cleanTitle = activity.title.toLowerCase().trim();
+            const dayNum = parseInt(day.day);
+            const signature = `${dayNum}-${cleanTitle}`;
+            if (addedSignatures.has(signature)) return; // Skip self-duplicate
+
+            // 2. Check against existing itinerary items (if merging)
+            const isDuplicate = !isReplace && currentItems.some(item => {
+              if (parseInt(item.dayNumber) !== dayNum) return false;
+              const existingName = (item.name || '').toLowerCase().trim();
+              return existingName === cleanTitle || existingName.includes(cleanTitle) || cleanTitle.includes(existingName);
             });
-            addedCount++;
+
+            if (!isDuplicate) {
+              addedSignatures.add(signature);
+              addItineraryItem({
+                name: activity.title,
+                type: type,
+                dayNumber: dayNum,
+                time: activity.time,
+                notes: activity.description,
+                location: activity.location,
+                duration: activity.duration,
+                cost: activity.cost || '',
+                latitude: 0,
+                longitude: 0
+              });
+              addedCount++;
+            }
           });
         });
 
@@ -308,61 +398,6 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header with AI Button */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-        <View>
-          <Text style={styles.headerTitle}>Itinerary</Text>
-          <Text style={styles.headerSubtitle}>
-            {tripInfo.destination || 'Your Trip'} • {tripDays.length} Days
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '15', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: colors.primary + '30' }}
-          onPress={() => setAiModalVisible(true)}
-        >
-          <Icon name="sparkle" size={18} color={colors.primary} />
-          <Text style={{ marginLeft: 6, color: colors.primary, fontWeight: '700', fontSize: 13 }}>AI Plan</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Trip Summary Card */}
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryItem}>
-            <View style={{ marginRight: 8 }}><Icon name="calendar" size={20} color={colors.textMuted} /></View>
-            <View>
-              <Text style={styles.summaryLabel}>Duration</Text>
-              <Text style={styles.summaryValue}>{tripDays.length} Days</Text>
-            </View>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryItem}>
-            <View style={{ marginRight: 8 }}><Icon name="group" size={20} color={colors.textMuted} /></View>
-            <View>
-              <Text style={styles.summaryLabel}>Travelers</Text>
-              <Text style={styles.summaryValue}>{participantCount} {participantCount === 1 ? 'Person' : 'People'}</Text>
-            </View>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryItem}>
-            <View style={{ marginRight: 8 }}><Icon name="location" size={20} color={colors.textMuted} /></View>
-            <View>
-              <Text style={styles.summaryLabel}>Activities</Text>
-              <Text style={styles.summaryValue}>{totalStops} Planned</Text>
-            </View>
-          </View>
-        </View>
-        {tripInfo.startDate && tripInfo.endDate && (
-          <View style={styles.dateRange}>
-            <Text style={styles.dateRangeText}>
-              🛫 {typeof tripInfo.startDate === 'string' ? tripInfo.startDate : tripInfo.startDate?.toLocaleDateString()}  →  {typeof tripInfo.endDate === 'string' ? tripInfo.endDate : tripInfo.endDate?.toLocaleDateString()} 🛬
-            </Text>
-          </View>
-        )}
-      </View>
-
-
-
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -370,6 +405,58 @@ export default function MapScreen() {
         contentContainerStyle={styles.mainScrollContent}
         bounces={true}
       >
+        {/* Header with AI Button - Moved Inside ScrollView */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
+          <View>
+            <Text style={styles.headerTitle}>Itinerary</Text>
+            <Text style={styles.headerSubtitle}>
+              {tripInfo.destination || 'Your Trip'} • {tripDays.length} Days
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '15', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: colors.primary + '30' }}
+            onPress={() => setAiModalVisible(true)}
+          >
+            <Icon name="sparkle" size={18} color={colors.primary} />
+            <Text style={{ marginLeft: 6, color: colors.primary, fontWeight: '700', fontSize: 13 }}>AI Plan</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Trip Summary Card - Moved Inside ScrollView */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <View style={{ marginRight: 8 }}><Icon name="calendar" size={20} color={colors.textMuted} /></View>
+              <View>
+                <Text style={styles.summaryLabel}>Duration</Text>
+                <Text style={styles.summaryValue}>{tripDays.length} Days</Text>
+              </View>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <View style={{ marginRight: 8 }}><Icon name="group" size={20} color={colors.textMuted} /></View>
+              <View>
+                <Text style={styles.summaryLabel}>Travelers</Text>
+                <Text style={styles.summaryValue}>{participantCount} {participantCount === 1 ? 'Person' : 'People'}</Text>
+              </View>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <View style={{ marginRight: 8 }}><Icon name="location" size={20} color={colors.textMuted} /></View>
+              <View>
+                <Text style={styles.summaryLabel}>Activities</Text>
+                <Text style={styles.summaryValue}>{totalStops} Planned</Text>
+              </View>
+            </View>
+          </View>
+          {tripInfo.startDate && tripInfo.endDate && (
+            <View style={styles.dateRange}>
+              <Text style={styles.dateRangeText}>
+                🛫 {typeof tripInfo.startDate === 'string' ? tripInfo.startDate : tripInfo.startDate?.toLocaleDateString()}  →  {typeof tripInfo.endDate === 'string' ? tripInfo.endDate : tripInfo.endDate?.toLocaleDateString()} 🛬
+              </Text>
+            </View>
+          )}
+        </View>
         {/* Empty Hero */}
         {totalStops === 0 && (
           <View style={styles.emptyHero}>
@@ -475,9 +562,14 @@ export default function MapScreen() {
                                       {stop.duration && <Text style={styles.stopDuration}>⏱️ {stop.duration}</Text>}
                                     </View>
                                   </View>
-                                  <TouchableOpacity style={styles.stopDeleteBtn} onPress={() => deleteItineraryItem(stop.id)}>
-                                    <Text style={styles.stopDeleteIcon}>×</Text>
-                                  </TouchableOpacity>
+                                  <View style={styles.stopActions}>
+                                    <TouchableOpacity style={styles.stopEditBtn} onPress={() => openEditModal(stop)}>
+                                      <Icon name="edit" size={16} color={colors.textMuted} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.stopDeleteBtn, { marginLeft: 12 }]} onPress={() => deleteItineraryItem(stop.id)}>
+                                      <Text style={styles.stopDeleteIcon}>×</Text>
+                                    </TouchableOpacity>
+                                  </View>
                                 </View>
 
                                 {stop.location && (
@@ -521,7 +613,7 @@ export default function MapScreen() {
 
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderInfo}>
-                <Text style={styles.modalTitle}>Add to Itinerary</Text>
+                <Text style={styles.modalTitle}>{isEditing ? 'Edit Activity' : 'Add to Itinerary'}</Text>
                 {selectedDay && (
                   <View style={styles.modalDayBadge}>
                     <Text style={styles.modalDayText}>Day {selectedDay.dayNumber}</Text>
@@ -635,9 +727,6 @@ export default function MapScreen() {
               {/* 1. Trip Timings */}
               <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Trip Timings</Text>
               <View style={{ marginBottom: 20, backgroundColor: colors.cardLight, padding: 16, borderRadius: 16 }}>
-                <Text style={{ color: colors.textMuted, fontSize: 13, marginBottom: 12, fontStyle: 'italic' }}>
-                  Exclude start and end travel time from the itinerary generation.
-                </Text>
 
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                   <View style={{ flex: 1 }}>
@@ -807,8 +896,10 @@ export default function MapScreen() {
         type={alertConfig.type}
         onConfirm={alertConfig.onConfirm}
         onCancel={alertConfig.onCancel}
+        onNeutral={alertConfig.onNeutral}
         confirmText={alertConfig.confirmText}
         cancelText={alertConfig.cancelText}
+        neutralText={alertConfig.neutralText}
       />
     </SafeAreaView>
   );
@@ -921,6 +1012,8 @@ const createStyles = (colors) => StyleSheet.create({
   stopTypeBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   stopTypeBadgeText: { fontSize: 10, fontWeight: '600' },
   stopDuration: { color: colors.textMuted, fontSize: 10 },
+  stopActions: { flexDirection: 'row', alignItems: 'center', position: 'absolute', top: 4, right: 4 },
+  stopEditBtn: { padding: 4 },
   stopDeleteBtn: { padding: 4 },
   stopDeleteIcon: { color: colors.textMuted, fontSize: 18 },
   stopDetailRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },

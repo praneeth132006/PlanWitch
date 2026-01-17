@@ -87,6 +87,97 @@ export default function FoodChecklistScreen() {
     };
 
     // Derived helpers for UI, filtering the global persisted list by place
+    const handleGenerateSuggestions = async () => {
+        if (places.length === 0) {
+            showAlert('No Places', 'Add destinations to your trip first.', 'warning');
+            return;
+        }
+
+        // Check if items exist
+        if (foodItems.length > 0) {
+            setAiModalVisible(false);
+
+            showAlert('Existing Items Found', 'You already have items in your food list. Do you want to replace them completely or add new suggestions?', 'info', {
+                onConfirm: () => {
+                    // Replace
+                    executeAiFoodGeneration(true);
+                },
+                onCancel: () => hideAlert(), // Cancel button
+                onNeutral: () => {
+                    // Merge
+                    executeAiFoodGeneration(false);
+                },
+                confirmText: 'Replace All',
+                neutralText: 'Add / Merge',
+                cancelText: 'Cancel',
+            });
+        } else {
+            executeAiFoodGeneration(true);
+        }
+    };
+
+    const executeAiFoodGeneration = async (isReplace) => {
+        setAiModalVisible(false);
+        setIsAiGenerating(true); // Use isAiGenerating
+
+        try {
+            const stops = tripInfo.stops || [];
+            const stopNames = stops.map(s => typeof s === 'object' ? (s.name || s.formatted_address || 'Stop') : s);
+            const uniqueLocations = [...new Set([tripInfo.destination, ...stopNames])].filter(Boolean);
+
+            const result = await generateFoodSuggestions( // Changed to generateFoodSuggestions
+                uniqueLocations,
+                aiPreferences.dietary || 'Any',
+                aiPreferences.spiciness || 'Medium'
+            );
+
+            if (result.success && result.suggestions) {
+                let addedCount = 0;
+
+                // If replacing, first delete all existing items
+                if (isReplace) {
+                    // Create a copy of IDs to avoid issues with modifying array during iteration
+                    const currentFoodItemIds = foodItems.map(item => item.id);
+                    for (const id of currentFoodItemIds) {
+                        await deleteFoodItem(id);
+                    }
+                }
+
+                for (const item of result.suggestions) {
+                    // Find matching place in our list (relaxed match)
+                    const targetPlace = places.find(p => p.toLowerCase().includes(item.location.toLowerCase()) || item.location.toLowerCase().includes(p.toLowerCase()) ||
+                        p.split(' ').some(word => item.location.toLowerCase().includes(word)) ||
+                        item.location.split(' ').some(word => p.toLowerCase().includes(word))
+                    ) || places[0]; // Fallback to first place if no match
+
+                    // Basic duplicate check for Merge (only if not replacing)
+                    const exists = !isReplace && foodItems.some(existing =>
+                        existing.place === targetPlace &&
+                        existing.name.toLowerCase() === item.name.toLowerCase()
+                    );
+
+                    if (!exists) {
+                        // Normalize type to proper case: 'veg' -> 'Veg', 'non-veg' -> 'Non-Veg'
+                        let normalizedType = item.type;
+                        if (typeof item.type === 'string') {
+                            normalizedType = item.type.toLowerCase().includes('non') ? 'Non-Veg' : 'Veg';
+                        }
+                        await addFoodItem(targetPlace, item.name, normalizedType);
+                        addedCount++;
+                    }
+                }
+                showAlert('Success', `${addedCount} items added to your checklist!`, 'success');
+            } else {
+                showAlert('AI Error', 'Could not generate recommendations properly.', 'error');
+            }
+        } catch (error) {
+            showAlert('AI Error', error.message || 'Failed to connect to AI.', 'error');
+        } finally {
+            setIsAiGenerating(false);
+        }
+    };
+
+    // Derived helpers for UI, filtering the global persisted list by place
     const getPlaceItems = (place) => {
         return foodItems.filter(item => item.place === place);
     };
@@ -99,27 +190,8 @@ export default function FoodChecklistScreen() {
         };
     };
 
-    const handleAiSuggest = async () => {
-        if (places.length === 0) {
-            showAlert('No Places', 'Add destinations to your trip first.', 'warning');
-            return;
-        }
-
-        setIsAiGenerating(true);
-        try {
-            const res = await generateFoodRecommendations(places);
-            if (res.success && res.recommendations) {
-                setAiSuggestions(res.recommendations);
-                setAiModalVisible(true);
-            } else {
-                showAlert('AI Error', 'Could not generate recommendations properly.', 'error');
-            }
-        } catch (error) {
-            showAlert('AI Error', error.message || 'Failed to connect to AI.', 'error');
-        } finally {
-            setIsAiGenerating(false);
-        }
-    };
+    // handleAiSuggest is replaced by handleGenerateSuggestions
+    // The previous handleAiSuggest logic is now part of executeAiFoodGeneration
 
     const handleAddAiItem = async (placeName, itemName, itemType) => {
         // Find matching place in our list (relaxed match)
@@ -178,17 +250,17 @@ export default function FoodChecklistScreen() {
 
             <TouchableOpacity
                 style={[styles.aiButton, isAiGenerating && { opacity: 0.7 }]}
-                onPress={handleAiSuggest}
+                onPress={handleGenerateSuggestions} // Updated to new handler
                 disabled={isAiGenerating}
             >
                 {isAiGenerating ? (
-                    <ActivityIndicator size="small" color="#fff" />
+                    <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
                 ) : (
-                    <>
-                        <Icon name="sparkles" size={16} color="#fff" style={{ marginRight: 6 }} />
-                        <Text style={styles.aiButtonText}>AI Suggest Food</Text>
-                    </>
+                    <Icon name="sparkles" size={18} color="#fff" style={{ marginRight: 8 }} />
                 )}
+                <Text style={styles.aiButtonText}>
+                    {isAiGenerating ? 'Generating...' : 'AI Suggestions'}
+                </Text>
             </TouchableOpacity>
 
             <ScrollView
