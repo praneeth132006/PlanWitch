@@ -5,7 +5,7 @@ const distPath = path.join(__dirname, '..', 'dist');
 const indexPath = path.join(distPath, 'index.html');
 const manifestSrc = path.join(__dirname, '..', 'web', 'manifest.json');
 const manifestDest = path.join(distPath, 'manifest.json');
-const iconSrc = path.join(__dirname, '..', 'assets/icons/mycollection/png/icon_1024.png');
+const iconSrc = path.join(__dirname, '..', 'assets/icons/mycollection/png/app_icon.png');
 const iconDest = path.join(distPath, 'icon.png');
 
 // 1. Copy Manifest

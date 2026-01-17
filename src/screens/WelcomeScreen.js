@@ -1019,7 +1019,7 @@ const createStyles = (colors) => StyleSheet.create({
 
   // Features Section
   featuresSection: {
-    marginTop: 40,
+    marginTop: 20,
     paddingHorizontal: 20,
     backgroundColor: colors.bg,
   },
@@ -1034,7 +1034,7 @@ const createStyles = (colors) => StyleSheet.create({
 
   // Why Section
   whySection: {
-    marginTop: 30,
+    marginTop: 20,
     paddingHorizontal: 20,
     backgroundColor: colors.bg,
   },
@@ -1047,9 +1047,9 @@ const createStyles = (colors) => StyleSheet.create({
   // Footer
   footer: {
     alignItems: 'center',
-    marginTop: 20,
-    paddingVertical: 24,
-    paddingBottom: 40,
+    marginTop: 10,
+    paddingVertical: 20,
+    paddingBottom: 20,
     backgroundColor: colors.bg,
   },
   footerLogo: { fontSize: 32 },
