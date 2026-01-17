@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTravelContext } from '../context/TravelContext';
 import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
+import PremiumButton from '../components/PremiumButton';
 import { generateBudgetPlan } from '../services/aiService';
 import { CustomAlert } from '../components/CustomAlert';
 
@@ -399,20 +400,20 @@ export default function BudgetScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Icon name="budget" size={28} color={colors.text} style={{ marginRight: 8 }} />
-          <View>
-            <Text style={styles.headerTitle}>Budget Planner</Text>
-            <Text style={styles.headerSubtitle}>
-              {tripInfo.destination || 'Your Trip'}
-            </Text>
-          </View>
+          <Icon name="budget" size={24} color={colors.text} style={{ marginRight: 8 }} />
+          <Text style={styles.headerTitle}>Budget Planner</Text>
         </View>
-        <TouchableOpacity style={styles.aiBtn} onPress={startAiPlan}>
-          <Icon name="sparkles" size={16} color="#fff" style={{ marginRight: 6 }} />
-          <Text style={styles.aiBtnText}>AI Plan</Text>
-        </TouchableOpacity>
+        <PremiumButton
+          title={isGenerating ? "Planning..." : "AI Suggestions"}
+          onPress={startAiPlan}
+          variant="gradient"
+          size="small"
+          icon="sparkles"
+          loading={isGenerating}
+          disabled={isGenerating}
+        />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -768,7 +769,7 @@ const createStyles = (colors) => StyleSheet.create({
   scrollContent: { padding: 20 },
 
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.text },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: colors.text },
   headerSubtitle: { fontSize: 14, color: colors.textMuted, fontWeight: '500' },
 
   // AI Button

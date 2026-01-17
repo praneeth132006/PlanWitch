@@ -226,23 +226,20 @@ export default function FoodChecklistScreen() {
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Food Checklist</Text>
-                <Text style={styles.headerSubtitle}>
-                    {typeof tripInfo?.destination === 'string' ? tripInfo.destination : 'Your Trip'} • {places.length} Places
-                </Text>
+            <View style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Icon name="food" size={24} color={colors.text} style={{ marginRight: 8 }} />
+                    <Text style={styles.headerTitle}>Food Checklist</Text>
+                </View>
+                <PremiumButton
+                    title={isAiGenerating ? 'Generating...' : 'AI Suggestions'}
+                    onPress={handleGenerateSuggestions}
+                    variant="gradient"
+                    size="small"
+                    loading={isAiGenerating}
+                    disabled={isAiGenerating}
+                />
             </View>
-
-            <PremiumButton
-                title={isAiGenerating ? 'Generating...' : 'AI Suggestions'}
-                onPress={handleGenerateSuggestions}
-                variant="gradient"
-                size="medium"
-                icon="bulb"
-                loading={isAiGenerating}
-                disabled={isAiGenerating}
-                style={{ marginTop: 12, marginHorizontal: 16 }}
-            />
 
             <ScrollView
                 style={styles.mainScroll}
@@ -524,13 +521,13 @@ const createStyles = (colors) => StyleSheet.create({
     },
     header: {
         paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 8
+        paddingTop: 10,
+        paddingBottom: 10
     },
     headerTitle: {
         color: colors.text,
-        fontSize: 28,
-        fontWeight: 'bold'
+        fontSize: 24,
+        fontWeight: '800'
     },
     headerSubtitle: {
         color: colors.primary,

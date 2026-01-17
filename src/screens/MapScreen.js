@@ -12,6 +12,7 @@ import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
 import { generateTripItinerary } from '../services/aiService';
 import DatePicker12 from '../components/ui/DatePicker12';
+import PremiumButton from '../components/PremiumButton';
 
 const { width } = Dimensions.get('window');
 
@@ -398,6 +399,23 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Fixed Header */}
+      {/* Fixed Header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10, backgroundColor: colors.bg, zIndex: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Icon name="itinerary" size={24} color={colors.text} style={{ marginRight: 8 }} />
+          <Text style={styles.headerTitle}>Itinerary</Text>
+        </View>
+        <PremiumButton
+          title={isAiGenerating ? 'Generating...' : 'AI Suggestions'}
+          onPress={() => setAiModalVisible(true)}
+          variant="gradient"
+          size="small"
+          icon="sparkles"
+          loading={isAiGenerating}
+          disabled={isAiGenerating}
+        />
+      </View>
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -405,30 +423,8 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
         contentContainerStyle={styles.mainScrollContent}
         bounces={true}
       >
-        {/* Header with AI Button - Moved Inside ScrollView */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-          <View>
-            <Text style={styles.headerTitle}>Itinerary</Text>
-            <Text style={styles.headerSubtitle}>
-              {tripInfo.destination || 'Your Trip'} • {tripDays.length} Days
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity
-              style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.primaryBorder }}
-              onPress={onBackToHome}
-            >
-              <Icon name="settings" size={20} color={colors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary + '15', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: colors.primary + '30' }}
-              onPress={() => setAiModalVisible(true)}
-            >
-              <Icon name="sparkle" size={18} color={colors.primary} />
-              <Text style={{ marginLeft: 6, color: colors.primary, fontWeight: '700', fontSize: 13 }}>AI Plan</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+
+
 
         {/* Trip Summary Card - Moved Inside ScrollView */}
         <View style={styles.summaryCard}>
@@ -921,7 +917,7 @@ const createStyles = (colors) => StyleSheet.create({
 
   // Header
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  headerTitle: { color: colors.text, fontSize: 28, fontWeight: 'bold' },
+  headerTitle: { color: colors.text, fontSize: 24, fontWeight: '800' },
   headerSubtitle: { color: colors.primary, fontSize: 14, marginTop: 4 },
 
   // Summary Card
@@ -971,16 +967,16 @@ const createStyles = (colors) => StyleSheet.create({
   tipText: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
 
   // Timeline
-  timeline: { paddingHorizontal: 12 },
-  daySection: { marginBottom: 8 },
+  timeline: { paddingHorizontal: 16, marginTop: 10 },
+  daySection: { marginBottom: 24 },
   dayCard: { flexDirection: 'row' },
   dayCardLeft: { alignItems: 'center', width: 30 },
   dayBadge: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.card, borderWidth: 2, borderColor: colors.primaryBorder, alignItems: 'center', justifyContent: 'center' },
   dayBadgeActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   dayBadgeText: { color: colors.text, fontSize: 12, fontWeight: 'bold' },
   dayBadgeTextActive: { color: colors.bg },
-  dayConnector: { width: 2, flex: 1, backgroundColor: colors.primaryBorder, marginVertical: 4 },
-  dayCardContent: { flex: 1, marginLeft: 12, paddingBottom: 16 },
+  dayConnector: { width: 2, flex: 1, backgroundColor: colors.primaryBorder, marginVertical: 8 },
+  dayCardContent: { flex: 1, marginLeft: 16, paddingBottom: 8 },
   dayCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   dayCardTitle: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
   dayCardDate: { color: colors.primary, fontSize: 12, marginTop: 2 },
@@ -1020,7 +1016,7 @@ const createStyles = (colors) => StyleSheet.create({
   stopTypeBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   stopTypeBadgeText: { fontSize: 10, fontWeight: '600' },
   stopDuration: { color: colors.textMuted, fontSize: 10 },
-  stopActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stopActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   stopEditBtn: { padding: 6, backgroundColor: colors.primary + '15', borderRadius: 6, borderWidth: 1, borderColor: colors.primary + '30' },
   stopDeleteBtn: { padding: 6, backgroundColor: '#EF444415', borderRadius: 6, borderWidth: 1, borderColor: '#EF444430' },
   stopDeleteIcon: { color: '#EF4444', fontSize: 16 },

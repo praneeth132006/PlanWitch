@@ -423,3 +423,32 @@ export const generateFoodRecommendations = async (places, preferences) => {
     }
 };
 
+export const generateDestinationInfo = async (destination) => {
+    if (!AI_CONFIG.geminiKey) {
+        return {
+            success: true,
+            info: `Get ready for an unforgettable journey to ${destination}. You're all set to explore amazing places and make memories that last a lifetime!`
+        };
+    }
+
+    const prompt = `
+    Write a short, exciting, and personalized 2-sentence description for a trip to ${destination}.
+    Focus on the vibe, culture, and what makes it special.
+    Do not use generic phrases like "hidden gems".
+    Make it sound vibrant and premium.
+
+    Return ONLY this JSON:
+    {
+        "success": true,
+        "info": "Your description here."
+    }
+    `;
+
+    try {
+        return await callGemini(prompt, true);
+    } catch (error) {
+        console.error("AI Destination Info Error:", error);
+        return { success: false, error: error.message };
+    }
+};
+

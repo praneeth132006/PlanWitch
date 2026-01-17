@@ -227,25 +227,20 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Icon name="packing" size={24} color={colors.text} style={{ marginRight: 8 }} />
-            <Text style={styles.headerTitle}>Packing List</Text>
-          </View>
+      <View style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Icon name="packing" size={24} color={colors.text} style={{ marginRight: 8 }} />
+          <Text style={styles.headerTitle}>Packing List</Text>
         </View>
+        <PremiumButton
+          title={isGenerating ? 'Thinking...' : 'AI Suggestions'}
+          onPress={handleAiSuggest}
+          variant="gradient"
+          size="small"
+          loading={isGenerating}
+          disabled={isGenerating}
+        />
       </View>
-
-      <PremiumButton
-        title={isGenerating ? 'Thinking...' : 'AI Suggest'}
-        onPress={handleAiSuggest}
-        variant="gradient"
-        size="medium"
-        icon="bulb"
-        loading={isGenerating}
-        disabled={isGenerating}
-        style={{ marginTop: 8, marginHorizontal: 20, marginBottom: 12 }}
-      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Progress Card */}
@@ -612,8 +607,8 @@ const createStyles = (colors) => StyleSheet.create({
   scrollContent: { paddingBottom: 20 },
 
   // Header
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
-  headerTitle: { color: colors.text, fontSize: 24, fontWeight: 'bold' },
+  header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 },
+  headerTitle: { color: colors.text, fontSize: 24, fontWeight: '800' },
   headerSubtitle: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
 
   // Progress Card

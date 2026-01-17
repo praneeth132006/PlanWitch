@@ -99,8 +99,8 @@ const PremiumButton = ({
                     shadowRadius: 12,
                     elevation: 8,
                 },
-                text: { color: '#FFFFFF', fontWeight: 'bold' },
-                iconColor: '#FFFFFF',
+                text: { color: '#000000', fontWeight: 'bold' },
+                iconColor: '#000000',
             },
         };
         return variants[variant] || variants.primary;

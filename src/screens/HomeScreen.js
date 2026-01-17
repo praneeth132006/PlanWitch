@@ -9,6 +9,7 @@ import { auth } from '../config/firebase';
 import Icon from '../components/Icon';
 import TripMap from '../components/TripMap';
 import PlacesAutocomplete from '../components/PlacesAutocomplete';
+import { generateDestinationInfo } from '../services/aiService';
 
 export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const {
@@ -90,7 +91,33 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
     };
 
     checkTripEnded();
+    checkTripEnded();
   }, [tripInfo.endDate]);
+
+  // AI Destination Info Generation
+  useEffect(() => {
+    const fetchDestinationInfo = async () => {
+      // Only generate if we have a destination and no description yet
+      if (tripInfo.destination && !tripInfo.aiDescription && !tripInfo.aiDescriptionLoading) {
+        // Mark as loading to prevent duplicate calls (using local approach or optimistic update)
+        // For simplicity, we'll rely on the effect dependency and a local ref/flag if needed, 
+        // but here we just check if it's already there. 
+        // We can't easily check 'loading' state in tripInfo without adding it, so we'll just fire it.
+        // To avoid loops, we check if it is explicitly NOT set.
+
+        try {
+          const result = await generateDestinationInfo(tripInfo.destination);
+          if (result.success && result.info) {
+            setTripInfo(prev => ({ ...prev, aiDescription: result.info }));
+          }
+        } catch (e) {
+          console.log('Error fetching AI description:', e);
+        }
+      }
+    };
+
+    fetchDestinationInfo();
+  }, [tripInfo.destination]);
 
   const packedCount = packingItems.filter(item => item.packed).length;
   const totalItems = packingItems.length;
@@ -438,8 +465,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
             </View>
 
             <Text style={styles.cardDescription} numberOfLines={3}>
-              Get ready for an unforgettable journey to {tripInfo.destination || 'your destination'}.
-              You're all set to explore {mainLocationsCount} amazing places and make memories that last a lifetime!
+              {tripInfo.aiDescription || `Get ready for an unforgettable journey to ${tripInfo.destination || 'your destination'}. You're all set to explore ${mainLocationsCount} amazing places.`}
             </Text>
 
 

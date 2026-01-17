@@ -294,12 +294,10 @@ export default function ExpenseScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>💳 Expenses</Text>
-          <Text style={styles.headerSubtitle}>
-            {isMultiUser ? `${travelers.length} Travelers • Group Trip` : 'Personal Spending'}
-          </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Icon name="expenses" size={24} color={colors.text} style={{ marginRight: 8 }} />
+          <Text style={styles.headerTitle}>Expenses</Text>
         </View>
       </View>
 
@@ -639,9 +637,7 @@ export default function ExpenseScreen() {
 const createStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.text },
-  headerSubtitle: { fontSize: 13, color: colors.textMuted },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.text },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: colors.text },
   headerSubtitle: { fontSize: 13, color: colors.textMuted },
   // addBtn removed
 
