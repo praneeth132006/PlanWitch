@@ -11,7 +11,6 @@ import Calendar from '../components/Calendar';
 import TripMap from '../components/TripMap';
 import PlacesAutocomplete from '../components/PlacesAutocomplete';
 import { generateDestinationInfo } from '../services/aiService';
-import BannerAd from '../components/BannerAd';
 
 export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const {
@@ -1033,9 +1032,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
       </Modal>
 
       {/* Banner Ad at bottom of screen if free */}
-      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
-        <BannerAd />
-      </View>
+
     </SafeAreaView >
   );
 }

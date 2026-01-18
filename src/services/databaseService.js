@@ -580,3 +580,118 @@ export const deleteAllUserData = async () => {
   await remove(ref(database, `users/${userId}`));
   console.log('All user data deleted from database');
 };
+
+// ============ REAL-TIME SUBSCRIPTIONS ============
+// These functions set up listeners that automatically sync data across all users
+
+/**
+ * Subscribe to expenses in real-time
+ * @param {string} tripId - Trip ID
+ * @param {string} ownerId - Trip owner's user ID
+ * @param {function} callback - Called with updated expenses array
+ * @returns {function} Unsubscribe function
+ */
+export const subscribeToExpenses = (tripId, ownerId, callback) => {
+  const userId = ownerId || getUserId();
+  if (!userId) return () => { };
+
+  const isCurrent = !tripId || tripId === 'current';
+  const path = isCurrent
+    ? `users/${userId}/currentTrip/expenses`
+    : `users/${userId}/trips/${tripId}/expenses`;
+
+  const dbRef = ref(database, path);
+
+  const unsubscribe = onValue(dbRef, (snapshot) => {
+    const data = snapshot.exists() ? Object.values(snapshot.val()) : [];
+    callback(data.sort((a, b) => (b.dateTimestamp || b.createdAt || 0) - (a.dateTimestamp || a.createdAt || 0)));
+  }, (error) => {
+    console.error('[DB] Expenses subscription error:', error);
+  });
+
+  return () => off(dbRef, 'value', unsubscribe);
+};
+
+/**
+ * Subscribe to budget in real-time
+ * @param {string} tripId - Trip ID
+ * @param {string} ownerId - Trip owner's user ID
+ * @param {function} callback - Called with updated budget object
+ * @returns {function} Unsubscribe function
+ */
+export const subscribeToBudget = (tripId, ownerId, callback) => {
+  const userId = ownerId || getUserId();
+  if (!userId) return () => { };
+
+  const isCurrent = !tripId || tripId === 'current';
+  const path = isCurrent
+    ? `users/${userId}/currentTrip/budget`
+    : `users/${userId}/trips/${tripId}/budget`;
+
+  const dbRef = ref(database, path);
+
+  const unsubscribe = onValue(dbRef, (snapshot) => {
+    const data = snapshot.exists() ? snapshot.val() : { total: 0, categories: {} };
+    callback(data);
+  }, (error) => {
+    console.error('[DB] Budget subscription error:', error);
+  });
+
+  return () => off(dbRef, 'value', unsubscribe);
+};
+
+/**
+ * Subscribe to itinerary in real-time
+ * @param {string} tripId - Trip ID
+ * @param {string} ownerId - Trip owner's user ID
+ * @param {function} callback - Called with updated itinerary array
+ * @returns {function} Unsubscribe function
+ */
+export const subscribeToItinerary = (tripId, ownerId, callback) => {
+  const userId = ownerId || getUserId();
+  if (!userId) return () => { };
+
+  const isCurrent = !tripId || tripId === 'current';
+  const path = isCurrent
+    ? `users/${userId}/currentTrip/itinerary`
+    : `users/${userId}/trips/${tripId}/itinerary`;
+
+  const dbRef = ref(database, path);
+
+  const unsubscribe = onValue(dbRef, (snapshot) => {
+    const data = snapshot.exists() ? Object.values(snapshot.val()) : [];
+    callback(data);
+  }, (error) => {
+    console.error('[DB] Itinerary subscription error:', error);
+  });
+
+  return () => off(dbRef, 'value', unsubscribe);
+};
+
+/**
+ * Subscribe to food items in real-time
+ * @param {string} tripId - Trip ID
+ * @param {string} ownerId - Trip owner's user ID
+ * @param {function} callback - Called with updated food items array
+ * @returns {function} Unsubscribe function
+ */
+export const subscribeToFoodItems = (tripId, ownerId, callback) => {
+  const userId = ownerId || getUserId();
+  if (!userId) return () => { };
+
+  const isCurrent = !tripId || tripId === 'current';
+  const path = isCurrent
+    ? `users/${userId}/currentTrip/foodItems`
+    : `users/${userId}/trips/${tripId}/foodItems`;
+
+  const dbRef = ref(database, path);
+
+  const unsubscribe = onValue(dbRef, (snapshot) => {
+    const data = snapshot.exists() ? Object.values(snapshot.val()) : [];
+    callback(data);
+  }, (error) => {
+    console.error('[DB] Food items subscription error:', error);
+  });
+
+  return () => off(dbRef, 'value', unsubscribe);
+};

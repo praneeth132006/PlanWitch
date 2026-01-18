@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import { generateUniqueTripCode } from '../utils/tripCodeGenerator';
 import { useAuth } from './AuthContext';
 import * as DB from '../services/databaseService';
@@ -89,6 +89,20 @@ export const TravelProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [tripOwnerId, setTripOwnerId] = useState(null);
 
+  // Ref to store real-time listener unsubscribe functions
+  const unsubscribersRef = useRef({});
+
+  // Cleanup function for real-time listeners
+  const cleanupListeners = () => {
+    Object.values(unsubscribersRef.current).forEach(unsub => {
+      if (typeof unsub === 'function') {
+        unsub();
+      }
+    });
+    unsubscribersRef.current = {};
+    console.log('[Context] Cleaned up real-time listeners');
+  };
+
   // New State for AI Personalization
   const [tripPreferences, setTripPreferences] = useState({});
   const [userPlan, setUserPlan] = useState('free'); // 'free' or 'pro'
@@ -154,6 +168,13 @@ export const TravelProvider = ({ children }) => {
       resetLocalState();
     }
   }, [isAuthenticated, user]);
+
+  // Cleanup real-time listeners on unmount
+  useEffect(() => {
+    return () => {
+      cleanupListeners();
+    };
+  }, []);
 
   // Check and auto-end ANY past trips
   const checkAndAutoEndTrips = async (tripsToCheck) => {
@@ -238,6 +259,9 @@ export const TravelProvider = ({ children }) => {
   };
 
   const resetLocalState = () => {
+    // Clean up real-time listeners
+    cleanupListeners();
+
     setTripInfoState({
       destination: '', startDate: '', endDate: '', name: '',
       participants: [], tripCode: '', tripType: '', isCompleted: false,
@@ -641,6 +665,10 @@ export const TravelProvider = ({ children }) => {
   const clearTrip = async () => {
     try {
       setIsLoading(true);
+
+      // Clean up real-time listeners
+      cleanupListeners();
+
       setTripInfoState({
         destination: '', startDate: '', endDate: '', name: '',
         participants: [], tripCode: '', tripType: '', isCompleted: false,
@@ -672,6 +700,9 @@ export const TravelProvider = ({ children }) => {
     try {
       setIsLoading(true);
 
+      // Clean up any existing real-time listeners before switching
+      cleanupListeners();
+
       // Determine owner
       const owner = trip.ownerId || user?.uid;
       setTripOwnerId(owner);
@@ -693,19 +724,48 @@ export const TravelProvider = ({ children }) => {
 
       // Load data for this trip
       if (isAuthenticated) {
-        const [savedBudget, savedExpenses, savedPacking, savedFoodItems, savedItinerary] = await Promise.all([
-          DB.getBudget(trip.id, owner),
-          DB.getExpenses(trip.id, owner),
-          DB.getPackingItems(trip.id), // Fetch ONLY my own packing items
-          DB.getFoodItems(trip.id, owner),
-          DB.getItinerary(trip.id, owner)
-        ]);
-
-        setBudgetState(savedBudget || { total: 0, categories: {} });
-        setExpenses(savedExpenses || []);
+        // Fetch packing items (per-user, not shared)
+        const savedPacking = await DB.getPackingItems(trip.id);
         setPackingItems(savedPacking || []);
-        setFoodItems(savedFoodItems || []); // Accessing the 4th element (index 3) correctly requires variable assignment above, fixing variable name in next line
-        setItinerary(savedItinerary || []);
+
+        // Set up real-time listeners for shared trip data
+        console.log('[Context] Setting up real-time listeners for trip:', trip.id);
+
+        // Subscribe to expenses - updates will sync across all users
+        unsubscribersRef.current.expenses = DB.subscribeToExpenses(
+          trip.id,
+          owner,
+          (data) => {
+            setExpenses(data || []);
+          }
+        );
+
+        // Subscribe to budget
+        unsubscribersRef.current.budget = DB.subscribeToBudget(
+          trip.id,
+          owner,
+          (data) => {
+            setBudgetState(data || { total: 0, categories: {} });
+          }
+        );
+
+        // Subscribe to itinerary
+        unsubscribersRef.current.itinerary = DB.subscribeToItinerary(
+          trip.id,
+          owner,
+          (data) => {
+            setItinerary(data || []);
+          }
+        );
+
+        // Subscribe to food items
+        unsubscribersRef.current.foodItems = DB.subscribeToFoodItems(
+          trip.id,
+          owner,
+          (data) => {
+            setFoodItems(data || []);
+          }
+        );
       }
 
       setIsLoading(false);
