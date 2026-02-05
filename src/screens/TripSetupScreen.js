@@ -880,7 +880,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                   <Icon name="profile" size={20} color={colors.textMuted} />
                 </View>
                 <TextInput
-                  style={[styles.mainInput, { outlineStyle: 'none' }]}
+                  style={[styles.mainInput, Platform.OS === 'web' && { outlineStyle: 'none' }]}
                   placeholder="Enter friend's name"
                   placeholderTextColor={colors.textMuted}
                   value={tripData.newFriendName}

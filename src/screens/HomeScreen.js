@@ -540,6 +540,12 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                 Click on the settings icons to edit the trip details.
               </Text>
             </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, justifyContent: 'center' }}>
+              <Icon name="location" size={12} color={colors.textMuted} style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 10, color: colors.textMuted, fontStyle: 'italic' }}>
+                Locations count does not include the starting and ending points.
+              </Text>
+            </View>
 
           </View>
         </Animated.View>

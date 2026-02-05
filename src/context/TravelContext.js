@@ -1156,6 +1156,8 @@ export const TravelProvider = ({ children }) => {
       toggleUserPlan,
       allTrips, setAllTrips,
       isLoading,
+      checkFeatureAccess,
+      CONSTANTS,
     }}>
       {children}
     </TravelContext.Provider>
