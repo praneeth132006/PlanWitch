@@ -149,28 +149,82 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
   const currentTotalExpenses = getTotalExpenses();
 
   // 1. Determine the Featured Trip (Dashboard)
+  // Priority: 1. Ongoing trip, 2. Nearest upcoming trip, 3. Current context tripInfo
   const featuredTrip = useMemo(() => {
-    if (!allTrips) return null;
-
-    const sortedActive = [...allTrips]
-      .filter(t => !t.isCompleted)
-      .sort((a, b) => {
-        const startA = parseDate(a.startDate);
-        const startB = parseDate(b.startDate);
-        if (startA && startB) return startA - startB;
-        return (b.createdAt || 0) - (a.createdAt || 0);
-      });
-
-    // A. Priority: If we have an active tripInfo from context
-    if (tripInfo && tripInfo.destination) {
-      // Find the same trip in our stable list to get latest data (expenses, etc)
-      const matchingTrip = sortedActive.find(t => t.id === tripInfo.id || (t.destination === tripInfo.destination && t.startDate === tripInfo.startDate));
-      // Prioritize tripInfo for the latest edits (like name changes), but backfill with matchingTrips for any missing data
-      return matchingTrip ? { ...matchingTrip, ...tripInfo } : { ...tripInfo, id: tripInfo.id || 'current', totalExpenses: getTotalExpenses() };
+    if (!allTrips || allTrips.length === 0) {
+      // No trips at all, fallback to tripInfo if available
+      if (tripInfo && tripInfo.destination) {
+        return { ...tripInfo, id: tripInfo.id || 'current', totalExpenses: getTotalExpenses() };
+      }
+      return null;
     }
 
-    // B. Fallback: Soonest upcoming trip
-    if (sortedActive.length > 0) return sortedActive[0];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const activeTrips = allTrips.filter(t => !t.isCompleted);
+
+    // Sort by start date (soonest first)
+    const sortedByDate = [...activeTrips].sort((a, b) => {
+      const startA = parseDate(a.startDate);
+      const startB = parseDate(b.startDate);
+      if (startA && startB) return startA - startB;
+      if (startA && !startB) return -1; // Trips with dates come first
+      if (!startA && startB) return 1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+
+    // A. First priority: Find any ONGOING trip (started and not ended yet)
+    const ongoingTrip = sortedByDate.find(t => {
+      const start = parseDate(t.startDate);
+      const end = parseDate(t.endDate);
+      if (!start) return false;
+      const startNorm = new Date(start);
+      startNorm.setHours(0, 0, 0, 0);
+      const endNorm = end ? new Date(end) : null;
+      if (endNorm) endNorm.setHours(23, 59, 59, 999);
+
+      return startNorm <= today && (!endNorm || endNorm >= today);
+    });
+
+    if (ongoingTrip) {
+      // Merge with tripInfo if it's the same trip (for latest edits)
+      if (tripInfo && (tripInfo.id === ongoingTrip.id || tripInfo.destination === ongoingTrip.destination)) {
+        return { ...ongoingTrip, ...tripInfo, totalExpenses: getTotalExpenses() };
+      }
+      return ongoingTrip;
+    }
+
+    // B. Second priority: Nearest UPCOMING trip (starts in the future)
+    const upcomingTrip = sortedByDate.find(t => {
+      const start = parseDate(t.startDate);
+      if (!start) return false;
+      const startNorm = new Date(start);
+      startNorm.setHours(0, 0, 0, 0);
+      return startNorm >= today;
+    });
+
+    if (upcomingTrip) {
+      // Merge with tripInfo if it's the same trip
+      if (tripInfo && (tripInfo.id === upcomingTrip.id || tripInfo.destination === upcomingTrip.destination)) {
+        return { ...upcomingTrip, ...tripInfo, totalExpenses: getTotalExpenses() };
+      }
+      return upcomingTrip;
+    }
+
+    // C. If no ongoing or upcoming, return the first sorted trip (could be past)
+    if (sortedByDate.length > 0) {
+      const firstTrip = sortedByDate[0];
+      if (tripInfo && (tripInfo.id === firstTrip.id || tripInfo.destination === firstTrip.destination)) {
+        return { ...firstTrip, ...tripInfo, totalExpenses: getTotalExpenses() };
+      }
+      return firstTrip;
+    }
+
+    // D. Last fallback: tripInfo from context
+    if (tripInfo && tripInfo.destination) {
+      return { ...tripInfo, id: tripInfo.id || 'current', totalExpenses: getTotalExpenses() };
+    }
 
     return null;
   }, [allTrips, tripInfo, getTotalExpenses]);
