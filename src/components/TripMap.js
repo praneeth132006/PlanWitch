@@ -58,6 +58,8 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                         gestureHandling: 'none',
                         keyboardShortcuts: false,
                         clickableIcons: false,
+                        mapTypeId: 'hybrid',
+                        // styles: MAP_DEFAULTS.styles, // Removed to allow natural hybrid look
                     });
 
                     bounds.current = new window.google.maps.LatLngBounds();

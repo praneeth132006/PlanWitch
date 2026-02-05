@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, ScrollView,
-  StyleSheet, Animated, Pressable, KeyboardAvoidingView, Platform, Alert, Image, Modal
+  StyleSheet, Animated, Pressable, KeyboardAvoidingView, Platform, Alert, Image, Modal, Keyboard
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -150,6 +150,8 @@ export default function TripSetupScreen({ onComplete, onBack }) {
   const STEPS = getSteps();
   const totalSteps = STEPS.length;
 
+  const [isAnimating, setIsAnimating] = useState(false);
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
@@ -164,6 +166,8 @@ export default function TripSetupScreen({ onComplete, onBack }) {
   }, [currentStep, totalSteps]);
 
   const animateStepChange = (callback) => {
+    if (isAnimating) return;
+    setIsAnimating(true);
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: -30, duration: 200, useNativeDriver: true }),
@@ -174,13 +178,16 @@ export default function TripSetupScreen({ onComplete, onBack }) {
       Animated.parallel([
         Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
         Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start();
+      ]).start(() => {
+        setIsAnimating(false);
+      });
     });
   };
 
   const { getUniqueTripCode, checkFeatureAccess } = useTravelContext();
 
   const handleNext = () => {
+    if (isAnimating) return;
     if (currentStep < STEPS.length - 1) {
       animateStepChange(() => setCurrentStep(currentStep + 1));
     } else {
@@ -189,6 +196,8 @@ export default function TripSetupScreen({ onComplete, onBack }) {
   };
 
   const handleBack = () => {
+    if (isAnimating) return;
+    Keyboard.dismiss();
     if (currentStep > 0) {
       animateStepChange(() => setCurrentStep(currentStep - 1));
     } else {
@@ -713,8 +722,8 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   {selectedType ? (
                     <>
-                      <View style={[styles.popoverIconBox, { backgroundColor: selectedType.color + '15' }]}>
-                        <Icon name={selectedType.icon} size={22} color={selectedType.color} />
+                      <View style={[styles.popoverIconBox, { backgroundColor: (selectedType.color || colors.primary) + '15' }]}>
+                        <Icon name={selectedType.icon || 'star'} size={22} color={selectedType.color || colors.primary} />
                       </View>
                       <View>
                         <Text style={styles.popoverValueMain}>{selectedType.label}</Text>
