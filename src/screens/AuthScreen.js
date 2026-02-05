@@ -134,9 +134,26 @@ export default function AuthScreen() {
   };
 
   const handleGoogleSignIn = async () => {
-    const result = await signInWithGoogle();
-    if (!result.success && !result.cancelled && result.error) {
-      Alert.alert('Google Sign In Failed', result.error);
+    const result = await signInWithGoogle(!isLogin);
+    if (!result.success && !result.cancelled) {
+      if (result.emailExists) {
+        // User already exists - show message and switch to login form
+        Alert.alert(
+          'Account Already Exists',
+          'This email is already registered. Please use the Sign In option to log in.',
+          [
+            {
+              text: 'Go to Sign In',
+              onPress: () => {
+                setIsLogin(true);
+                setFormData({ ...formData, name: '', password: '', confirmPassword: '' });
+              },
+            },
+          ]
+        );
+      } else if (result.error) {
+        Alert.alert('Google Sign In Failed', result.error);
+      }
     }
   };
 

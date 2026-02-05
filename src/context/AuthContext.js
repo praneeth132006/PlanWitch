@@ -15,6 +15,7 @@ import {
   signInWithPopup,
   getRedirectResult,
   fetchSignInMethodsForEmail,
+  getAdditionalUserInfo,
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import * as DB from '../services/databaseService';
@@ -162,11 +163,24 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (isSignUp = false) => {
     try {
       setLoading(true);
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
+      const additionalUserInfo = getAdditionalUserInfo(result);
+
+      // If user is trying to sign up but already had an account
+      if (isSignUp && !additionalUserInfo?.isNewUser) {
+        await firebaseSignOut(auth);
+        setUser(null);
+        setLoading(false);
+        return {
+          success: false,
+          error: 'This account already exists. Please use Sign In instead.',
+          emailExists: true
+        };
+      }
 
       // Mirror user profile in database for persistence
       if (result.user) {
