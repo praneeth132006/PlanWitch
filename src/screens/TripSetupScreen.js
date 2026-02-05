@@ -153,10 +153,18 @@ export default function TripSetupScreen({ onComplete, onBack }) {
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
+    // Always start entry animation from "right" (+30)
+    slideAnim.setValue(30);
+    // Fade starts from 0 if coming from a change (animateStepChange set it to 0),
+    // or if mounting (initial state is 0).
+
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
-    ]).start();
+    ]).start(() => {
+      // Unlock navigation after entry animation finishes
+      if (isMounted.current) setIsAnimating(false);
+    });
 
     Animated.timing(progressAnim, {
       toValue: totalSteps > 0 ? (currentStep + 1) / totalSteps : 0,
@@ -174,13 +182,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
     ]).start(() => {
       if (!isMounted.current) return;
       callback();
-      slideAnim.setValue(30);
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start(() => {
-        setIsAnimating(false);
-      });
+      // State change triggers re-render -> useEffect runs -> Animates IN -> Unlocks
     });
   };
 
@@ -493,6 +495,33 @@ export default function TripSetupScreen({ onComplete, onBack }) {
     }
   };
 
+  // Helper for safe date rendering
+  const renderDateRange = () => {
+    try {
+      if (!tripData.startDate || !tripData.endDate) return 'Select Trip Duration';
+
+      const getFormatted = (date) => {
+        if (!date) return '';
+        if (typeof date === 'string') return date;
+        if (date instanceof Date && !isNaN(date)) return date.toLocaleDateString();
+        return '';
+      };
+
+      const start = getFormatted(tripData.startDate);
+      const end = getFormatted(tripData.endDate);
+
+      if (!start || !end) return 'Select Trip Duration';
+      return `${start} → ${end}`;
+    } catch (e) {
+      return 'Select Trip Duration';
+    }
+  };
+
+  const inputStyle = {
+    ...styles.mainInput,
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : {})
+  };
+
   const renderStepContent = () => {
     const step = STEPS[currentStep];
     if (!step) return null; // Safety guard
@@ -548,10 +577,10 @@ export default function TripSetupScreen({ onComplete, onBack }) {
               />
             </View>
 
-            {/* 2. Content (Fixed Bottom 50%) - Non-overlapping for cleaner split */}
+            {/* 2. Content (Fixed Bottom 50%) */}
             <View style={{
               position: 'absolute',
-              top: '47%', // Slight overlap for rounded corners
+              top: '47%',
               left: 0,
               right: 0,
               bottom: 0,
@@ -603,11 +632,11 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                       <Icon name="edit" size={16} color={colors.primary} />
                     </View>
                     <TextInput
-                      style={[styles.mainInput, { outlineStyle: 'none' }]}
+                      style={inputStyle}
                       placeholder="e.g. Summer Vacation 2024"
                       placeholderTextColor={colors.textMuted}
                       value={tripData.name}
-                      maxLength={20} // Restricted length
+                      maxLength={20}
                       onChangeText={(text) => setTripData(prev => ({ ...prev, name: text }))}
                     />
                   </View>
@@ -796,9 +825,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                 <Icon name="calendar" size={24} color={colors.primary} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={[styles.dateInputHtml, !tripData.startDate && { color: colors.textMuted }]}>
-                    {tripData.startDate && tripData.endDate
-                      ? `${typeof tripData.startDate === 'string' ? tripData.startDate : tripData.startDate.toLocaleDateString()} → ${typeof tripData.endDate === 'string' ? tripData.endDate : tripData.endDate.toLocaleDateString()}`
-                      : 'Select Trip Duration'}
+                    {renderDateRange()}
                   </Text>
                   {tripData.startDate && tripData.endDate && (
                     <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '600', marginTop: 2 }}>

@@ -48,6 +48,7 @@ const HomeMap = ({ destination, markers = [], style }) => {
                     streetViewControl: false,
                     fullscreenControl: false,
                     gestureHandling: 'cooperative', // Better for mobile/web scrolling
+                    mapId: '330d727194d831d02de90356',
                 });
                 setIsLoaded(true);
             }
