@@ -75,13 +75,23 @@ export function AuthProvider({ children }) {
     try {
       setLoading(true);
       const result = await signInWithEmailAndPassword(auth, email, password);
+
+      // Immediately set user state so app transitions to MainNavigator
+      setUser({
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName || '',
+        emailVerified: result.user.emailVerified,
+        photoURL: result.user.photoURL || '',
+      });
+
       console.log('signIn success:', result.user.email);
       return { success: true, user: result.user };
     } catch (error) {
       console.error('signIn error:', error.code);
       let msg = 'Failed to sign in';
       if (error.code === 'auth/invalid-credential') msg = 'Invalid email or password';
-      if (error.code === 'auth/user-not-found') msg = 'No account found';
+      if (error.code === 'auth/user-not-found') msg = 'No account found. Please sign up first.';
       if (error.code === 'auth/wrong-password') msg = 'Incorrect password';
       return { success: false, error: msg };
     } finally {
@@ -96,12 +106,29 @@ export function AuthProvider({ children }) {
       if (displayName) {
         await updateProfile(result.user, { displayName });
       }
+
+      // Immediately set user state so app transitions to MainNavigator
+      setUser({
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: displayName || result.user.displayName || '',
+        emailVerified: result.user.emailVerified,
+        photoURL: result.user.photoURL || '',
+      });
+
+      // Save user profile to database for persistence
+      await DB.saveUserProfile({
+        displayName: displayName || '',
+        photoURL: '',
+        email: result.user.email || '',
+      });
+
       console.log('signUp success:', result.user.email);
       return { success: true, user: result.user };
     } catch (error) {
       console.error('signUp error:', error.code);
       let msg = 'Failed to create account';
-      if (error.code === 'auth/email-already-in-use') msg = 'Email already in use';
+      if (error.code === 'auth/email-already-in-use') msg = 'This email is already registered. Please sign in instead.';
       if (error.code === 'auth/weak-password') msg = 'Password too weak';
       return { success: false, error: msg };
     } finally {
