@@ -1246,8 +1246,8 @@ const createStyles = (colors) => StyleSheet.create({
   modalCloseBtnText: { color: colors.textMuted, fontSize: 22 },
 
   // Settings List
-  settingsList: { gap: 12 },
-  settingsItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, borderRadius: 14, padding: 14 },
+  settingsList: { gap: 16 },
+  settingsItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, borderRadius: 16, padding: 18 },
   settingsItemDanger: { backgroundColor: '#EF444410' },
   settingsIconBg: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   settingsIcon: { fontSize: 20 },

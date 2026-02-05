@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useRef 
 import { generateUniqueTripCode } from '../utils/tripCodeGenerator';
 import { useAuth } from './AuthContext';
 import * as DB from '../services/databaseService';
+// DB imports include softDeleteTrip now
 import { auth } from '../config/firebase';
 
 const DEFAULT_CATEGORIES = [
@@ -161,8 +162,8 @@ export const TravelProvider = ({ children }) => {
   // Load data from Firebase when user logs in
   useEffect(() => {
     if (isAuthenticated && user) {
-      loadUserData().then((trips) => {
-        checkAndAutoEndTrips(trips);
+      loadUserData().then(({ trips, currentTrip }) => {
+        checkAndAutoEndTrips(trips, currentTrip);
       });
     } else {
       resetLocalState();
@@ -177,7 +178,7 @@ export const TravelProvider = ({ children }) => {
   }, []);
 
   // Check and auto-end ANY past trips
-  const checkAndAutoEndTrips = async (tripsToCheck) => {
+  const checkAndAutoEndTrips = async (tripsToCheck, activeTrip) => {
     const list = tripsToCheck || allTrips;
     if (!list || list.length === 0) return;
 
@@ -229,28 +230,44 @@ export const TravelProvider = ({ children }) => {
           hasUpdates = true;
           historyToAdd.push(trip);
 
-          // If this is the ACTIVE trip, we need to end it properly to clear state
-          if (tripInfo && trip.id === tripInfo.id) {
-            console.log('[Context] The expired trip is currently active. Ending it.');
-            await endTrip();
-            // endTrip handles DB updates for itself, but we should continue loop if there are others
-          } else if (isAuthenticated) {
-            // Otherwise, just update the DB for this background trip
+          // Save to DB
+          if (isAuthenticated) {
             await DB.saveTrip(trip);
             await DB.saveToHistory(trip);
+          }
+
+          // If this was the ACTIVE trip, clear it from DB and State
+          if (activeTrip && trip.id === activeTrip.id) {
+            console.log('[Context] The expired trip is currently active. Clearing it.');
+            if (isAuthenticated) {
+              await DB.clearCurrentTripData();
+            }
+            // Clear local active state
+            setTripInfoState({
+              destination: '', startDate: '', endDate: '', name: '',
+              participants: [], tripCode: '', tripType: '', isCompleted: false,
+            });
+            // We don't need to clear other states (expenses etc) drastically because 
+            // the user might want to view them in history, but for "Active" context, we reset.
+            setBudgetState({ total: 0, categories: {} });
+            setExpenses([]);
+            setItinerary([]);
+            setTripOwnerId(null);
           }
         }
       }
 
-      if (hasUpdates && isAuthenticated) {
-        // Refresh lists
-        const [trips, history] = await Promise.all([DB.getTrips(), DB.getTripHistory()]);
-        setAllTrips(trips);
-        setTripHistory(history.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0)));
-      } else if (hasUpdates) {
-        // Local only update
+      if (hasUpdates) {
+        // Update lists
         setAllTrips(updatedTrips);
-        setTripHistory(prev => [...historyToAdd, ...prev]);
+        // Add new history items to state
+        if (isAuthenticated) {
+          // Re-fetch to be safe or just prepend
+          const history = await DB.getTripHistory();
+          setTripHistory(history.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0)));
+        } else {
+          setTripHistory(prev => [...historyToAdd, ...prev]);
+        }
       }
 
     } catch (error) {
@@ -365,10 +382,10 @@ export const TravelProvider = ({ children }) => {
       setTripHistory(savedHistory.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0)));
 
       console.log('User data loaded successfully');
-      return savedTrips; // Return for immediate processing
+      return { trips: savedTrips, currentTrip }; // Return both for processing
     } catch (error) {
       console.error('Error loading user data:', error);
-      return [];
+      return { trips: [], currentTrip: null };
     } finally {
       setIsLoading(false);
     }
@@ -938,13 +955,25 @@ export const TravelProvider = ({ children }) => {
   };
 
   const deleteTripFromHistory = async (id) => {
+    // Remove from local history list
     setTripHistory(prev => prev.filter(trip => trip.id !== id));
+    // Also remove from allTrips if it's there (to prevent it showing up as active)
+    setAllTrips(prev => prev.filter(trip => trip.id !== id));
+
+    // CRITICAL: If the deleted trip is the CURRENTLY active trip, clear it immediately
+    // to prevent it from showing up in the Dashboard/Welcome Screen.
+    if (tripInfo && tripInfo.id === id) {
+      console.log('[Context] Deleting currently active trip, clearing state...');
+      await clearTrip();
+    }
+
     if (isAuthenticated) {
       try {
-        await DB.deleteTripFromHistory(id);
+        // Use soft delete to preserve trip code but remove data
+        await DB.softDeleteTrip(id);
         return { success: true };
       } catch (error) {
-        console.error('Error deleting trip from history:', error);
+        console.error('Error soft deleting trip:', error);
         return { success: false, error: error.message };
       }
     }

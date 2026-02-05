@@ -100,6 +100,43 @@ export const deleteTrip = async (tripId) => {
   await remove(tripRef);
 };
 
+export const softDeleteTrip = async (tripId) => {
+  const userId = getUserId();
+  if (!userId) throw new Error('User not authenticated');
+
+  // 1. Fetch trip data to preserve tripCode
+  const tripRef = ref(database, `users/${userId}/trips/${tripId}`);
+  const snapshot = await get(tripRef);
+
+  if (snapshot.exists()) {
+    const tripData = snapshot.val();
+    const tripCode = tripData.tripCode;
+
+    // 2. Overwrite with minimal data (soft delete)
+    const softDeletedData = {
+      id: tripId,
+      tripCode: tripCode,
+      isDeleted: true,
+      deletedAt: Date.now()
+    };
+
+    // Update private trip node
+    await set(tripRef, softDeletedData);
+
+    // Update shared trip node
+    await set(ref(database, `sharedTrips/${tripId}`), {
+      ...softDeletedData,
+      ownerId: userId
+    });
+
+    // 3. Remove from history entirely
+    await remove(ref(database, `users/${userId}/tripHistory/${tripId}`));
+
+    // Note: We deliberately DO NOT delete the tripCode mapping so the code remains valid
+    // but points to a deleted trip state, preventing reuse or confusion.
+  }
+};
+
 // ============ TRIP CODES & SHARING ============
 export const saveTripCodeMapping = async (code, userId, tripId) => {
   await set(ref(database, `tripCodes/${code}`), { userId, tripId });

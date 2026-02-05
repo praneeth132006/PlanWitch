@@ -115,6 +115,8 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showTripDeleteModal, setShowTripDeleteModal] = useState(false);
+  const [selectedTripToDelete, setSelectedTripToDelete] = useState(null);
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [legalType, setLegalType] = useState('terms'); // 'terms' or 'privacy'
   const [showFaqModal, setShowFaqModal] = useState(false);
@@ -437,7 +439,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
                         <Icon name={trip.tripType === 'profile' ? 'solo' : (trip.tripType === 'group' ? 'friends' : (trip.tripType || 'solo'))} size={24} color={colors.primary} />
                       </View>
                       <View style={styles.historyInfo}>
-                        <Text style={styles.historyDestination}>{trip.destination || trip.name}</Text>
+                        <Text style={styles.historyDestination}>{trip.name || trip.destination}</Text>
                         <Text style={styles.historyDates}>
                           {typeof trip.startDate === 'string' ? trip.startDate : trip.startDate?.toLocaleDateString()} • {days} days
                         </Text>
@@ -456,9 +458,15 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
                       </View>
                     </View>
                     <View style={styles.historyCardRight}>
-                      <TouchableOpacity style={styles.syncButton}>
+                      <TouchableOpacity
+                        style={styles.syncButton}
+                        onPress={() => {
+                          setSelectedTripToDelete(trip);
+                          setShowTripDeleteModal(true);
+                        }}
+                      >
                         <View style={styles.syncIconContainer}>
-                          <Icon name="message" size={16} color={colors.primary} />
+                          <Icon name="close" size={16} color="#EF4444" />
                         </View>
                       </TouchableOpacity>
                       <Text style={styles.historyArrow}>→</Text>
@@ -471,6 +479,53 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
         </View>
       </View>
     )
+  );
+
+  const handleTripDelete = async () => {
+    if (selectedTripToDelete) {
+      await deleteTripFromHistory(selectedTripToDelete.id);
+      setShowTripDeleteModal(false);
+      setSelectedTripToDelete(null);
+      // Wait a bit and refresh/close? The context update should handle list refresh.
+    }
+  };
+
+  const renderTripDeleteModal = () => (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={showTripDeleteModal}
+      onRequestClose={() => setShowTripDeleteModal(false)}
+    >
+      <View style={styles.fullScreenOverlay}>
+        <View style={[styles.dialogContainer, { maxWidth: 360 }]}>
+          <View style={styles.dialogHeader}>
+            <View style={[styles.dialogIconContainer, { backgroundColor: '#FEF2F2' }]}>
+              <Icon name="close" size={24} color="#EF4444" />
+            </View>
+            <Text style={styles.dialogTitle}>Delete Trip?</Text>
+            <Text style={styles.dialogDescription}>
+              Are you sure you want to delete the trip? The details of the trip will be permanently deleted.
+            </Text>
+          </View>
+
+          <View style={styles.dialogFooter}>
+            <TouchableOpacity
+              style={styles.dialogCancelBtn}
+              onPress={() => setShowTripDeleteModal(false)}
+            >
+              <Text style={styles.dialogCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dialogDeleteBtn}
+              onPress={handleTripDelete}
+            >
+              <Text style={styles.dialogDeleteText}>Delete Trip</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 
   const renderDeleteModal = () => (
@@ -723,6 +778,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {renderSubscriptionModal()}
+      {renderTripDeleteModal()}
       {/* Gradient Header */}
       <Animated.View
         style={[
@@ -1728,7 +1784,8 @@ const createStyles = (colors, isDark) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    zIndex: 1000,
+    zIndex: 9999, // Increased zIndex drastically to ensure it sits on top of everything
+    elevation: 100,
   },
   dialogContainer: {
     backgroundColor: colors.card,

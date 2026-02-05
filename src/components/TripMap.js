@@ -58,7 +58,7 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                         gestureHandling: 'none',
                         keyboardShortcuts: false,
                         clickableIcons: false,
-                        mapTypeId: 'roadmap', // Default to roadmap, style comes from mapId
+                        mapTypeId: 'roadmap',
                         mapId: '330d727194d831d02de90356', // User provided Map ID
                     });
 

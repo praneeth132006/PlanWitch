@@ -171,7 +171,7 @@ export default function HistoryScreen() {
             </View>
             <Text style={styles.confirmTitle}>Delete from History?</Text>
             <Text style={styles.confirmText}>
-              Remove "{selectedTrip?.destination || selectedTrip?.name}" from your trip history? This cannot be undone.
+              Are you sure you want to delete this trip? All data will be removed, but the Trip Code will remain valid for others.
             </Text>
             <View style={styles.confirmButtons}>
               <Pressable style={styles.confirmCancelBtn} onPress={() => setShowDeleteModal(false)}>
