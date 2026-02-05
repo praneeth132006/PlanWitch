@@ -406,8 +406,8 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
           <View style={styles.currentTripStats}>
             <View style={styles.tripStatItem}>
               <View>
-                <Text style={styles.tripStatValue}>{(tripTypeData.label || 'Solo').split(' ')[0]}</Text>
-                <Text style={styles.tripStatLabel}>Trip Type</Text>
+                <Text style={styles.tripStatValue}>{Array.isArray(trip.participants) ? trip.participants.length : 1}</Text>
+                <Text style={styles.tripStatLabel}>Travellers</Text>
               </View>
             </View>
             <View style={styles.tripStatDivider} />
