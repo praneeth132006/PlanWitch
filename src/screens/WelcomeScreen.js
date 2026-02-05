@@ -230,12 +230,11 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
   }, [allTrips, tripInfo, getTotalExpenses]);
 
   // 2. Upcoming Trips List (Excluding featured)
-  // 2. Upcoming Trips List (Include ALL active trips for absolute clarity)
   const upcomingTrips = useMemo(() => {
     if (!allTrips) return [];
 
     const list = allTrips
-      .filter(t => !t.isCompleted)
+      .filter(t => !t.isCompleted && (!featuredTrip || t.id !== featuredTrip.id))
       .sort((a, b) => {
         const startA = parseDate(a.startDate);
         const startB = parseDate(b.startDate);
@@ -245,7 +244,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
 
     console.log(`[WelcomeScreen] Total: ${allTrips.length}, Active: ${list.length}`);
     return list;
-  }, [allTrips]);
+  }, [allTrips, featuredTrip]);
 
   const tripTypeInfo = getTripTypeInfo(tripInfo?.tripType || '');
 
@@ -459,21 +458,21 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
           {/* Stats */}
           <View style={styles.currentTripStats}>
             <View style={styles.tripStatItem}>
-              <View>
+              <View style={{ alignItems: 'center' }}>
                 <Text style={styles.tripStatValue}>{Array.isArray(trip.participants) ? trip.participants.length : 1}</Text>
                 <Text style={styles.tripStatLabel}>Travellers</Text>
               </View>
             </View>
             <View style={styles.tripStatDivider} />
             <View style={styles.tripStatItem}>
-              <View>
+              <View style={{ alignItems: 'center' }}>
                 <Text style={styles.tripStatValue}>{tripDays}</Text>
                 <Text style={styles.tripStatLabel}>Days</Text>
               </View>
             </View>
             <View style={styles.tripStatDivider} />
             <View style={styles.tripStatItem}>
-              <View>
+              <View style={{ alignItems: 'center' }}>
                 <Text style={styles.tripStatValue}>{currency.symbol}{tripExpenses}</Text>
                 <Text style={styles.tripStatLabel}>Total Spent</Text>
               </View>
