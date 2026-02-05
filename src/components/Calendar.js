@@ -13,17 +13,29 @@ const MONTHS = [
 const Calendar = ({ visible, onClose, onSelect, mode = 'single', initialStartDate, initialEndDate, minDate = new Date() }) => {
     const { colors } = useTheme();
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [startDate, setStartDate] = useState(initialStartDate);
-    const [endDate, setEndDate] = useState(initialEndDate);
+    const parseDate = (d) => {
+        if (!d) return null;
+        if (d instanceof Date) return d;
+        const timestamp = Date.parse(d);
+        if (!isNaN(timestamp)) return new Date(timestamp);
+        return null;
+    };
+
+    const [startDate, setStartDate] = useState(() => parseDate(initialStartDate));
+    const [endDate, setEndDate] = useState(() => parseDate(initialEndDate));
     const [showYearPicker, setShowYearPicker] = useState(false);
     const [showMonthPicker, setShowMonthPicker] = useState(false);
 
     useEffect(() => {
         if (visible) {
-            setStartDate(initialStartDate);
-            setEndDate(initialEndDate);
-            if (initialStartDate) {
-                setCurrentDate(new Date(initialStartDate));
+            const sDate = parseDate(initialStartDate);
+            const eDate = parseDate(initialEndDate);
+
+            setStartDate(sDate);
+            setEndDate(eDate);
+
+            if (sDate) {
+                setCurrentDate(sDate);
             }
         }
     }, [visible, initialStartDate, initialEndDate]);
@@ -262,7 +274,7 @@ const Calendar = ({ visible, onClose, onSelect, mode = 'single', initialStartDat
                                 <Icon name="back" size={24} color={colors.text} />
                             </TouchableOpacity>
                             <Text style={[styles.rangeTitle, { color: colors.text }]}>
-                                {startDate ? startDate.toLocaleDateString() : 'Start Date'} - {endDate ? endDate.toLocaleDateString() : 'End Date'}
+                                {startDate instanceof Date ? startDate.toLocaleDateString() : 'Start Date'} - {endDate instanceof Date ? endDate.toLocaleDateString() : 'End Date'}
                             </Text>
                             <TouchableOpacity onPress={() => changeMonth(1)}>
                                 <Icon name="back" size={24} color={colors.text} style={{ transform: [{ rotate: '180deg' }] }} />

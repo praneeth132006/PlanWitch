@@ -70,7 +70,7 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                         suppressMarkers: true,
                         preserveViewport: false,
                         polylineOptions: {
-                            strokeColor: '#FFD2AD',
+                            strokeColor: '#000000',
                             strokeWeight: 5,
                             strokeOpacity: 0.8,
                         }
