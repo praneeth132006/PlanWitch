@@ -232,14 +232,16 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
           <Icon name="packing" size={24} color={colors.text} style={{ marginRight: 8 }} />
           <Text style={styles.headerTitle}>Packing List</Text>
         </View>
-        <PremiumButton
-          title={isGenerating ? 'Thinking...' : 'AI Suggestions'}
-          onPress={handleAiSuggest}
-          variant="gradient"
-          size="small"
-          loading={isGenerating}
-          disabled={isGenerating}
-        />
+        {!tripInfo.isCompleted && (
+          <PremiumButton
+            title={isGenerating ? 'Thinking...' : 'AI Suggestions'}
+            onPress={handleAiSuggest}
+            variant="gradient"
+            size="small"
+            loading={isGenerating}
+            disabled={isGenerating}
+          />
+        )}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -300,7 +302,7 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
         </View>
 
         {/* Quick Add Section */}
-        {totalItems === 0 && (
+        {totalItems === 0 && !tripInfo.isCompleted && (
           <View style={styles.quickAddSection}>
             <Text style={styles.sectionTitle}>⚡ Quick Add</Text>
             <Text style={styles.quickAddHint}>Tap items to add them to your list</Text>
@@ -361,9 +363,10 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
                       <TouchableOpacity
                         key={item.id}
                         style={[styles.itemCard, item.packed && styles.itemCardPacked]}
-                        onPress={() => togglePackingItem(item.id)}
-                        onLongPress={() => handleDeleteItem(item.id)}
+                        onPress={() => !tripInfo.isCompleted && togglePackingItem(item.id)}
+                        onLongPress={() => !tripInfo.isCompleted && handleDeleteItem(item.id)}
                         delayLongPress={500}
+                        activeOpacity={tripInfo.isCompleted ? 1 : 0.7}
                       >
                         <View style={[styles.checkbox, item.packed && { backgroundColor: '#10B981', borderColor: '#10B981' }]}>
                           {item.packed && <Text style={styles.checkmark}>✓</Text>}
@@ -377,15 +380,17 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
                             <Text style={styles.itemNotes}>{item.notes}</Text>
                           )}
                         </View>
-                        <TouchableOpacity
-                          style={styles.itemDelete}
-                          onPress={(e) => {
-                            e?.stopPropagation();
-                            handleDeleteItem(item.id);
-                          }}
-                        >
-                          <Text style={styles.itemDeleteText}>🗑️</Text>
-                        </TouchableOpacity>
+                        {!tripInfo.isCompleted && (
+                          <TouchableOpacity
+                            style={styles.itemDelete}
+                            onPress={(e) => {
+                              e?.stopPropagation();
+                              handleDeleteItem(item.id);
+                            }}
+                          >
+                            <Text style={styles.itemDeleteText}>🗑️</Text>
+                          </TouchableOpacity>
+                        )}
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -396,7 +401,7 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
         )}
 
         {/* Suggestions */}
-        {totalItems > 0 && totalItems < 10 && (
+        {totalItems > 0 && totalItems < 10 && !tripInfo.isCompleted && (
           <View style={styles.suggestSection}>
             <Text style={styles.sectionTitle}>💡 Suggested Items</Text>
             <View style={styles.suggestItems}>
@@ -424,10 +429,12 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
       </ScrollView>
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-        <Text style={styles.fabIcon}>+</Text>
-        <Text style={styles.fabText}>Add Item</Text>
-      </TouchableOpacity>
+      {!tripInfo.isCompleted && (
+        <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
+          <Text style={styles.fabIcon}>+</Text>
+          <Text style={styles.fabText}>Add Item</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Add Item Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>

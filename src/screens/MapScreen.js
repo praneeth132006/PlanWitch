@@ -397,14 +397,16 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
           <Icon name="itinerary" size={24} color={colors.text} style={{ marginRight: 8 }} />
           <Text style={styles.headerTitle}>Itinerary</Text>
         </View>
-        <PremiumButton
-          title={isAiGenerating ? 'Generating...' : 'AI Suggestions'}
-          onPress={() => setAiModalVisible(true)}
-          variant="gradient"
-          size="small"
-          loading={isAiGenerating}
-          disabled={isAiGenerating}
-        />
+        {!tripInfo.isCompleted && (
+          <PremiumButton
+            title={isAiGenerating ? 'Generating...' : 'AI Suggestions'}
+            onPress={() => setAiModalVisible(true)}
+            variant="gradient"
+            size="small"
+            loading={isAiGenerating}
+            disabled={isAiGenerating}
+          />
+        )}
       </View>
       <ScrollView
         ref={scrollViewRef}
@@ -498,9 +500,11 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                         <Text style={styles.dayCardTitle}>Day {day.dayNumber}</Text>
                         <Text style={styles.dayCardDate}>{day.dayName ? `${day.dayName}, ${day.dateString}` : day.dateString}</Text>
                       </View>
-                      <TouchableOpacity style={styles.addButton} onPress={() => openAddModal(day)}>
-                        <Text style={styles.addButtonIcon}>+</Text>
-                      </TouchableOpacity>
+                      {!tripInfo.isCompleted && (
+                        <TouchableOpacity style={styles.addButton} onPress={() => openAddModal(day)}>
+                          <Text style={styles.addButtonIcon}>+</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
 
                     {/* Day Stats Mini */}
@@ -515,11 +519,17 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
                     {/* Stops */}
                     {dayStops.length === 0 ? (
-                      <TouchableOpacity style={styles.emptyCard} onPress={() => openAddModal(day)}>
+                      <TouchableOpacity
+                        style={styles.emptyCard}
+                        onPress={() => !tripInfo.isCompleted && openAddModal(day)}
+                        disabled={tripInfo.isCompleted}
+                      >
                         <View style={styles.emptyCardIcon}><Text style={styles.emptyCardEmoji}>✨</Text></View>
                         <View style={styles.emptyCardText}>
                           <Text style={styles.emptyCardTitle}>No activities planned</Text>
-                          <Text style={styles.emptyCardSubtitle}>Tap to add transport, meals, or activities</Text>
+                          {!tripInfo.isCompleted && (
+                            <Text style={styles.emptyCardSubtitle}>Tap to add transport, meals, or activities</Text>
+                          )}
                         </View>
                       </TouchableOpacity>
                     ) : (
@@ -556,14 +566,16 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                                       {stop.duration && <Text style={styles.stopDuration}>⏱️ {stop.duration}</Text>}
                                     </View>
                                   </View>
-                                  <View style={styles.stopActions}>
-                                    <TouchableOpacity style={styles.stopEditBtn} onPress={() => openEditModal(stop)}>
-                                      <Icon name="pen" size={14} color={colors.primary} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.stopDeleteBtn} onPress={() => deleteItineraryItem(stop.id)}>
-                                      <Icon name="close" size={14} color="#EF4444" />
-                                    </TouchableOpacity>
-                                  </View>
+                                  {!tripInfo.isCompleted && (
+                                    <View style={styles.stopActions}>
+                                      <TouchableOpacity style={styles.stopEditBtn} onPress={() => openEditModal(stop)}>
+                                        <Icon name="pen" size={14} color={colors.primary} />
+                                      </TouchableOpacity>
+                                      <TouchableOpacity style={styles.stopDeleteBtn} onPress={() => deleteItineraryItem(stop.id)}>
+                                        <Icon name="close" size={14} color="#EF4444" />
+                                      </TouchableOpacity>
+                                    </View>
+                                  )}
                                 </View>
 
                                 {stop.location && (

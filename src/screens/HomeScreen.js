@@ -452,7 +452,10 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                   fontSize: 13,
                   letterSpacing: 0.5
                 }}>
-                  {daysUntil < 0 ? 'TRIP IN PROGRESS' : daysUntil === 0 ? 'TRIP STARTS TODAY!' : `${daysUntil} DAYS TO GO`}
+                  {tripInfo.isCompleted
+                    ? 'TRIP COMPLETED'
+                    : (daysUntil < 0 ? 'TRIP IN PROGRESS' : daysUntil === 0 ? 'TRIP STARTS TODAY!' : `${daysUntil} DAYS TO GO`)
+                  }
                 </Text>
               </View>
             </View>
@@ -485,22 +488,29 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
           <View style={styles.boxedInfoCard}>
             <View style={styles.cardHeader}>
               <View>
-                <Pressable onPress={() => { setEditTripName(tripInfo.name || ''); setShowNameEditModal(true); }} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingRight: 4 }}>
+                <Pressable
+                  disabled={tripInfo.isCompleted}
+                  onPress={() => { setEditTripName(tripInfo.name || ''); setShowNameEditModal(true); }}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingRight: 4 }}
+                >
                   <Text style={[styles.cardTripName, { flex: 1 }]} numberOfLines={2}>
                     {tripInfo.name || tripInfo.destination || 'My Adventure'}
                   </Text>
-                  <Icon name="pen" size={20} color={colors.primary} style={{ marginLeft: 12, opacity: 0.8 }} />
+                  {!tripInfo.isCompleted && (
+                    <Icon name="pen" size={20} color={colors.primary} style={{ marginLeft: 12, opacity: 0.8 }} />
+                  )}
                 </Pressable>
                 <View style={styles.tagRow}>
                   <View style={styles.typeTag}>
                     <Text style={styles.typeTagText}>{(tripInfo.tripType || 'Solo').toUpperCase()}</Text>
                   </View>
-                  <View style={[styles.typeTag, { backgroundColor: '#3B82F620' }]}>
-                    <Text style={[styles.typeTagText, { color: '#3B82F6' }]}>{tripDays} DAYS</Text>
+                  <View style={[styles.typeTag, { backgroundColor: tripInfo.isCompleted ? colors.textMuted + '20' : '#3B82F620' }]}>
+                    <Text style={[styles.typeTagText, { color: tripInfo.isCompleted ? colors.textMuted : '#3B82F6' }]}>
+                      {tripInfo.isCompleted ? 'COMPLETED' : `${tripDays} DAYS`}
+                    </Text>
                   </View>
                 </View>
               </View>
-              {/* Removed Settings Icon Button */}
             </View>
 
             <Text style={styles.cardDescription}>
@@ -558,9 +568,11 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               <Icon name="group" size={24} color={colors.primary} style={{ marginRight: 10 }} />
               <Text style={{ fontSize: 24, fontWeight: '800', color: colors.text }}>Travelers</Text>
             </View>
-            <TouchableOpacity onPress={() => setShowTravelersModal(true)}>
-              <Text style={styles.viewMoreText}>Edit →</Text>
-            </TouchableOpacity>
+            {!tripInfo.isCompleted && (
+              <TouchableOpacity onPress={() => setShowTravelersModal(true)}>
+                <Text style={styles.viewMoreText}>Edit →</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <View style={styles.participantsCard}>
             <View style={styles.participantsList}>
@@ -666,91 +678,31 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               </Pressable>
             </View>
 
-            <View style={styles.settingsList}>
-              <Pressable
-                style={styles.settingsItem}
-                onPress={() => {
-                  setShowSettingsModal(false);
-                  setEditStartDate(tripInfo.startDate);
-                  setEditEndDate(tripInfo.endDate);
-                  setShowDatesModal(true);
-                }}
-              >
-                <View style={[styles.settingsIconBg, { backgroundColor: '#8B5CF620' }]}>
-                  <Icon name="calendar" size={20} color="#8B5CF6" />
-                </View>
-                <View style={styles.settingsInfo}>
-                  <Text style={styles.settingsLabel}>Edit Travel Dates</Text>
-                  <Text style={styles.settingsDesc}>{tripInfo.startDate} → {tripInfo.endDate}</Text>
-                </View>
-                <Text style={styles.settingsArrow}>→</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.settingsItem}
-                onPress={() => {
-                  setShowSettingsModal(false);
-                  setEditLocations({
-                    origin: tripInfo.origin || null,
-                    destination: tripInfo.destination || '', // Kept as string for secondary ref if needed
-                    stops: tripInfo.stops || [],
-                    endLocation: tripInfo.endLocation || null
-                  });
-                  setShowLocationEditModal(true);
-                }}
-              >
-                <View style={[styles.settingsIconBg, { backgroundColor: '#10B98120' }]}>
-                  <Icon name="location" size={20} color="#10B981" />
-                </View>
-                <View style={styles.settingsInfo}>
-                  <Text style={styles.settingsLabel}>Edit Locations</Text>
-                  <Text style={styles.settingsDesc}>Origin, Destination & Stops</Text>
-                </View>
-                <Text style={styles.settingsArrow}>→</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.settingsItem}
-                onPress={() => { setShowSettingsModal(false); setShowTravelersModal(true); }}
-              >
-                <View style={[styles.settingsIconBg, { backgroundColor: '#3B82F620' }]}>
-                  <Icon name="group" size={20} color="#3B82F6" />
-                </View>
-                <View style={styles.settingsInfo}>
-                  <Text style={styles.settingsLabel}>Manage Travelers</Text>
-                  <Text style={styles.settingsDesc}>{participantCount} travelers</Text>
-                </View>
-                <Text style={styles.settingsArrow}>→</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.settingsItem}
-                onPress={() => { setShowSettingsModal(false); setShowEndTripModal(true); }}
-              >
-                <View style={[styles.settingsIconBg, { backgroundColor: '#F59E0B20' }]}>
-                  <Icon name="close" size={20} color="#F59E0B" />
-                </View>
-                <View style={styles.settingsInfo}>
-                  <Text style={styles.settingsLabel}>End Trip</Text>
-                  <Text style={styles.settingsDesc}>Mark trip as completed</Text>
-                </View>
-                <Text style={styles.settingsArrow}>→</Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.settingsItem, styles.settingsItemDanger]}
-                onPress={() => { setShowSettingsModal(false); setShowDeleteModal(true); }}
-              >
-                <View style={[styles.settingsIconBg, { backgroundColor: '#EF444420' }]}>
-                  <Icon name="delete" size={20} color="#EF4444" />
-                </View>
-                <View style={styles.settingsInfo}>
-                  <Text style={[styles.settingsLabel, { color: '#EF4444' }]}>Delete Trip</Text>
-                  <Text style={styles.settingsDesc}>Remove trip permanently</Text>
-                </View>
-                <Text style={[styles.settingsArrow, { color: '#EF4444' }]}>→</Text>
-              </Pressable>
-            </View>
+            <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+              {SETTINGS_OPTIONS.filter(option => {
+                if (!tripInfo.isCompleted) return true;
+                // If completed, only show Delete Trip or maybe a "View" option if we had one.
+                // We definitely want to hide edit/manage stuff.
+                return option.id === 'delete_trip';
+              }).map((option) => (
+                <Pressable
+                  key={option.id}
+                  style={[styles.settingsItem, option.danger && styles.settingsItemDanger]}
+                  onPress={() => handleSettingsOptionPress(option)}
+                >
+                  <View style={[styles.settingsIconBg, {
+                    backgroundColor: option.danger ? '#EF444420' : (option.icon === 'calendar' ? '#8B5CF620' : option.icon === 'location' ? '#10B98120' : option.icon === 'group' ? '#3B82F620' : '#F59E0B20')
+                  }]}>
+                    <Icon name={option.icon} size={20} color={option.danger ? '#EF4444' : (option.icon === 'calendar' ? '#8B5CF6' : option.icon === 'location' ? '#10B981' : option.icon === 'group' ? '#3B82F6' : '#F59E0B')} />
+                  </View>
+                  <View style={styles.settingsInfo}>
+                    <Text style={[styles.settingsLabel, option.danger && { color: '#EF4444' }]}>{option.label}</Text>
+                    <Text style={styles.settingsDesc}>{option.id === 'manage_travelers' ? `${participantCount} travelers` : (option.id === 'edit_dates' ? `${tripInfo.startDate} → ${tripInfo.endDate}` : (option.id === 'edit_locations' ? 'Origin, Destination & Stops' : (option.danger ? 'Remove trip permanently' : 'Mark trip as completed')))}</Text>
+                  </View>
+                  <Text style={[styles.settingsArrow, option.danger && { color: '#EF4444' }]}>→</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>

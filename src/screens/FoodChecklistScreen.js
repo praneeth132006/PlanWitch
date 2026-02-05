@@ -231,14 +231,16 @@ export default function FoodChecklistScreen() {
                     <Icon name="food" size={24} color={colors.text} style={{ marginRight: 8 }} />
                     <Text style={styles.headerTitle}>Food Checklist</Text>
                 </View>
-                <PremiumButton
-                    title={isAiGenerating ? 'Generating...' : 'AI Suggestions'}
-                    onPress={handleGenerateSuggestions}
-                    variant="gradient"
-                    size="small"
-                    loading={isAiGenerating}
-                    disabled={isAiGenerating}
-                />
+                {!tripInfo.isCompleted && (
+                    <PremiumButton
+                        title={isAiGenerating ? 'Generating...' : 'AI Suggestions'}
+                        onPress={handleGenerateSuggestions}
+                        variant="gradient"
+                        size="small"
+                        loading={isAiGenerating}
+                        disabled={isAiGenerating}
+                    />
+                )}
             </View>
 
             <ScrollView
@@ -287,26 +289,31 @@ export default function FoodChecklistScreen() {
                                                     {stats.total} items • {stats.tried} tried
                                                 </Text>
                                             </View>
-                                            <TouchableOpacity
-                                                style={styles.addButton}
-                                                onPress={() => openAddModal(place)}
-                                            >
-                                                <Text style={styles.addButtonIcon}>+</Text>
-                                            </TouchableOpacity>
+                                            {!tripInfo.isCompleted && (
+                                                <TouchableOpacity
+                                                    style={styles.addButton}
+                                                    onPress={() => openAddModal(place)}
+                                                >
+                                                    <Text style={styles.addButtonIcon}>+</Text>
+                                                </TouchableOpacity>
+                                            )}
                                         </View>
 
                                         {/* Food Items List */}
                                         {!hasItems ? (
                                             <TouchableOpacity
                                                 style={styles.emptyCard}
-                                                onPress={() => openAddModal(place)}
+                                                onPress={() => !tripInfo.isCompleted && openAddModal(place)}
+                                                activeOpacity={tripInfo.isCompleted ? 1 : 0.7}
                                             >
                                                 <View style={styles.emptyCardIcon}>
                                                     <Text style={{ fontSize: 18 }}>🍽️</Text>
                                                 </View>
                                                 <View style={styles.emptyCardText}>
                                                     <Text style={styles.emptyCardTitle}>No food items yet</Text>
-                                                    <Text style={styles.emptyCardSubtitle}>Tap + to add dishes to try in {place}</Text>
+                                                    {!tripInfo.isCompleted && (
+                                                        <Text style={styles.emptyCardSubtitle}>Tap + to add dishes to try in {place}</Text>
+                                                    )}
                                                 </View>
                                             </TouchableOpacity>
                                         ) : (
@@ -315,7 +322,8 @@ export default function FoodChecklistScreen() {
                                                     <View key={item.id} style={[styles.itemCard, item.tried && styles.itemCardTried]}>
                                                         <TouchableOpacity
                                                             style={[styles.checkBox, item.tried && styles.checkBoxActive]}
-                                                            onPress={() => toggleFoodItem(item.id)}
+                                                            onPress={() => !tripInfo.isCompleted && toggleFoodItem(item.id)}
+                                                            activeOpacity={tripInfo.isCompleted ? 1 : 0.7}
                                                         >
                                                             {item.tried && <Icon name="check" size={12} color="#fff" />}
                                                         </TouchableOpacity>
@@ -338,12 +346,14 @@ export default function FoodChecklistScreen() {
                                                             {item.name}
                                                         </Text>
 
-                                                        <TouchableOpacity
-                                                            style={styles.deleteBtn}
-                                                            onPress={() => deleteFoodItem(item.id)}
-                                                        >
-                                                            <Icon name="close" size={16} color={colors.textMuted} />
-                                                        </TouchableOpacity>
+                                                        {!tripInfo.isCompleted && (
+                                                            <TouchableOpacity
+                                                                style={styles.deleteBtn}
+                                                                onPress={() => deleteFoodItem(item.id)}
+                                                            >
+                                                                <Icon name="close" size={16} color={colors.textMuted} />
+                                                            </TouchableOpacity>
+                                                        )}
                                                     </View>
                                                 ))}
                                             </View>

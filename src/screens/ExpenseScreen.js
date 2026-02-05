@@ -368,12 +368,16 @@ export default function ExpenseScreen() {
                             {expense.type === 'income' ? '+' : ''}{safeFormat(expense.amount)}
                           </Text>
                           <View style={styles.exActions}>
-                            <TouchableOpacity onPress={() => handleEditExpense(expense)} style={styles.exEdit}>
-                              <Text style={styles.exEditText}>✏️</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => deleteExpense && deleteExpense(expense.id)} style={styles.exDelete}>
-                              <Icon name="close" size={14} color={colors.textMuted} />
-                            </TouchableOpacity>
+                            {!tripInfo.isCompleted && (
+                              <>
+                                <TouchableOpacity onPress={() => handleEditExpense(expense)} style={styles.exEdit}>
+                                  <Text style={styles.exEditText}>✏️</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => deleteExpense && deleteExpense(expense.id)} style={styles.exDelete}>
+                                  <Icon name="close" size={14} color={colors.textMuted} />
+                                </TouchableOpacity>
+                              </>
+                            )}
                           </View>
                         </View>
                       </View>
@@ -416,10 +420,12 @@ export default function ExpenseScreen() {
       </ScrollView>
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-        <Text style={styles.fabIcon}>+</Text>
-        <Text style={styles.fabText}>Add</Text>
-      </TouchableOpacity>
+      {!tripInfo.isCompleted && (
+        <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
+          <Text style={styles.fabIcon}>+</Text>
+          <Text style={styles.fabText}>Add</Text>
+        </TouchableOpacity>
+      )}
 
       {/* ADD EXPENSE MODAL */}
       <Modal visible={modalVisible} animationType="slide" transparent>

@@ -405,14 +405,16 @@ export default function BudgetScreen() {
           <Icon name="budget" size={24} color={colors.text} style={{ marginRight: 8 }} />
           <Text style={styles.headerTitle}>Budget Planner</Text>
         </View>
-        <PremiumButton
-          title={isGenerating ? "Planning..." : "AI Suggestions"}
-          onPress={startAiPlan}
-          variant="gradient"
-          size="small"
-          loading={isGenerating}
-          disabled={isGenerating}
-        />
+        {!tripInfo.isCompleted && (
+          <PremiumButton
+            title={isGenerating ? "Planning..." : "AI Suggestions"}
+            onPress={startAiPlan}
+            variant="gradient"
+            size="small"
+            loading={isGenerating}
+            disabled={isGenerating}
+          />
+        )}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -437,6 +439,7 @@ export default function BudgetScreen() {
               onBlur={handleSaveBudget}
               placeholder="0"
               placeholderTextColor={colors.textMuted + '80'}
+              editable={!tripInfo.isCompleted}
             />
           </View>
 
@@ -492,6 +495,7 @@ export default function BudgetScreen() {
               safeFormat={safeFormat}
               styles={styles}
               colors={colors}
+              isReadOnly={tripInfo.isCompleted}
             />
           ))}
 
@@ -703,7 +707,7 @@ export default function BudgetScreen() {
   );
 }
 
-const CategoryCard = ({ cat, budget, expensesByCategory, currency, categoryInputs, handleCategoryChange, handleCategoryBlur, handleEditCategory, safeFormat, styles, colors }) => {
+const CategoryCard = ({ cat, budget, expensesByCategory, currency, categoryInputs, handleCategoryChange, handleCategoryBlur, handleEditCategory, safeFormat, styles, colors, isReadOnly }) => {
   const [inputWidth, setInputWidth] = useState(20);
   const allocated = parseFloat(budget.categories?.[cat.key]) || 0;
   const spent = parseFloat(expensesByCategory[cat.key]) || 0;
@@ -713,10 +717,12 @@ const CategoryCard = ({ cat, budget, expensesByCategory, currency, categoryInput
 
   return (
     <View style={styles.catCard}>
-      <Pressable
-        style={[StyleSheet.absoluteFill, { borderRadius: 20 }]}
-        onPress={() => handleEditCategory(cat)}
-      />
+      {!isReadOnly && (
+        <Pressable
+          style={[StyleSheet.absoluteFill, { borderRadius: 20 }]}
+          onPress={() => handleEditCategory(cat)}
+        />
+      )}
 
       <View pointerEvents="none" style={styles.catIconContainer}>
         <View style={[styles.catIconBg, { backgroundColor: cat.color + '20' }]}>
@@ -744,6 +750,7 @@ const CategoryCard = ({ cat, budget, expensesByCategory, currency, categoryInput
               placeholder="0"
               placeholderTextColor={colors.textMuted + '50'}
               onPressIn={(e) => e.stopPropagation()}
+              editable={!isReadOnly}
             />
           </View>
         </View>
