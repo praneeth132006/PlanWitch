@@ -678,7 +678,11 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               </Pressable>
             </View>
 
-            <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={{ maxHeight: 400 }}
+              contentContainerStyle={styles.settingsList}
+              showsVerticalScrollIndicator={false}
+            >
               {SETTINGS_OPTIONS.filter(option => {
                 if (!tripInfo.isCompleted) return true;
                 // If completed, only show Delete Trip or maybe a "View" option if we had one.
@@ -1246,7 +1250,7 @@ const createStyles = (colors) => StyleSheet.create({
   modalCloseBtnText: { color: colors.textMuted, fontSize: 22 },
 
   // Settings List
-  settingsList: { gap: 16 },
+  settingsList: { gap: 14, paddingVertical: 4 },
   settingsItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, borderRadius: 16, padding: 18 },
   settingsItemDanger: { backgroundColor: '#EF444410' },
   settingsIconBg: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
