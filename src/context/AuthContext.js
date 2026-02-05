@@ -14,6 +14,7 @@ import {
   signInWithRedirect,
   signInWithPopup,
   getRedirectResult,
+  fetchSignInMethodsForEmail,
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import * as DB from '../services/databaseService';
@@ -101,7 +102,28 @@ export function AuthProvider({ children }) {
 
   const signUp = async (email, password, displayName) => {
     try {
+      // Check if user is already logged in (prevents auto-auth interference)
+      if (auth.currentUser) {
+        return {
+          success: false,
+          error: 'You are already logged in. Please sign out first to create a new account.',
+          alreadyLoggedIn: true
+        };
+      }
+
       setLoading(true);
+
+      // Check if email already exists in Firebase
+      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+      if (signInMethods && signInMethods.length > 0) {
+        setLoading(false);
+        return {
+          success: false,
+          error: 'This email is already registered. Please use Sign In instead.',
+          emailExists: true
+        };
+      }
+
       const result = await createUserWithEmailAndPassword(auth, email, password);
       if (displayName) {
         await updateProfile(result.user, { displayName });
@@ -128,9 +150,13 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('signUp error:', error.code);
       let msg = 'Failed to create account';
-      if (error.code === 'auth/email-already-in-use') msg = 'This email is already registered. Please sign in instead.';
+      let emailExists = false;
+      if (error.code === 'auth/email-already-in-use') {
+        msg = 'This email is already registered. Please sign in instead.';
+        emailExists = true;
+      }
       if (error.code === 'auth/weak-password') msg = 'Password too weak';
-      return { success: false, error: msg };
+      return { success: false, error: msg, emailExists };
     } finally {
       setLoading(false);
     }

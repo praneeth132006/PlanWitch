@@ -21,10 +21,21 @@ import Icon from '../components/Icon';
 
 export default function AuthScreen() {
   const { colors } = useTheme();
-  const { signIn, signUp, signInWithGoogle, resetPassword, loading } = useAuth();
+  const { signIn, signUp, signInWithGoogle, resetPassword, loading, isAuthenticated, user } = useAuth();
 
   const [isLogin, setIsLogin] = useState(true);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  // Show message if user is already logged in (edge case)
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      Alert.alert(
+        'Already Logged In',
+        `You are already logged in as ${user.email}. You'll be redirected to the app.`,
+        [{ text: 'OK' }]
+      );
+    }
+  }, [isAuthenticated, user]);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -93,7 +104,31 @@ export default function AuthScreen() {
       // Handle sign up
       const result = await signUp(formData.email.trim(), formData.password, formData.name.trim());
       if (!result.success) {
-        Alert.alert('Sign Up Failed', result.error);
+        if (result.alreadyLoggedIn) {
+          // User is already logged in - show message
+          Alert.alert(
+            'Already Logged In',
+            result.error,
+            [{ text: 'OK' }]
+          );
+        } else if (result.emailExists) {
+          // User already exists - show message and switch to login form
+          Alert.alert(
+            'Account Already Exists',
+            'This email is already registered. Please use the Sign In option to log in.',
+            [
+              {
+                text: 'Go to Sign In',
+                onPress: () => {
+                  setIsLogin(true);
+                  setFormData({ ...formData, name: '', password: '', confirmPassword: '' });
+                },
+              },
+            ]
+          );
+        } else {
+          Alert.alert('Sign Up Failed', result.error);
+        }
       }
     }
   };
