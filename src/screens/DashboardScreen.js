@@ -6,9 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
+import { useAlert } from '../context/AlertContext';
 
 export default function DashboardScreen({ navigation, onBack }) {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { tripInfo, getTotalExpenses, currency, packingItems, expenses, itinerary } = useTravelContext();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -18,7 +20,7 @@ export default function DashboardScreen({ navigation, onBack }) {
     if (tripInfo?.tripCode) {
       try {
         await Clipboard.setStringAsync(tripInfo.tripCode);
-        Alert.alert('Copied!', 'Trip code copied to clipboard');
+        showAlert('Trip code copied to clipboard!', 'success');
       } catch (error) {
         Alert.alert('Trip Code', tripInfo.tripCode);
       }

@@ -131,7 +131,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
     { id: 'edit_dates', label: 'Edit Travel Dates', icon: 'calendar', page: 'BudgetScreen' },
     { id: 'edit_locations', label: 'Edit Locations', icon: 'location', page: 'LocationScreen' },
     { id: 'manage_travelers', label: 'Manage Travelers', icon: 'group', page: 'TravelersScreen' },
-    { id: 'end_trip', label: 'End Trip', icon: 'close-circle', page: 'EndTrip' },
+    { id: 'end_trip', label: 'End Trip', icon: 'finish', page: 'EndTrip' },
     { id: 'delete_trip', label: 'Delete Trip', icon: 'delete', page: 'DeleteTrip', danger: true },
   ];
 
@@ -695,13 +695,13 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                   onPress={() => handleSettingsOptionPress(option)}
                 >
                   <View style={[styles.settingsIconBg, {
-                    backgroundColor: option.danger ? '#EF444420' : (option.icon === 'calendar' ? '#8B5CF620' : option.icon === 'location' ? '#10B98120' : option.icon === 'group' ? '#3B82F620' : '#F59E0B20')
+                    backgroundColor: option.danger ? '#EF444420' : (option.icon === 'calendar' ? '#8B5CF620' : (option.id === 'end_trip' || option.icon === 'location' || option.icon === 'flag') ? '#10B98120' : option.icon === 'group' ? '#3B82F620' : '#F59E0B20')
                   }]}>
-                    <Icon name={option.icon} size={20} color={option.danger ? '#EF4444' : (option.icon === 'calendar' ? '#8B5CF6' : option.icon === 'location' ? '#10B981' : option.icon === 'group' ? '#3B82F6' : '#F59E0B')} />
+                    <Icon name={option.id === 'end_trip' ? 'flag' : option.icon} size={20} color={option.danger ? '#EF4444' : (option.icon === 'calendar' ? '#8B5CF6' : (option.id === 'end_trip' || option.icon === 'location' || option.icon === 'flag') ? '#10B981' : option.icon === 'group' ? '#3B82F6' : '#F59E0B')} />
                   </View>
                   <View style={styles.settingsInfo}>
                     <Text style={[styles.settingsLabel, option.danger && { color: '#EF4444' }]}>{option.label}</Text>
-                    <Text style={styles.settingsDesc}>{option.id === 'manage_travelers' ? `${participantCount} travelers` : (option.id === 'edit_dates' ? `${tripInfo.startDate} → ${tripInfo.endDate}` : (option.id === 'edit_locations' ? 'Origin, Destination & Stops' : (option.danger ? 'Remove trip permanently' : 'Mark trip as completed')))}</Text>
+                    <Text style={styles.settingsDesc}>{option.id === 'manage_travelers' ? `${participantCount} travelers` : (option.id === 'edit_dates' ? `${tripInfo.startDate}  ${tripInfo.endDate}` : (option.id === 'edit_locations' ? 'Origin, Destination & Stops' : (option.danger ? 'Remove trip permanently' : 'Mark trip as completed')))}</Text>
                   </View>
                   <Text style={[styles.settingsArrow, option.danger && { color: '#EF4444' }]}>→</Text>
                 </Pressable>

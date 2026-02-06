@@ -101,7 +101,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
   const getSteps = () => {
     const baseSteps = [
       { key: 'location', title: 'Route' },
-      { key: 'details', title: 'Details' },
+      { key: 'details', title: 'Details', icon: 'v185' },
     ];
 
     // Add companions step based on trip type
@@ -763,7 +763,6 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                     <Text style={styles.popoverPlaceholder}>Select Trip Style</Text>
                   )}
                 </View>
-                <Icon name="chevron-right" size={20} color={colors.textMuted} />
               </Pressable>
 
               {/* Custom Popover Modal */}

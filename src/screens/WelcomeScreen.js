@@ -6,8 +6,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
+import { useAlert } from '../context/AlertContext';
 import { isValidTripCode } from '../utils/tripCodeGenerator';
 import Icon from '../components/Icon';
+import * as Clipboard from 'expo-clipboard';
 import Popover15 from '../components/ui/Popover15';
 import Button06 from '../components/ui/Button06';
 import PremiumButton from '../components/PremiumButton';
@@ -25,6 +27,7 @@ const TRIP_TYPES = [
 
 export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProfile, hasActiveTrip }) {
   const { colors, isDark } = useTheme();
+  const { showAlert } = useAlert();
   const {
     tripInfo,
     getTotalExpenses,
@@ -333,18 +336,11 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
   };
 
   // Share trip code function
-  const handleShareTripCode = async (code, destination) => {
+  const handleShareTripCode = async (code) => {
     try {
       if (!code) return;
-
-      // Attempt to use web clipboard if available (since they are using --web)
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(code);
-        Alert.alert('Copied!', `Trip code ${code} copied to clipboard.`);
-      } else {
-        // Fallback for native or when clipboard API is blocks
-        Alert.alert('Trip Code', `Code: ${code}\n\nShare this code with friends to let them join your trip!`);
-      }
+      await Clipboard.setStringAsync(code);
+      showAlert('Trip code copied to clipboard!', 'success');
     } catch (error) {
       console.error('Error sharing trip code:', error);
       Alert.alert('Trip Code', code);

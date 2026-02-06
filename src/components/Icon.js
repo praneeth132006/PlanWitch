@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, View, StyleSheet } from 'react-native';
+import { Image, View, StyleSheet, Text } from 'react-native';
 
 // Icon paths mapping - VERIFIED PNG FILENAMES
 const ICON_PATHS = {
@@ -23,6 +23,8 @@ const ICON_PATHS = {
     x: require('../../assets/icons/mycollection/png/047-cross.png'), // Alias for close
     check: require('../../assets/icons/mycollection/png/051-check.png'),
     delete: require('../../assets/icons/mycollection/png/106-deleted.png'),
+    done: require('../../assets/icons/mycollection/png/051-check.png'),
+    finish: require('../../assets/icons/mycollection/png/051-check.png'),
     link: require('../../assets/icons/mycollection/png/049-link.png'), // Better link icon
     edit: require('../../assets/icons/mycollection/png/104-edit.png'),
     back: require('../../assets/icons/mycollection/png/217-arrow-left.png'),
@@ -41,7 +43,9 @@ const ICON_PATHS = {
     flight_land: require('../../assets/icons/mycollection/png/188-airplane.png'),
     map: require('../../assets/icons/mycollection/png/121-map.png'),
     task: require('../../assets/icons/mycollection/png/107-schedule.png'),
-    check: require('../../assets/icons/mycollection/png/049-link.png'),
+    check: require('../../assets/icons/mycollection/png/051-check.png'),
+    flag: require('../../assets/icons/mycollection/png/012-leaning-tower-of-pisa.png'), // Placeholder for end trip
+    checkered_flag: require('../../assets/icons/mycollection/png/051-check.png'), // Using check for now
     like: require('../../assets/icons/mycollection/png/020-stars.png'),
     heart: require('../../assets/icons/mycollection/png/020-stars.png'),
     message: require('../../assets/icons/mycollection/png/036-email.png'),
@@ -140,12 +144,26 @@ const ICON_PATHS = {
     v189: require('../../assets/icons/mycollection/png/189-washington.png'),
     v190: require('../../assets/icons/mycollection/png/190-romanian-athenaeum.png'),
     tour_guide: require('../../assets/icons/mycollection/png/tour-guide.png'),
+    flag: 'emoji_🏁',
+    finish: 'emoji_🏁',
 };
 
 /**
- * Icon Component - Renders PNG icons
+ * Icon Component - Renders PNG icons or Emojis
  */
 const Icon = ({ name, size = 24, color, style }) => {
+    // Check if it's an emoji-based icon
+    const iconPath = ICON_PATHS[name] || name;
+
+    if (typeof iconPath === 'string' && iconPath.startsWith('emoji_')) {
+        const emoji = iconPath.replace('emoji_', '');
+        return (
+            <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
+                <Text style={{ fontSize: size * 0.8 }}>{emoji}</Text>
+            </View>
+        );
+    }
+
     // Default to 'other' if key not found
     const iconSource = ICON_PATHS[name] || ICON_PATHS.other;
 
@@ -154,9 +172,6 @@ const Icon = ({ name, size = 24, color, style }) => {
             source={iconSource}
             style={[
                 { width: size, height: size },
-                // Disable tint for new PNGs to show full color
-                // color && { tintColor: color }, 
-                // name === 'close' && { transform: [{ rotate: '45deg' }] }, // Disable rotation
                 style
             ]}
             resizeMode="contain"
