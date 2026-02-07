@@ -86,7 +86,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
             await handleAutoEndTrip();
           }
         } catch (e) {
-          console.log('Error checking trip end date:', e);
+          // console.log('Error checking trip end date:', e);
         }
       }
     };
@@ -390,7 +390,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   };
 
   const handleEndTrip = async () => {
-    console.log('handleEndTrip called, tripInfo:', tripInfo);
+    // console.log('handleEndTrip called, tripInfo:', tripInfo);
     if (endTrip) {
       const result = await endTrip();
       if (result && result.success) {

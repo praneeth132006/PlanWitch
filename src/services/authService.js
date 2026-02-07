@@ -12,14 +12,14 @@ import { auth, database } from '../config/firebase';
 // Sign up with email and password
 export const signUp = async (email, password, displayName) => {
   try {
-    console.log('Signing up user:', email);
+    // console.log('Signing up user:', email);
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    console.log('User created:', user.uid);
+    // console.log('User created:', user.uid);
 
     // Update display name
     await updateProfile(user, { displayName });
-    console.log('Profile updated with display name');
+    // console.log('Profile updated with display name');
 
     // Create user profile in database
     await createUserProfile(user.uid, {
@@ -28,7 +28,7 @@ export const signUp = async (email, password, displayName) => {
       createdAt: new Date().toISOString(),
       photoURL: null,
     });
-    console.log('User profile created in database');
+    // console.log('User profile created in database');
 
     return { success: true, user };
   } catch (error) {
@@ -40,9 +40,9 @@ export const signUp = async (email, password, displayName) => {
 // Sign in with email and password
 export const signIn = async (email, password) => {
   try {
-    console.log('Signing in user:', email);
+    // console.log('Signing in user:', email);
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    console.log('Sign in successful:', userCredential.user.uid);
+    // console.log('Sign in successful:', userCredential.user.uid);
     return { success: true, user: userCredential.user };
   } catch (error) {
     console.error('SignIn error:', error);
@@ -54,7 +54,7 @@ export const signIn = async (email, password) => {
 export const logOut = async () => {
   try {
     await signOut(auth);
-    console.log('Sign out successful');
+    // console.log('Sign out successful');
     return { success: true };
   } catch (error) {
     console.error('SignOut error:', error);
@@ -81,7 +81,7 @@ export const createUserProfile = async (userId, profileData) => {
       ...profileData,
       updatedAt: new Date().toISOString(),
     });
-    console.log('User profile saved to database');
+    // console.log('User profile saved to database');
   } catch (error) {
     console.error('Error creating user profile:', error);
     // Don't throw error, just log it - profile creation failure shouldn't block signup
@@ -116,7 +116,7 @@ export const updateUserProfile = async (userId, updates) => {
 // Auth state observer
 export const subscribeToAuthChanges = (callback) => {
   return onAuthStateChanged(auth, (user) => {
-    console.log('Auth state changed:', user ? user.email : 'No user');
+    // console.log('Auth state changed:', user ? user.email : 'No user');
     callback(user);
   });
 };

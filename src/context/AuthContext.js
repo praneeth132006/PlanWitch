@@ -36,10 +36,10 @@ export function AuthProvider({ children }) {
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    console.log('AuthProvider: Setting up listener');
+    // console.log('AuthProvider: Setting up listener');
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      console.log('onAuthStateChanged:', firebaseUser?.email || 'null');
+      // console.log('onAuthStateChanged:', firebaseUser?.email || 'null');
 
       if (firebaseUser) {
         setUser({
@@ -59,7 +59,7 @@ export function AuthProvider({ children }) {
     // Handle Redirect Result (for Google Sign In)
     getRedirectResult(auth).then(async (result) => {
       if (result && result.user) {
-        console.log('Redirect Sign-In Successful:', result.user.email);
+        // console.log('Redirect Sign-In Successful:', result.user.email);
         await DB.saveUserProfile({
           displayName: result.user.displayName || '',
           photoURL: result.user.photoURL || '',
@@ -87,7 +87,7 @@ export function AuthProvider({ children }) {
         photoURL: result.user.photoURL || '',
       });
 
-      console.log('signIn success:', result.user.email);
+      // console.log('signIn success:', result.user.email);
       return { success: true, user: result.user };
     } catch (error) {
       console.error('signIn error:', error.code);
@@ -146,7 +146,7 @@ export function AuthProvider({ children }) {
         email: result.user.email || '',
       });
 
-      console.log('signUp success:', result.user.email);
+      // console.log('signUp success:', result.user.email);
       return { success: true, user: result.user };
     } catch (error) {
       console.error('signUp error:', error.code);
@@ -191,7 +191,7 @@ export function AuthProvider({ children }) {
         });
       }
 
-      console.log('signInWithGoogle success:', result.user.email);
+      // console.log('signInWithGoogle success:', result.user.email);
       setLoading(false);
       return { success: true, user: result.user };
     } catch (error) {
@@ -208,13 +208,13 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
-    console.log('AuthContext.signOut: Starting...');
+    // console.log('AuthContext.signOut: Starting...');
     try {
       setLoading(true);
 
       await firebaseSignOut(auth);
 
-      console.log('AuthContext.signOut: Firebase signOut complete');
+      // console.log('AuthContext.signOut: Firebase signOut complete');
       // onAuthStateChanged will set user to null
 
       return { success: true };

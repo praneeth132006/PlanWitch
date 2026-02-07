@@ -128,7 +128,7 @@ export default function MainNavigator() {
   const hasActiveTrip = !!(tripInfo.destination || tripInfo.startDate || tripInfo.name);
 
   const handlePlanTrip = () => {
-    console.log('Plan trip pressed - navigating to TripSetup');
+    // console.log('Plan trip pressed - navigating to TripSetup');
     setCurrentScreen('TripSetup');
   };
 
@@ -150,7 +150,7 @@ export default function MainNavigator() {
   };
 
   const handleMyTrip = (trip, index) => {
-    console.log('Open trip:', trip?.destination);
+    // console.log('Open trip:', trip?.destination);
     setCurrentScreen('TripDashboard');
   };
 
@@ -163,7 +163,7 @@ export default function MainNavigator() {
   };
 
   const handleTripSetupComplete = async (tripData) => {
-    console.log('Trip setup complete - saving:', tripData.destination);
+    // console.log('Trip setup complete - saving:', tripData.destination);
 
     try {
       // Extract AI Data if present
@@ -181,7 +181,7 @@ export default function MainNavigator() {
 
       // 2. Process AI Data if available
       if (aiData && newTrip && newTrip.id) {
-        console.log('Processing AI generated data for trip:', newTrip.id);
+        // console.log('Processing AI generated data for trip:', newTrip.id);
 
         // Save Itinerary
         if (aiData.itinerary && Array.isArray(aiData.itinerary)) {
@@ -238,7 +238,7 @@ export default function MainNavigator() {
     setCurrentScreen('Welcome');
   };
 
-  console.log('MainNavigator - currentScreen:', currentScreen);
+  // console.log('MainNavigator - currentScreen:', currentScreen);
 
   // Navigation Handlers for Preferences
   const handlePreferencesBack = () => {

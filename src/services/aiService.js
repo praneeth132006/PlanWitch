@@ -62,7 +62,7 @@ const callGemini = async (prompt, isJson = true) => {
                 }
             };
 
-            console.log(`[AI Attempt] Trying ${cleanName}...`);
+            // console.log(`[AI Attempt] Trying ${cleanName}...`);
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -323,7 +323,7 @@ export const generateBudgetPlan = async (answers) => {
 };
 
 export const submitAiPlan = async (tripInfo, budgetData) => {
-    console.log("Submitting plan:", tripInfo.destination);
+    // console.log("Submitting plan:", tripInfo.destination);
     return { success: true };
 };
 

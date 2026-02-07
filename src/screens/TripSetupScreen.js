@@ -302,7 +302,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
       }
 
       // Log to verify data
-      console.log('TripSetupScreen - completing with tripType:', tripData.tripType);
+      // console.log('TripSetupScreen - completing with tripType:', tripData.tripType);
 
       onComplete({
         ...tripData,

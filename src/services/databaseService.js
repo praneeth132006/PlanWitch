@@ -154,25 +154,25 @@ export const checkTripCodeExists = async (code) => {
 };
 
 export const getTripByCode = async (code) => {
-  console.log(`[DB] Looking up trip code: ${code}`);
+  // console.log(`[DB] Looking up trip code: ${code}`);
 
   // 1. Look up code in 'tripCodes'
   try {
     const codeSnapshot = await get(ref(database, `tripCodes/${code}`));
     if (!codeSnapshot.exists()) {
-      console.log(`[DB] Code ${code} not found in tripCodes`);
+      // console.log(`[DB] Code ${code} not found in tripCodes`);
       return null;
     }
 
     const { userId, tripId } = codeSnapshot.val();
-    console.log(`[DB] Code found. Owner: ${userId}, TripId: ${tripId}`);
+    // console.log(`[DB] Code found. Owner: ${userId}, TripId: ${tripId}`);
 
     // 2. Fetch trip data from sharedTrips (Publicly accessible)
-    console.log(`[DB] Fetching trip data from sharedTrips/${tripId}`);
+    // console.log(`[DB] Fetching trip data from sharedTrips/${tripId}`);
 
     const tripSnapshot = await get(ref(database, `sharedTrips/${tripId}`));
     if (!tripSnapshot.exists()) {
-      console.log(`[DB] Trip data not found in sharedTrips/${tripId}. Falling back to private node (may fail if not owner).`);
+      // console.log(`[DB] Trip data not found in sharedTrips/${tripId}. Falling back to private node (may fail if not owner).`);
 
       const tripPath = tripId === 'current'
         ? `users/${userId}/currentTrip/info`
@@ -219,7 +219,7 @@ export const claimParticipantIdentity = async (ownerId, tripId, participantId, u
       await set(participantsRef, updatedParticipants);
     }
   } catch (e) {
-    console.log('[DB] Note: Could not update owner private node (expected for joiners)');
+    // console.log('[DB] Note: Could not update owner private node (expected for joiners)');
   }
 };
 
@@ -287,7 +287,7 @@ export const addNewParticipantToTrip = async (ownerId, tripId, participantData) 
       });
     }
   } catch (e) {
-    console.log('[DB] Note: Could not update owner private node for new participant (expected for joiners)');
+    // console.log('[DB] Note: Could not update owner private node for new participant (expected for joiners)');
   }
 };
 
@@ -615,7 +615,7 @@ export const deleteAllUserData = async () => {
 
   // Remove all user data from database
   await remove(ref(database, `users/${userId}`));
-  console.log('All user data deleted from database');
+  // console.log('All user data deleted from database');
 };
 
 // ============ REAL-TIME SUBSCRIPTIONS ============

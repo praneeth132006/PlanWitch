@@ -16,7 +16,7 @@ export default function AppNavigator() {
   const [authScreen, setAuthScreen] = useState('signIn');
 
   useEffect(() => {
-    console.log('AppNavigator: user =', user?.email || 'null', ', initializing =', initializing);
+    // console.log('AppNavigator: user =', user?.email || 'null', ', initializing =', initializing);
   }, [user, initializing]);
 
   // Loading screen

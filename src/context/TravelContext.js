@@ -101,7 +101,7 @@ export const TravelProvider = ({ children }) => {
       }
     });
     unsubscribersRef.current = {};
-    console.log('[Context] Cleaned up real-time listeners');
+    // console.log('[Context] Cleaned up real-time listeners');
   };
 
   // New State for AI Personalization
@@ -233,7 +233,7 @@ export const TravelProvider = ({ children }) => {
             // Check if expired
             // Use a buffer? No, strict check: if today is AFTER the end date.
             if (today > tripEndDate) {
-              console.log(`[Context] Auto-completing expired trip: ${trip.destination}. End: ${tripEndDate.toDateString()}, Today: ${today.toDateString()}`);
+              // console.log(`[Context] Auto-completing expired trip: ${trip.destination}. End: ${tripEndDate.toDateString()}, Today: ${today.toDateString()}`);
 
               // Complete it
               trip.isCompleted = true;
@@ -253,7 +253,7 @@ export const TravelProvider = ({ children }) => {
 
               // If this was the ACTIVE trip, clear it from DB and State
               if (activeTrip && trip.id === activeTrip.id) {
-                console.log('[Context] The expired trip is currently active. Clearing it.');
+                // console.log('[Context] The expired trip is currently active. Clearing it.');
                 if (isAuthenticated) {
                   await DB.clearCurrentTripData();
                 }
@@ -354,7 +354,7 @@ export const TravelProvider = ({ children }) => {
   const loadUserData = async () => {
     try {
       setIsLoading(true);
-      console.log('Loading user data from Firebase...');
+      // console.log('Loading user data from Firebase...');
 
       // Load user settings (Currency)
       const settings = await DB.getUserSettings();
@@ -398,7 +398,7 @@ export const TravelProvider = ({ children }) => {
       const savedHistory = await DB.getTripHistory();
       setTripHistory(savedHistory.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0)));
 
-      console.log('User data loaded successfully');
+      // console.log('User data loaded successfully');
       return { trips: savedTrips, currentTrip }; // Return both for processing
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -763,7 +763,7 @@ export const TravelProvider = ({ children }) => {
         setPackingItems(savedPacking || []);
 
         // Set up real-time listeners for shared trip data
-        console.log('[Context] Setting up real-time listeners for trip:', trip.id);
+        // console.log('[Context] Setting up real-time listeners for trip:', trip.id);
 
         // Subscribe to expenses - updates will sync across all users
         unsubscribersRef.current.expenses = DB.subscribeToExpenses(
@@ -862,7 +862,7 @@ export const TravelProvider = ({ children }) => {
           DB.getTripHistory()
         ]);
 
-        console.log(`[Context] Saved trip. Now refreshing. DB trips count: ${updatedTrips.length}`);
+        // console.log(`[Context] Saved trip. Now refreshing. DB trips count: ${updatedTrips.length}`);
 
         if (updatedTrips.length > 0) {
           setAllTrips(updatedTrips);
@@ -910,9 +910,9 @@ export const TravelProvider = ({ children }) => {
     }
 
     // Debug log to trace issues
-    console.log('[getAllTravelers] participantsList:', JSON.stringify(participantsList));
-    console.log('[getAllTravelers] tripInfo.ownerId:', tripInfo.ownerId);
-    console.log('[getAllTravelers] current user.uid:', user?.uid);
+    // console.log('[getAllTravelers] participantsList:', JSON.stringify(participantsList));
+    // console.log('[getAllTravelers] tripInfo.ownerId:', tripInfo.ownerId);
+    // console.log('[getAllTravelers] current user.uid:', user?.uid);
 
     // Check if the owner is already in the participants list (by type OR by userId)
     const ownerInList = participantsList.find(p =>
@@ -980,7 +980,7 @@ export const TravelProvider = ({ children }) => {
     // CRITICAL: If the deleted trip is the CURRENTLY active trip, clear it immediately
     // to prevent it from showing up in the Dashboard/Welcome Screen.
     if (tripInfo && tripInfo.id === id) {
-      console.log('[Context] Deleting currently active trip, clearing state...');
+      // console.log('[Context] Deleting currently active trip, clearing state...');
       await clearTrip();
     }
 

@@ -39,7 +39,7 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                 script.async = true;
                 script.defer = true;
                 script.onload = () => {
-                    console.log('Google Maps script loaded in TripMap');
+                    // console.log('Google Maps script loaded in TripMap');
                     resolve();
                 };
                 script.onerror = reject;

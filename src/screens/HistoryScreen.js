@@ -67,9 +67,9 @@ export default function HistoryScreen() {
 
   // DEBUG: Log trip history
   useEffect(() => {
-    console.log('=== HistoryScreen Debug ===');
-    console.log('tripHistory length:', tripHistory?.length || 0);
-    console.log('tripHistory:', JSON.stringify(tripHistory, null, 2));
+    // console.log('=== HistoryScreen Debug ===');
+    // console.log('tripHistory length:', tripHistory?.length || 0);
+    // console.log('tripHistory:', JSON.stringify(tripHistory, null, 2));
   }, [tripHistory]);
 
   return (

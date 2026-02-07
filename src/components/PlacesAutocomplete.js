@@ -63,7 +63,7 @@ const PlacesAutocomplete = ({
                 script.async = true;
                 script.defer = true;
                 script.onload = () => {
-                    console.log('Google Maps script loaded');
+                    // console.log('Google Maps script loaded');
                     resolve();
                 };
                 script.onerror = reject;
@@ -94,7 +94,7 @@ const PlacesAutocomplete = ({
                     });
                 }
 
-                console.log('Google Services initialized successfully');
+                // console.log('Google Services initialized successfully');
                 return true;
             }
             return false;
@@ -153,7 +153,7 @@ const PlacesAutocomplete = ({
                 setQuery(address);
                 onPlaceSelect(selectedPlace);
             } else {
-                console.error('Geocoder failed due to: ' + status);
+                // console.error('Geocoder failed due to: ' + status);
             }
         });
     };
@@ -183,7 +183,7 @@ const PlacesAutocomplete = ({
         }
 
         if (Platform.OS !== 'web' || !autocompleteService.current) {
-            console.log('Google Places not available');
+            // console.log('Google Places not available');
             return;
         }
 
@@ -201,13 +201,13 @@ const PlacesAutocomplete = ({
                         setPredictions(results.slice(0, 5));
                         setShowDropdown(true);
                     } else {
-                        console.error('Places API Error Status:', status);
+                        // console.error('Places API Error Status:', status);
                         setPredictions([]);
                     }
                 }
             );
         } catch (error) {
-            console.error('Places search error:', error);
+            // console.error('Places search error:', error);
             setIsLoading(false);
             setPredictions([]);
         }

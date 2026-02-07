@@ -245,7 +245,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
         return (b.createdAt || 0) - (a.createdAt || 0);
       });
 
-    console.log(`[WelcomeScreen] Total: ${allTrips.length}, Active: ${list.length}`);
+    // console.log(`[WelcomeScreen] Total: ${allTrips.length}, Active: ${list.length}`);
     return list;
   }, [allTrips, featuredTrip]);
 
@@ -355,7 +355,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
   // Handle trip card press - switch to that trip first
   const handleTripPress = async (trip, index) => {
     try {
-      console.log('Trip pressed:', trip.id, trip.destination);
+      // console.log('Trip pressed:', trip.id, trip.destination);
 
       // Switch to the selected trip's data
       if (switchToTrip) {
@@ -535,11 +535,11 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
 
   // DEBUG: Log what data we have
   useEffect(() => {
-    console.log('=== WelcomeScreen Debug ===');
-    console.log('hasActiveTrip:', hasActiveTrip);
-    console.log('tripInfo:', JSON.stringify(tripInfo, null, 2));
-    console.log('allTrips:', JSON.stringify(allTrips, null, 2));
-    console.log('allTrips length:', allTrips?.length || 0);
+    // console.log('=== WelcomeScreen Debug ===');
+    // console.log('hasActiveTrip:', hasActiveTrip);
+    // console.log('tripInfo:', JSON.stringify(tripInfo, null, 2));
+    // console.log('allTrips:', JSON.stringify(allTrips, null, 2));
+    // console.log('allTrips length:', allTrips?.length || 0);
   }, [hasActiveTrip, tripInfo, allTrips]);
 
   return (
