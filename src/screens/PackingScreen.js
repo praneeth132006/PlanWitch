@@ -39,7 +39,8 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
     addPackingItem,
     togglePackingItem,
     deletePackingItem,
-    tripInfo = {}
+    tripInfo = {},
+    checkFeatureAccess
   } = useTravelContext();
   const { colors } = useTheme();
 
@@ -99,6 +100,22 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
   };
 
   const handleAiSuggest = async () => {
+    // Premium Check
+    const access = checkFeatureAccess('ai_planning');
+    if (!access.allowed) {
+      showAlert(
+        'Premium Feature',
+        access.reason,
+        'premium',
+        () => onSetScreen('Subscription'),
+        () => hideAlert(),
+        null,
+        'Go Pro',
+        'Later'
+      );
+      return;
+    }
+
     // Check if items exist
     if (packingItems.length > 0) {
       showAlert(

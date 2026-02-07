@@ -58,7 +58,7 @@ const AI_QUESTIONS = [
   }
 ];
 
-export default function BudgetScreen() {
+export default function BudgetScreen({ onSetScreen }) {
   const {
     budget = { total: 0, categories: {} },
     setBudget,
@@ -68,7 +68,8 @@ export default function BudgetScreen() {
     tripInfo = {},
     customCategories,
     setCustomCategories,
-    saveTripPreferences
+    saveTripPreferences,
+    checkFeatureAccess
   } = useTravelContext();
   const { colors } = useTheme();
 
@@ -92,10 +93,10 @@ export default function BudgetScreen() {
   const [rangeMax, setRangeMax] = useState('');
 
   // Custom Alert State
-  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info', onConfirm: () => { }, onCancel: null, confirmText: 'OK', cancelText: 'Cancel' });
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info', onConfirm: () => { }, onCancel: null, confirmText: 'OK', cancelText: 'Cancel', neutralText: '' });
 
-  const showAlert = (title, message, type = 'info', onConfirm = () => hideAlert(), onCancel = null, confirmText = 'OK', cancelText = 'Cancel') => {
-    setAlertConfig({ visible: true, title, message, type, onConfirm, onCancel, confirmText, cancelText });
+  const showAlert = (title, message, type = 'info', onConfirm = () => hideAlert(), onCancel = null, onNeutral = null, confirmText = 'OK', cancelText = 'Cancel', neutralText = '') => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm, onCancel, onNeutral, confirmText, cancelText, neutralText });
   };
 
   const hideAlert = () => {
@@ -121,6 +122,21 @@ export default function BudgetScreen() {
 
   // ================= AI HANDLERS =================
   const startAiPlan = () => {
+    const access = checkFeatureAccess('ai_planning');
+    if (!access.allowed) {
+      showAlert(
+        'Premium Feature',
+        access.reason,
+        'premium',
+        () => onSetScreen('Subscription'),
+        () => hideAlert(),
+        null,
+        'Go Pro',
+        'Later'
+      );
+      return;
+    }
+
     setAnswers({});
     setCurrentQIndex(0);
     setRangeMin('');

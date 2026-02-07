@@ -11,6 +11,7 @@ import Calendar from '../components/Calendar';
 import TripMap from '../components/TripMap';
 import PlacesAutocomplete from '../components/PlacesAutocomplete';
 import { generateDestinationInfo } from '../services/aiService';
+import BannerAd from '../components/BannerAd';
 
 export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const {
@@ -559,6 +560,9 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
           </View>
         </Animated.View>
+
+        {/* Banner Ad */}
+        <BannerAd />
 
         {/* Participants - Keep this section */}
         {/* {travelers.length > 0 && ( */}

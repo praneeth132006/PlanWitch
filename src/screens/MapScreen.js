@@ -96,7 +96,7 @@ const generateDays = (startDate, endDate) => {
 };
 
 export default function MapScreen({ onBackToHome, onSetScreen }) {
-  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary } = useTravelContext();
+  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess } = useTravelContext();
   const { colors } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
@@ -400,7 +400,23 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
         {!tripInfo.isCompleted && (
           <PremiumButton
             title={isAiGenerating ? 'Generating...' : 'AI Suggestions'}
-            onPress={() => setAiModalVisible(true)}
+            onPress={() => {
+              const access = checkFeatureAccess('ai_planning');
+              if (!access.allowed) {
+                showAlert(
+                  'Premium Feature',
+                  access.reason,
+                  'premium',
+                  () => onSetScreen('Subscription'),
+                  () => hideAlert(),
+                  null,
+                  'Go Pro',
+                  'Later'
+                );
+                return;
+              }
+              setAiModalVisible(true);
+            }}
             variant="gradient"
             size="small"
             loading={isAiGenerating}

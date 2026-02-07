@@ -11,6 +11,8 @@ import AuthScreen from './src/screens/AuthScreen';
 import AlertSystem from './src/components/AlertSystem';
 import AppLoading from './src/components/AppLoading';
 import { Platform } from 'react-native';
+import { PremiumProvider } from './src/context/PremiumContext';
+import AdService from './src/services/AdService';
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -86,18 +88,25 @@ function AppContent() {
   );
 }
 
+
 export default function App() {
+  React.useEffect(() => {
+    AdService.init();
+  }, []);
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
         <NavigationContainer>
           <AuthProvider>
             <ThemeProvider>
-              <TravelProvider>
-                <AlertProvider>
-                  <AppContent />
-                </AlertProvider>
-              </TravelProvider>
+              <PremiumProvider>
+                <TravelProvider>
+                  <AlertProvider>
+                    <AppContent />
+                  </AlertProvider>
+                </TravelProvider>
+              </PremiumProvider>
             </ThemeProvider>
           </AuthProvider>
         </NavigationContainer>

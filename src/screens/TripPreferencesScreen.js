@@ -62,7 +62,7 @@ const DAILY_RHYTHMS = [
 
 export default function TripPreferencesScreen({ onBack, onComplete }) {
     const { colors, isDark } = useTheme();
-    const { userPlan, tripPreferences, saveTripPreferences, toggleUserPlan } = useTravelContext();
+    const { userPlan, tripPreferences, saveTripPreferences } = useTravelContext();
 
     const [currentStep, setCurrentStep] = useState(0);
     const [data, setData] = useState({
@@ -291,9 +291,8 @@ export default function TripPreferencesScreen({ onBack, onComplete }) {
                         <TouchableOpacity
                             style={styles.upgradeBtn}
                             onPress={() => {
-                                toggleUserPlan(); // Mock upgrade
                                 setShowProGate(false);
-                                setCurrentStep(currentStep + 1);
+                                onComplete?.('Subscription'); // Signal to navigate to subscription
                             }}
                         >
                             <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
@@ -309,14 +308,10 @@ export default function TripPreferencesScreen({ onBack, onComplete }) {
                 </View>
             )}
 
-            {/* Dev Toggle (Hidden/Small) */}
-            <TouchableOpacity
-                style={styles.devToggle}
-                onPress={toggleUserPlan}
-                activeOpacity={0.5}
-            >
+            {/* Dev Status (Hidden/Small) */}
+            <View style={styles.devToggle}>
                 <Text style={styles.devToggleText}>{userPlan.toUpperCase()}</Text>
-            </TouchableOpacity>
+            </View>
 
         </SafeAreaView>
     );

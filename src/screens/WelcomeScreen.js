@@ -13,6 +13,7 @@ import * as Clipboard from 'expo-clipboard';
 import Popover15 from '../components/ui/Popover15';
 import Button06 from '../components/ui/Button06';
 import PremiumButton from '../components/PremiumButton';
+import BannerAd from '../components/BannerAd';
 
 
 const { width } = Dimensions.get('window');
@@ -25,7 +26,7 @@ const TRIP_TYPES = [
   { key: 'business', label: 'Business Trip', icon: 'business', description: 'Work travel with leisure', color: '#8B5CF6' },
 ];
 
-export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProfile, hasActiveTrip }) {
+export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProfile, onSetScreen, hasActiveTrip }) {
   const { colors, isDark } = useTheme();
   const { showAlert } = useAlert();
   const {
@@ -39,6 +40,8 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
     saveCurrentTripToList,
     startNewTrip, // Import the new reset function
     switchToTrip,
+    checkFeatureAccess,
+    isPremium,
   } = useTravelContext();
 
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -588,6 +591,8 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
           </Animated.View>
         </Animated.View>
 
+        <BannerAd onPress={() => onSetScreen('Subscription')} />
+
         {/* Action Cards */}
         <View style={styles.actionsContainer}>
           {/* Plan a Trip and Join a Trip - Side by Side */}
@@ -596,6 +601,19 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
               <Pressable
                 style={({ pressed }) => [styles.optionCardSmall, pressed && styles.cardPressed]}
                 onPress={() => {
+                  const access = checkFeatureAccess('new_trip');
+                  if (!access.allowed) {
+                    Alert.alert(
+                      'Free Limit Reached',
+                      access.reason,
+                      [
+                        { text: 'Later', style: 'cancel' },
+                        { text: 'Go Pro', onPress: () => onSetScreen('Subscription') }
+                      ]
+                    );
+                    return;
+                  }
+
                   if (!hasActiveTrip) {
                     // If no active trip, we are definitely starting fresh
                     startNewTrip();
@@ -820,7 +838,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
           />
         </View>
       </Popover15>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 

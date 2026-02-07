@@ -27,10 +27,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme, THEMES } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useTravelContext } from '../context/TravelContext';
+import { usePremium } from '../context/PremiumContext';
 import { useAlert } from '../context/AlertContext';
 import Icon from '../components/Icon';
 import premiumIcon from '../../assets/icons/mycollection/png/premium.png';
 import SubscriptionScreen from './SubscriptionScreen';
+import AdService from '../services/AdService';
 
 const AVATARS = [
   'man7', 'profile_avatar', 'man1', 'woman1', 'man2', 'woman2', 'man3', 'woman3',
@@ -108,6 +110,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
     switchToTrip,
     userPlan,
   } = useTravelContext();
+  const { isPremium } = usePremium();
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
@@ -857,15 +860,17 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
         {userPlan !== 'pro' && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: '#F59E0B' }]}>Premium</Text>
-            <AnimatedCard delay={250} onPress={openSubscriptionModal}>
+            <AnimatedCard delay={250} onPress={() => onNavigate('Subscription')}>
               <View style={styles.settingItem}>
                 <View style={styles.settingLeft}>
                   <View style={[styles.settingIconBg, { backgroundColor: '#F59E0B20' }]}>
                     <Image source={premiumIcon} style={{ width: 24, height: 24 }} resizeMode="contain" />
                   </View>
                   <View style={styles.settingInfo}>
-                    <Text style={[styles.settingLabel, { color: '#F59E0B' }]}>Upgrade to Pro</Text>
-                    <Text style={styles.settingValue}>Unlock unlimited trips & AI features</Text>
+                    <Text style={[styles.settingLabel, { color: '#F59E0B' }]}>{isPremium ? 'Pro Member' : 'Upgrade to Pro'}</Text>
+                    <Text style={styles.settingValue}>
+                      {isPremium ? 'Enjoy all premium features' : 'Unlock unlimited trips & AI from ₹149/mo'}
+                    </Text>
                   </View>
                 </View>
                 <Text style={[styles.settingArrow, { color: '#F59E0B' }]}>›</Text>
@@ -1038,6 +1043,52 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
           </AnimatedCard>
         </View>
 
+        {/* Developer Options (Hidden/Visible for testing) */}
+        <Animated.View style={[styles.section, { opacity: headerAnim }]}>
+          <Text style={styles.sectionTitle}>Developer Options</Text>
+          <View style={styles.sectionContent}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                const newStatus = !isPremium;
+                if (typeof setPremiumStatus === 'function') {
+                  setPremiumStatus(newStatus);
+                } else {
+                  Alert.alert('Error', 'setPremiumStatus not available');
+                }
+              }}
+            >
+              <View style={[styles.menuIcon, { backgroundColor: '#F59E0B20' }]}>
+                <Icon name="crown" size={20} color="#F59E0B" />
+              </View>
+              <Text style={styles.menuText}>
+                {isPremium ? 'Disable Fake Premium' : 'Enable Fake Premium'}
+              </Text>
+              <Icon name="arrow_right" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+
+            <View style={styles.menuDivider} />
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                const result = AdService.showInterstitial();
+                if (result) {
+                  Alert.alert('Ad Loaded', 'Interstitial Ad should be showing now.');
+                } else {
+                  Alert.alert('Ad Not Ready', 'Ad is not loaded yet. It will reload automatically.');
+                }
+              }}
+            >
+              <View style={[styles.menuIcon, { backgroundColor: '#3B82F620' }]}>
+                <Icon name="notification" size={20} color="#3B82F6" />
+              </View>
+              <Text style={styles.menuText}>Show Test Ad</Text>
+              <Icon name="arrow_right" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
         {/* App Version */}
         <AnimatedCard delay={450}>
           <View style={styles.footer}>
@@ -1053,11 +1104,11 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
       {
         showEditModal && (
           <View style={styles.fullScreenOverlay}>
-            <View style={[styles.dialogContainer, { maxWidth: 400 }]}>
+            <View style={[styles.dialogContainer, { maxWidth: 400, padding: 0 }]}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Edit Profile</Text>
                 <TouchableOpacity onPress={() => setShowEditModal(false)}>
-                  <Text style={styles.modalClose}>✕</Text>
+                  <Icon name="close" size={20} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
 
@@ -1634,26 +1685,81 @@ const createStyles = (colors, isDark) => StyleSheet.create({
     fontSize: 10,
     color: colors.textLight,
     backgroundColor: colors.bg,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginLeft: 8,
+    overflow: 'hidden',
+    alignSelf: 'center',
   },
   modalCancelBtn: {
     flex: 1,
-    backgroundColor: colors.cardLight,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center'
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
   },
   modalCancelText: { color: colors.text, fontWeight: '600', fontSize: 15 },
   modalSaveBtn: {
     flex: 1,
     backgroundColor: colors.primary,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center'
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  modalSaveText: { color: colors.bg, fontWeight: 'bold', fontSize: 15 },
+  modalSaveText: { color: "#000", fontWeight: 'bold', fontSize: 15 },
+
+  // Developer Options Styles
+  sectionContent: {
+    backgroundColor: colors.card,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: colors.card,
+  },
+  menuIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  menuText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: colors.primaryBorder,
+    marginLeft: 66, // Align with text
+  },
 
   // Currency List
   currencyList: { maxHeight: 400 },

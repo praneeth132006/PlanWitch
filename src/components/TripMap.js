@@ -102,7 +102,7 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
     }, []);
 
     // Extract update logic to function so we can call it from init
-    const updateMapContents = () => {
+    const updateMapContents = async () => {
         if (!mapInstance.current || !window.google) return;
 
         // Clear existing markers
@@ -111,54 +111,96 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
 
         bounds.current = new window.google.maps.LatLngBounds();
 
+        // Helper to resolve coordinates
+        const resolveLocation = async (item) => {
+            if (item.latitude && item.longitude) {
+                return { lat: item.latitude, lng: item.longitude, name: item.name };
+            }
+            if (item.location || item.name) {
+                const query = item.location || item.name;
+                // Simple cache could be added here if needed
+                return new Promise((resolve) => {
+                    // Check if geocoder is initialized, if not initialize it
+                    if (!geocoder.current) {
+                        geocoder.current = new window.google.maps.Geocoder();
+                    }
+                    geocoder.current.geocode({ address: query }, (results, status) => {
+                        if (status === 'OK' && results[0]) {
+                            resolve({
+                                lat: results[0].geometry.location.lat(),
+                                lng: results[0].geometry.location.lng(),
+                                name: item.name || query
+                            });
+                        } else {
+                            // console.warn('Geocoding failed for:', query);
+                            resolve(null);
+                        }
+                    });
+                });
+            }
+            return null;
+        };
+
         // 1. Collect all points in order with their logical label
         const allPoints = [];
         let labelCounter = 1;
 
         // Start
         const startPoint = origin || start;
-        if (startPoint && startPoint.latitude && startPoint.longitude) {
-            allPoints.push({
-                type: 'start',
-                position: { lat: startPoint.latitude, lng: startPoint.longitude },
-                label: (labelCounter++).toString(),
-                name: startPoint.name || 'Start'
-            });
+        if (startPoint) {
+            const resolved = await resolveLocation({ ...startPoint, name: startPoint.name || 'Start' });
+            if (resolved) {
+                allPoints.push({
+                    type: 'start',
+                    position: { lat: resolved.lat, lng: resolved.lng },
+                    label: (labelCounter++).toString(),
+                    name: resolved.name
+                });
+            }
         }
 
         // Stops
         if (stops && stops.length > 0) {
-            stops.forEach((stop, index) => {
-                if (stop && stop.latitude && stop.longitude) {
+            // Process sequentially to maintain order labels
+            for (let i = 0; i < stops.length; i++) {
+                const stop = stops[i];
+                const resolved = await resolveLocation({ ...stop, name: stop.name || `Stop ${i + 1}` });
+                if (resolved) {
                     allPoints.push({
                         type: 'stop',
-                        position: { lat: stop.latitude, lng: stop.longitude },
+                        position: { lat: resolved.lat, lng: resolved.lng },
                         label: (labelCounter++).toString(),
-                        name: stop.name || `Stop ${index + 1}`
+                        name: resolved.name
                     });
                 }
-            });
+            }
         }
 
         // Visit (Legacy)
-        if (visit && (!stops || stops.length === 0) && visit.latitude && visit.longitude) {
-            allPoints.push({
-                type: 'visit',
-                position: { lat: visit.latitude, lng: visit.longitude },
-                label: (labelCounter++).toString(),
-                name: visit.name || 'Visit'
-            });
+        if (visit && (!stops || stops.length === 0)) {
+            const resolved = await resolveLocation({ ...visit, name: visit.name || 'Visit' });
+            if (resolved) {
+                allPoints.push({
+                    type: 'visit',
+                    position: { lat: resolved.lat, lng: resolved.lng },
+                    label: (labelCounter++).toString(),
+                    name: resolved.name
+                });
+            }
         }
 
         // End
         const endPoint = destination || end;
-        if (endPoint && endPoint.latitude && endPoint.longitude) {
-            allPoints.push({
-                type: 'end',
-                position: { lat: endPoint.latitude, lng: endPoint.longitude },
-                label: (labelCounter++).toString(),
-                name: endPoint.name || 'End'
-            });
+        if (endPoint) {
+            const resolved = await resolveLocation({ ...endPoint, name: endPoint.name || 'End' });
+            if (resolved) {
+                allPoints.push({
+                    type: 'end',
+                    position: { lat: resolved.lat, lng: resolved.lng },
+                    label: (labelCounter++).toString(),
+                    name: resolved.name
+                });
+            }
         }
 
         if (allPoints.length === 0) return;

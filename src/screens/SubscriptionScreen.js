@@ -1,34 +1,62 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Animated, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Animated, Switch, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
+import { usePremium } from '../context/PremiumContext';
 import Icon from '../components/Icon';
 import PremiumButton from '../components/PremiumButton';
 
 const SubscriptionScreen = ({ navigation, isPopover = false }) => {
     const { colors, isDark } = useTheme();
-    const { userPlan, toggleUserPlan } = useTravelContext();
+    const { userPlan } = useTravelContext();
+    const { isPremium, offerings, purchasePackage, restorePurchases, loading: premiumLoading } = usePremium();
     const [billingCycle, setBillingCycle] = useState('yearly'); // 'monthly' or 'yearly'
+    const [isPurchasing, setIsPurchasing] = useState(false);
 
-    const handleSubscribe = () => {
-        const price = billingCycle === 'yearly' ? '₹1490/year' : '₹149/month';
-        // Mock purchase flow
-        Alert.alert(
-            'Confirm Subscription',
-            `Upgrade to Pro for ${price}? (Mock)`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Subscribe',
-                    onPress: () => {
-                        if (userPlan !== 'pro') toggleUserPlan();
-                        Alert.alert('Success', 'Welcome to Pro!');
-                        navigation.goBack();
-                    }
-                }
-            ]
-        );
+    const handleSubscribe = async () => {
+        if (isPremium) {
+            Alert.alert('Active Subscription', 'You are already a Pro member!');
+            return;
+        }
+
+        if (!offerings) {
+            Alert.alert('Error', 'Subscription details not loaded yet. Please try again.');
+            return;
+        }
+
+        const packageType = billingCycle === 'yearly' ? 'annual' : 'monthly';
+        const pack = offerings.availablePackages.find(p => p.packageType.toLowerCase().includes(packageType));
+
+        if (!pack) {
+            Alert.alert('Error', 'Selected package not found.');
+            return;
+        }
+
+        setIsPurchasing(true);
+        const result = await purchasePackage(pack);
+        setIsPurchasing(false);
+
+        if (result.success) {
+            Alert.alert('Success', 'Welcome to Pro!');
+            navigation.goBack();
+        } else if (result.error && !result.error.userCancelled) {
+            Alert.alert('Error', 'Failed to complete purchase. Please check your payment method.');
+        }
+    };
+
+    const handleRestore = async () => {
+        setIsPurchasing(true);
+        const result = await restorePurchases();
+        setIsPurchasing(false);
+        if (result.success) {
+            if (result.isActive) {
+                Alert.alert('Success', 'Your Pro membership has been restored!');
+                navigation.goBack();
+            } else {
+                Alert.alert('Restore Complete', 'No active subscription found for this account.');
+            }
+        }
     };
 
     const FeatureItem = ({ text }) => (
@@ -41,6 +69,18 @@ const SubscriptionScreen = ({ navigation, isPopover = false }) => {
     );
 
     const Container = isPopover ? View : SafeAreaView;
+
+    const getPrice = () => {
+        if (!offerings) return billingCycle === 'yearly' ? '1490' : '149';
+        const packageType = billingCycle === 'yearly' ? 'annual' : 'monthly';
+        const pack = offerings.availablePackages.find(p => p.packageType.toLowerCase().includes(packageType));
+        return pack ? pack.product.priceString.replace(/[^0-9.]/g, '') : (billingCycle === 'yearly' ? '1490' : '149');
+    };
+
+    const getSymbol = () => {
+        if (!offerings) return '₹';
+        return offerings.current?.availablePackages[0]?.product.currencyCode === 'INR' ? '₹' : (offerings.current?.availablePackages[0]?.product.priceString.replace(/[0-9.,\s]/g, '') || '₹');
+    };
 
     return (
         <Container style={[styles.container, { backgroundColor: '#111' }]}>
@@ -106,8 +146,8 @@ const SubscriptionScreen = ({ navigation, isPopover = false }) => {
                     <View style={styles.priceHeader}>
                         <Text style={styles.planName}>Pro Plan</Text>
                         <View style={styles.priceContainer}>
-                            <Text style={styles.currency}>₹</Text>
-                            <Text style={styles.priceAmount}>{billingCycle === 'yearly' ? '1490' : '149'}</Text>
+                            <Text style={styles.currency}>{getSymbol()}</Text>
+                            <Text style={styles.priceAmount}>{getPrice()}</Text>
                             <Text style={styles.period}>/{billingCycle === 'yearly' ? 'year' : 'month'}</Text>
                         </View>
                         {billingCycle === 'yearly' && (
@@ -133,8 +173,22 @@ const SubscriptionScreen = ({ navigation, isPopover = false }) => {
                     <FeatureItem text="Ad-Free Experience" />
                     <FeatureItem text="Priority Email Support" />
 
-                    <Pressable style={styles.subscribeButton} onPress={handleSubscribe}>
-                        <Text style={styles.subscribeButtonText}>Start 14 days free trial</Text>
+                    <Pressable
+                        style={[styles.subscribeButton, (isPurchasing || premiumLoading) && { opacity: 0.7 }]}
+                        onPress={handleSubscribe}
+                        disabled={isPurchasing || premiumLoading}
+                    >
+                        {isPurchasing || premiumLoading ? (
+                            <ActivityIndicator size="small" color="#000" />
+                        ) : (
+                            <Text style={styles.subscribeButtonText}>
+                                {isPremium ? 'Already Pro' : 'Start 14 days free trial'}
+                            </Text>
+                        )}
+                    </Pressable>
+
+                    <Pressable style={styles.restoreButton} onPress={handleRestore}>
+                        <Text style={styles.restoreButtonText}>Restore Purchases</Text>
                     </Pressable>
                 </View>
 
@@ -239,6 +293,15 @@ const styles = StyleSheet.create({
         color: '#000',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    restoreButton: {
+        marginTop: 20,
+        alignItems: 'center',
+    },
+    restoreButtonText: {
+        color: '#AAA',
+        fontSize: 14,
+        textDecorationLine: 'underline',
     }
 
 });

@@ -5,6 +5,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
 import * as DB from '../services/databaseService';
 import { useAuth } from '../context/AuthContext';
+import { usePremium } from '../context/PremiumContext';
+import AdService from '../services/AdService';
 
 // Import screens
 import WelcomeScreen from '../screens/WelcomeScreen';
@@ -123,6 +125,7 @@ export default function MainNavigator() {
   const [pendingJoinTrip, setPendingJoinTrip] = React.useState(null);
   const { setTripInfo, setBudget, tripInfo, saveCurrentTripToList, joinTripByCode, switchToTrip } = useTravelContext();
   const { user } = useAuth();
+  const { isPremium } = usePremium();
 
   // Check if there's an active trip
   const hasActiveTrip = !!(tripInfo.destination || tripInfo.startDate || tripInfo.name);
@@ -151,6 +154,12 @@ export default function MainNavigator() {
 
   const handleMyTrip = (trip, index) => {
     // console.log('Open trip:', trip?.destination);
+
+    // Show Ad for free users
+    if (!isPremium) {
+      AdService.showInterstitial();
+    }
+
     setCurrentScreen('TripDashboard');
   };
 
@@ -227,6 +236,10 @@ export default function MainNavigator() {
       }
 
       // 3. Navigate directly to TripDashboard as requested
+      // Show Ad for free users before moving to dashboard
+      if (!isPremium) {
+        AdService.showInterstitial();
+      }
       setCurrentScreen('TripDashboard');
     } catch (error) {
       console.error('Error in handleTripSetupComplete:', error);
@@ -247,6 +260,11 @@ export default function MainNavigator() {
   };
 
   const handlePreferencesComplete = (data) => {
+    // If user clicked "Upgrade" in the preferences gate
+    if (data === 'Subscription') {
+      setCurrentScreen('Subscription');
+      return;
+    }
     // After finishing preferences, go to dashboard
     setCurrentScreen('TripDashboard');
   };
@@ -306,6 +324,7 @@ export default function MainNavigator() {
       onJoinTrip={handleJoinTrip}
       onMyTrip={handleMyTrip}
       onProfile={handleProfile}
+      onSetScreen={setCurrentScreen}
       hasActiveTrip={hasActiveTrip}
     />
   );

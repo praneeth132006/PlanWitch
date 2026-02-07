@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import { generateUniqueTripCode } from '../utils/tripCodeGenerator';
 import { useAuth } from './AuthContext';
+import { usePremium } from './PremiumContext';
 import * as DB from '../services/databaseService';
 // DB imports include softDeleteTrip now
 import { auth } from '../config/firebase';
@@ -55,7 +56,6 @@ export const useTravelContext = () => {
       tripPreferences: {},
       userPlan: 'free',
       saveTripPreferences: () => { },
-      toggleUserPlan: () => { },
       CONSTANTS: { FREE_TRIP_LIMIT: 3, FREE_TRAVELER_LIMIT: 5 },
       checkFeatureAccess: () => true,
     };
@@ -106,11 +106,8 @@ export const TravelProvider = ({ children }) => {
 
   // New State for AI Personalization
   const [tripPreferences, setTripPreferences] = useState({});
-  const [userPlan, setUserPlan] = useState('free'); // 'free' or 'pro'
-
-  const toggleUserPlan = () => {
-    setUserPlan(prev => prev === 'free' ? 'pro' : 'free');
-  };
+  const { isPremium, loading: premiumLoading } = usePremium();
+  const userPlan = isPremium ? 'pro' : 'free';
 
   const CONSTANTS = {
     FREE_TRIP_LIMIT: 3,
@@ -123,16 +120,18 @@ export const TravelProvider = ({ children }) => {
     switch (feature) {
       case 'ai_planning':
         return { allowed: false, reason: 'Upgrade to Pro to use AI Planning.' };
+      case 'ads':
+        return { allowed: false, reason: 'Ads are shown in the free version.' };
       case 'new_trip':
         // Count active trips
         const activeTrips = allTrips.filter(t => !t.isCompleted).length;
         if (activeTrips >= CONSTANTS.FREE_TRIP_LIMIT) {
-          return { allowed: false, reason: `Free limit reached (${CONSTANTS.FREE_TRIP_LIMIT} active trips). Upgrade to create more.` };
+          return { allowed: false, reason: `Active trip limit reached (${CONSTANTS.FREE_TRIP_LIMIT}). Upgrade to create unlimited trips.` };
         }
         return { allowed: true };
       case 'add_traveler':
         if (currentCount >= CONSTANTS.FREE_TRAVELER_LIMIT) {
-          return { allowed: false, reason: `Free limit reached (${CONSTANTS.FREE_TRAVELER_LIMIT} travelers). Upgrade to add more.` };
+          return { allowed: false, reason: `Traveler limit reached (${CONSTANTS.FREE_TRAVELER_LIMIT} per trip). Upgrade for unlimited travelers.` };
         }
         return { allowed: true };
       default:
@@ -1198,8 +1197,9 @@ export const TravelProvider = ({ children }) => {
       saveCurrentTripToList,
       tripPreferences,
       userPlan,
+      isPremium,
+      premiumLoading,
       saveTripPreferences,
-      toggleUserPlan,
       allTrips, setAllTrips,
       isLoading,
       checkFeatureAccess,

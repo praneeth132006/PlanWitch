@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Icon from './Icon';
+import PremiumButton from './PremiumButton';
 
 /**
  * Custom Alert Component
@@ -11,7 +12,7 @@ import Icon from './Icon';
  * - visible: boolean
  * - title: string
  * - message: string
- * - type: 'success' | 'error' | 'warning' | 'info' | 'loading'
+ * - type: 'success' | 'error' | 'warning' | 'info' | 'loading' | 'premium'
  * - onConfirm: function (primary action)
  * - onCancel: function (secondary action, optional)
  * - confirmText: string (default: "OK")
@@ -34,13 +35,15 @@ export const CustomAlert = ({
     if (!visible) return null;
 
     const isLoading = type === 'loading';
+    const isPremium = type === 'premium';
 
     const getIcon = () => {
         switch (type) {
             case 'success': return 'check';
             case 'error': return 'close';
             case 'warning': return 'notification';
-            case 'loading': return null; // No icon for loading
+            case 'premium': return 'crown';
+            case 'loading': return null;
             default: return 'info';
         }
     };
@@ -50,6 +53,7 @@ export const CustomAlert = ({
             case 'success': return '#22C55E';
             case 'error': return '#EF4444';
             case 'warning': return '#F59E0B';
+            case 'premium': return '#F59E0B'; // Gold color
             case 'loading': return colors.primary;
             default: return colors.primary;
         }
@@ -58,12 +62,21 @@ export const CustomAlert = ({
     return (
         <Modal transparent visible={visible} animationType="fade">
             <View style={styles.overlay}>
-                <View style={[styles.alertBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={[
+                    styles.alertBox,
+                    { backgroundColor: colors.card, borderColor: isPremium ? '#F59E0B' : colors.border },
+                    isPremium && styles.premiumBorder
+                ]}>
+
                     {isLoading ? (
                         <ActivityIndicator size="large" color={colors.primary} style={{ marginBottom: 16 }} />
                     ) : (
-                        <View style={[styles.iconCircle, { backgroundColor: getColor() + '20' }]}>
-                            <Icon name={getIcon()} size={24} color={getColor()} />
+                        <View style={[
+                            styles.iconCircle,
+                            { backgroundColor: getColor() + '20' },
+                            isPremium && styles.premiumIconCircle
+                        ]}>
+                            <Icon name={getIcon()} size={isPremium ? 32 : 24} color={getColor()} />
                         </View>
                     )}
 
@@ -71,7 +84,7 @@ export const CustomAlert = ({
                     <Text style={[styles.message, { color: colors.textMuted }]}>{message}</Text>
 
                     {/* Only show buttons if not loading and onConfirm exists */}
-                    {!isLoading && onConfirm && (
+                    {!isLoading && (onConfirm || onCancel) && (
                         <View style={styles.buttonRow}>
                             {onCancel && (
                                 <TouchableOpacity
@@ -91,12 +104,26 @@ export const CustomAlert = ({
                                 </TouchableOpacity>
                             )}
 
-                            <TouchableOpacity
-                                style={[styles.button, { backgroundColor: getColor(), flex: 1, minWidth: 80 }]}
-                                onPress={onConfirm}
-                            >
-                                <Text style={[styles.confirmText, (onCancel || onNeutral) && { fontSize: 13 }]}>{confirmText}</Text>
-                            </TouchableOpacity>
+                            {onConfirm && (
+                                isPremium ? (
+                                    <View style={{ flex: 1.5, marginLeft: 8 }}>
+                                        <PremiumButton
+                                            title={confirmText}
+                                            onPress={onConfirm}
+                                            variant="gradient"
+                                            size="medium"
+                                            style={{ width: '100%' }}
+                                        />
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity
+                                        style={[styles.button, { backgroundColor: getColor(), flex: 1, minWidth: 80 }]}
+                                        onPress={onConfirm}
+                                    >
+                                        <Text style={[styles.confirmText, (onCancel || onNeutral) && { fontSize: 13 }]}>{confirmText}</Text>
+                                    </TouchableOpacity>
+                                )
+                            )}
                         </View>
                     )}
                 </View>
@@ -126,6 +153,14 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
     },
+    premiumBorder: {
+        borderWidth: 1.5,
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 15,
+        elevation: 10
+    },
     iconCircle: {
         width: 48,
         height: 48,
@@ -133,6 +168,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16
+    },
+    premiumIconCircle: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        marginBottom: 20,
+        backgroundColor: 'rgba(245, 158, 11, 0.15)'
     },
     title: {
         fontSize: 20,
@@ -151,7 +193,8 @@ const styles = StyleSheet.create({
         gap: 8,
         width: '100%',
         justifyContent: 'center',
-        paddingHorizontal: 4
+        paddingHorizontal: 4,
+        alignItems: 'center'
     },
     button: {
         paddingVertical: 12,

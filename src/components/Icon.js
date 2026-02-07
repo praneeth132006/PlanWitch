@@ -48,7 +48,11 @@ const ICON_PATHS = {
     checkered_flag: require('../../assets/icons/mycollection/png/051-check.png'), // Using check for now
     like: require('../../assets/icons/mycollection/png/020-stars.png'),
     heart: require('../../assets/icons/mycollection/png/020-stars.png'),
+    star: require('../../assets/icons/mycollection/png/020-stars.png'), // Added alias
+    sparkles: require('../../assets/icons/mycollection/png/020-stars.png'), // Added alias
     message: require('../../assets/icons/mycollection/png/036-email.png'),
+    'arrow-back': require('../../assets/icons/mycollection/png/217-arrow-left.png'), // Added alias
+    crown: require('../../assets/icons/mycollection/png/020-stars.png'), // Using stars/sparkles as crown placeholder for now
 
     // Trip Types
     solo: require('../../assets/icons/mycollection/png/185-traveller.png'), // User explicitly requested change from gear

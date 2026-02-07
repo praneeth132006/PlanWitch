@@ -1,79 +1,106 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { useTravelContext } from '../context/TravelContext';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { usePremium } from '../context/PremiumContext';
 import { useTheme } from '../context/ThemeContext';
-import { useNavigation } from '@react-navigation/native';
+import Icon from './Icon';
 
-const BannerAd = () => {
-    const { userPlan } = useTravelContext();
-    const { colors } = useTheme();
-    const navigation = useNavigation();
+const BannerAd = ({ onPress }) => {
+    const { isPremium } = usePremium();
+    const { colors, isDark } = useTheme();
 
-    if (userPlan === 'pro') return null;
+    if (isPremium) return null;
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.primaryBorder }]}>
-            <View style={styles.adBadge}>
-                <Text style={styles.adBadgeText}>Ad</Text>
+        <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={onPress}
+            style={[
+                styles.container,
+                {
+                    backgroundColor: isDark ? '#1F1F1F' : '#FFF',
+                    borderColor: '#F59E0B', // Gold border
+                }
+            ]}
+        >
+            <View style={styles.contentContainer}>
+                {/* Left Icon */}
+                <View style={[styles.iconContainer, { backgroundColor: '#F59E0B15' }]}>
+                    <Icon name="crown" size={24} color="#F59E0B" />
+                </View>
+
+                {/* Text Content */}
+                <View style={styles.textContainer}>
+                    <View style={styles.titleRow}>
+                        <View style={[styles.proBadge, { backgroundColor: '#F59E0B' }]}>
+                            <Text style={styles.proBadgeText}>PRO</Text>
+                        </View>
+                        <Text style={[styles.title, { color: colors.text }]}>Unlock Pro Features</Text>
+                    </View>
+                    <Text style={[styles.description, { color: colors.textMuted }]}>
+                        Unlimited trips, AI planning & more
+                    </Text>
+                </View>
+
+                {/* Right Arrow */}
+                <Icon name="arrow_right" size={20} color="#F59E0B" />
             </View>
-            <View style={styles.content}>
-                <Text style={[styles.title, { color: colors.text }]}>Travel Pro Deal</Text>
-                <Text style={[styles.desc, { color: colors.textMuted }]}>Get 20% off flights today!</Text>
-            </View>
-            <Pressable
-                style={[styles.button, { backgroundColor: colors.primary }]}
-                onPress={() => navigation.navigate('Subscription')}
-            >
-                <Text style={styles.buttonText}>Remove Ads</Text>
-            </Pressable>
-        </View>
+        </TouchableOpacity>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        padding: 12,
+        marginHorizontal: 20,
+        marginVertical: 10,
+        borderRadius: 16,
+        borderWidth: 2,
+        overflow: 'hidden',
+        elevation: 4,
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+    },
+    contentContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderTopWidth: 1,
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        padding: 16,
     },
-    adBadge: {
-        backgroundColor: '#F59E0B',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-        marginRight: 10,
+    iconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
     },
-    adBadgeText: {
-        color: '#FFF',
-        fontSize: 10,
-        fontWeight: 'bold',
-    },
-    content: {
+    textContainer: {
         flex: 1,
     },
-    title: {
-        fontSize: 14,
-        fontWeight: 'bold',
+    titleRow: {
+        flexDirection: 'row',
+        alignItems: 'center', // Align PRO badge with text
+        marginBottom: 4,
     },
-    desc: {
-        fontSize: 12,
+    proBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        marginRight: 8,
     },
-    button: {
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 16,
-    },
-    buttonText: {
+    proBadgeText: {
         color: '#FFF',
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: 'bold',
-    }
+    },
+    title: {
+        fontSize: 17,
+        fontWeight: 'bold',
+    },
+    description: {
+        fontSize: 13,
+        fontWeight: '500',
+    },
 });
 
 export default BannerAd;

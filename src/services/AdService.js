@@ -1,15 +1,22 @@
-import { useState, useCallback } from 'react';
+// Web stub for AdService
+class AdService {
+    constructor() {
+        this.isLoaded = false;
+    }
 
-// IMPORTANT: This file is a stub for web compatibility.
-// The react-native-google-mobile-ads library does NOT support web and will crash the bundler.
-// This provides a no-op hook that won't break your app.
+    async init() {
+        // No-op on web
+    }
 
-export function useInterstitialAd() {
-    const [loaded] = useState(false);
+    loadInterstitial() {
+        // No-op on web
+    }
 
-    const showAd = useCallback(() => {
-        console.log('Ads not available on web. Native build required.');
-    }, []);
-
-    return { showAd, loaded };
+    showInterstitial() {
+        console.log('[AdService] Web/Test Interstitial Shown');
+        return true;
+    }
 }
+
+const adServiceInstance = new AdService();
+export default adServiceInstance;

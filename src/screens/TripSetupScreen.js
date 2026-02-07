@@ -445,6 +445,12 @@ export default function TripSetupScreen({ onComplete, onBack }) {
   };
 
   const addColleague = () => {
+    const access = checkFeatureAccess('add_traveler', tripData.colleagues.length);
+    if (!access.allowed) {
+      Alert.alert('Limit Reached', access.reason);
+      return;
+    }
+
     if (tripData.newColleagueName.trim()) {
       setTripData({
         ...tripData,

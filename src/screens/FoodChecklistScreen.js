@@ -11,20 +11,20 @@ import { CustomAlert } from '../components/CustomAlert';
 import { generateFoodRecommendations } from '../services/aiService';
 import PremiumButton from '../components/PremiumButton';
 
-export default function FoodChecklistScreen() {
+export default function FoodChecklistScreen({ onSetScreen }) {
     const { colors } = useTheme();
     // Destructure new Context methods for persistence
-    const { tripInfo, foodItems, addFoodItem, toggleFoodItem, deleteFoodItem } = useTravelContext();
+    const { tripInfo, foodItems, addFoodItem, toggleFoodItem, deleteFoodItem, checkFeatureAccess } = useTravelContext();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     // Animation refs
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
     // Custom Alert State
-    const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
+    const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info', onConfirm: () => { }, onCancel: null, confirmText: 'OK', cancelText: 'Cancel', neutralText: '' });
 
-    const showAlert = (title, message, type = 'info') => {
-        setAlertConfig({ visible: true, title, message, type });
+    const showAlert = (title, message, type = 'info', onConfirm = () => hideAlert(), onCancel = null, onNeutral = null, confirmText = 'OK', cancelText = 'Cancel', neutralText = '') => {
+        setAlertConfig({ visible: true, title, message, type, onConfirm, onCancel, onNeutral, confirmText, cancelText, neutralText });
     };
 
     const hideAlert = () => {
@@ -89,6 +89,22 @@ export default function FoodChecklistScreen() {
 
     // Derived helpers for UI, filtering the global persisted list by place
     const handleGenerateSuggestions = async () => {
+        // Premium Check
+        const access = checkFeatureAccess('ai_planning');
+        if (!access.allowed) {
+            showAlert(
+                'Premium Feature',
+                access.reason,
+                'premium',
+                () => onSetScreen('Subscription'),
+                () => hideAlert(),
+                null,
+                'Go Pro',
+                'Later'
+            );
+            return;
+        }
+
         if (places.length === 0) {
             showAlert('No Places', 'Add destinations to your trip first.', 'warning');
             return;
@@ -518,7 +534,12 @@ export default function FoodChecklistScreen() {
                 title={alertConfig.title}
                 message={alertConfig.message}
                 type={alertConfig.type}
-                onConfirm={hideAlert}
+                onConfirm={alertConfig.onConfirm}
+                onCancel={alertConfig.onCancel}
+                onNeutral={alertConfig.onNeutral}
+                confirmText={alertConfig.confirmText}
+                cancelText={alertConfig.cancelText}
+                neutralText={alertConfig.neutralText}
             />
         </SafeAreaView>
     );
