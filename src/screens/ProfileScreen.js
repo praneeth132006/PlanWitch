@@ -110,7 +110,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
     switchToTrip,
     userPlan,
   } = useTravelContext();
-  const { isPremium } = usePremium();
+  const { isPremium, setPremiumStatus } = usePremium();
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
@@ -1053,6 +1053,13 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
                 const newStatus = !isPremium;
                 if (typeof setPremiumStatus === 'function') {
                   setPremiumStatus(newStatus);
+                  Alert.alert(
+                    newStatus ? 'Premium Activated (Fake)' : 'Premium Deactivated',
+                    newStatus
+                      ? 'You now have access to all Pro features for testing purposes.'
+                      : 'You are back to the free plan.',
+                    [{ text: 'OK' }]
+                  );
                 } else {
                   Alert.alert('Error', 'setPremiumStatus not available');
                 }
@@ -1072,12 +1079,14 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
-                const result = AdService.showInterstitial();
-                if (result) {
-                  Alert.alert('Ad Loaded', 'Interstitial Ad should be showing now.');
-                } else {
-                  Alert.alert('Ad Not Ready', 'Ad is not loaded yet. It will reload automatically.');
-                }
+                Alert.alert('Loading Ad...', 'Attempting to show a test interstitial ad.');
+                // Small timeout to allow the alert to show before the ad takes over (optional, but good for UX)
+                setTimeout(() => {
+                  const result = AdService.showInterstitial();
+                  if (!result) {
+                    Alert.alert('Ad Not Ready', 'The test ad is not loaded yet. It will reload automatically. Try again in a few seconds.');
+                  }
+                }, 500);
               }}
             >
               <View style={[styles.menuIcon, { backgroundColor: '#3B82F620' }]}>
@@ -1714,7 +1723,7 @@ const createStyles = (colors, isDark) => StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  modalSaveText: { color: "#000", fontWeight: 'bold', fontSize: 15 },
+  modalSaveText: { color: "#000", fontWeight: 'bold', fontSize: 15 }, // Updated to black for visibility
 
   // Developer Options Styles
   sectionContent: {
