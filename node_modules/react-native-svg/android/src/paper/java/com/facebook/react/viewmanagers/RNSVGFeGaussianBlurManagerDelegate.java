@@ -12,11 +12,10 @@ package com.facebook.react.viewmanagers;
 import android.view.View;
 import androidx.annotation.Nullable;
 import com.facebook.react.bridge.DynamicFromObject;
-import com.facebook.react.uimanager.BaseViewManager;
 import com.facebook.react.uimanager.BaseViewManagerDelegate;
-import com.facebook.react.uimanager.LayoutShadowNode;
+import com.facebook.react.uimanager.BaseViewManagerInterface;
 
-public class RNSVGFeGaussianBlurManagerDelegate<T extends View, U extends BaseViewManager<T, ? extends LayoutShadowNode> & RNSVGFeGaussianBlurManagerInterface<T>> extends BaseViewManagerDelegate<T, U> {
+public class RNSVGFeGaussianBlurManagerDelegate<T extends View, U extends BaseViewManagerInterface<T> & RNSVGFeGaussianBlurManagerInterface<T>> extends BaseViewManagerDelegate<T, U> {
   public RNSVGFeGaussianBlurManagerDelegate(U viewManager) {
     super(viewManager);
   }

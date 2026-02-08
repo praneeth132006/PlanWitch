@@ -44,6 +44,7 @@ export default function AuthScreen() {
   });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isResetSent, setIsResetSent] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [legalType, setLegalType] = useState('terms'); // 'terms' or 'privacy'
@@ -193,35 +194,42 @@ export default function AuthScreen() {
     setShowTermsModal(true);
   };
 
-  const renderInput = (field, placeholder, icon, options = {}) => (
-    <View style={styles.inputContainer}>
-      <View style={styles.inputIconBg}>
-        <View>{icon}</View>
+  const renderInput = (field, placeholder, icon, options = {}) => {
+    const isPasswordField = options.secureTextEntry;
+    const isConfirmPassword = field === 'confirmPassword';
+    const isVisible = isConfirmPassword ? showConfirmPassword : showPassword;
+    const setVisible = isConfirmPassword ? setShowConfirmPassword : setShowPassword;
+
+    return (
+      <View style={styles.inputContainer}>
+        <View style={styles.inputIconBg}>
+          <View>{icon}</View>
+        </View>
+        <TextInput
+          style={styles.input}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textMuted}
+          value={formData[field]}
+          onChangeText={(text) => {
+            setFormData({ ...formData, [field]: text });
+            if (errors[field]) setErrors({ ...errors, [field]: null });
+          }}
+          autoCapitalize={options.autoCapitalize || 'none'}
+          keyboardType={options.keyboardType || 'default'}
+          secureTextEntry={isPasswordField && !isVisible}
+          editable={!loading}
+        />
+        {isPasswordField && (
+          <TouchableOpacity
+            style={styles.eyeButton}
+            onPress={() => setVisible(!isVisible)}
+          >
+            <Text style={styles.eyeIcon}>{isVisible ? '👁️' : '👁️‍🗨️'}</Text>
+          </TouchableOpacity>
+        )}
       </View>
-      <TextInput
-        style={styles.input}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        value={formData[field]}
-        onChangeText={(text) => {
-          setFormData({ ...formData, [field]: text });
-          if (errors[field]) setErrors({ ...errors, [field]: null });
-        }}
-        autoCapitalize={options.autoCapitalize || 'none'}
-        keyboardType={options.keyboardType || 'default'}
-        secureTextEntry={options.secureTextEntry && !showPassword}
-        editable={!loading}
-      />
-      {options.secureTextEntry && (
-        <TouchableOpacity
-          style={styles.eyeButton}
-          onPress={() => setShowPassword(!showPassword)}
-        >
-          <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -519,11 +527,12 @@ const createStyles = (colors) => StyleSheet.create({
   },
   formCard: {
     backgroundColor: colors.card,
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: 32,
+    padding: 32,
     marginBottom: 24,
     borderWidth: 1,
     borderColor: colors.primaryBorder,
+    width: '100%',
   },
   formTitle: {
     fontSize: 24,

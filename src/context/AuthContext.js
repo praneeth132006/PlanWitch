@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Platform } from 'react-native';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -17,6 +18,8 @@ import {
   fetchSignInMethodsForEmail,
   getAdditionalUserInfo,
 } from 'firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import nativeAuth from '@react-native-firebase/auth';
 import { auth } from '../config/firebase';
 import * as DB from '../services/databaseService';
 
@@ -37,6 +40,11 @@ export function AuthProvider({ children }) {
   const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
+    // Configure Google Sign In
+    GoogleSignin.configure({
+      webClientId: '739103871364-8dbqif6ogn8fiiqf4j5gb0h17fj7gdq0.apps.googleusercontent.com',
+      offlineAccess: true,
+    });
     // console.log('AuthProvider: Setting up listener');
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -57,19 +65,21 @@ export function AuthProvider({ children }) {
       setInitializing(false);
     });
 
-    // Handle Redirect Result (for Google Sign In)
-    getRedirectResult(auth).then(async (result) => {
-      if (result && result.user) {
-        // console.log('Redirect Sign-In Successful:', result.user.email);
-        await DB.saveUserProfile({
-          displayName: result.user.displayName || '',
-          photoURL: result.user.photoURL || '',
-          email: result.user.email || '',
-        });
-      }
-    }).catch((error) => {
-      console.error('Redirect Sign-In Error:', error);
-    });
+    // Handle Redirect Result (for Google Sign In) - WEB ONLY
+    if (Platform.OS === 'web') {
+      getRedirectResult(auth).then(async (result) => {
+        if (result && result.user) {
+          // console.log('Redirect Sign-In Successful:', result.user.email);
+          await DB.saveUserProfile({
+            displayName: result.user.displayName || '',
+            photoURL: result.user.photoURL || '',
+            email: result.user.email || '',
+          });
+        }
+      }).catch((error) => {
+        console.error('Redirect Sign-In Error:', error);
+      });
+    }
 
     return unsubscribe;
   }, []);
@@ -170,46 +180,78 @@ export function AuthProvider({ children }) {
   const signInWithGoogle = async (isSignUp = false) => {
     try {
       setLoading(true);
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const additionalUserInfo = getAdditionalUserInfo(result);
 
-      // If user is trying to sign up but already had an account
-      if (isSignUp && !additionalUserInfo?.isNewUser) {
-        await firebaseSignOut(auth);
-        setUser(null);
+      if (Platform.OS === 'web') {
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        const additionalUserInfo = getAdditionalUserInfo(result);
+
+        // If user is trying to sign up but already had an account
+        if (isSignUp && !additionalUserInfo?.isNewUser) {
+          await firebaseSignOut(auth);
+          setUser(null);
+          setLoading(false);
+          return {
+            success: false,
+            error: 'This account already exists. Please use Sign In instead.',
+            emailExists: true
+          };
+        }
+
+        // Mirror user profile in database for persistence
+        if (result.user) {
+          await DB.saveUserProfile({
+            displayName: result.user.displayName || '',
+            photoURL: result.user.photoURL || '',
+            email: result.user.email || '',
+          });
+        }
+
+        // Mark as new user for onboarding if this is a new signup
+        const userIsNew = additionalUserInfo?.isNewUser || false;
+        if (userIsNew) {
+          setIsNewUser(true);
+        }
+
         setLoading(false);
-        return {
-          success: false,
-          error: 'This account already exists. Please use Sign In instead.',
-          emailExists: true
-        };
-      }
+        return { success: true, user: result.user, isNewUser: userIsNew };
+      } else {
+        // Native Google Sign In
+        await GoogleSignin.hasPlayServices();
+        const { data } = await GoogleSignin.signIn();
+        const idToken = data.idToken;
 
-      // Mirror user profile in database for persistence
-      if (result.user) {
-        await DB.saveUserProfile({
-          displayName: result.user.displayName || '',
-          photoURL: result.user.photoURL || '',
-          email: result.user.email || '',
-        });
-      }
+        // Create a Google credential with the token
+        const googleCredential = nativeAuth.GoogleAuthProvider.credential(idToken);
 
-      // Mark as new user for onboarding if this is a new signup
-      const userIsNew = additionalUserInfo?.isNewUser || false;
-      if (userIsNew) {
-        setIsNewUser(true);
-      }
+        // Sign-in with the credential
+        const userCredential = await nativeAuth().signInWithCredential(googleCredential);
 
-      // console.log('signInWithGoogle success:', result.user.email);
-      setLoading(false);
-      return { success: true, user: result.user, isNewUser: userIsNew };
+        // Mirror user profile in database
+        if (userCredential.user) {
+          await DB.saveUserProfile({
+            displayName: userCredential.user.displayName || '',
+            photoURL: userCredential.user.photoURL || '',
+            email: userCredential.user.email || '',
+          });
+
+          // Check if it's a new user (Note: native SDK handles this differently, usually via database check)
+          // For now, let's assume if they don't have a profile yet, it's new
+          const profile = await DB.getUserProfile(userCredential.user.uid);
+          if (!profile || !profile.email) {
+            setIsNewUser(true);
+          }
+        }
+
+        setLoading(false);
+        return { success: true, user: userCredential.user };
+      }
     } catch (error) {
       console.error('signInWithGoogle error:', error.code, error.message);
       setLoading(false);
 
-      // If user closed popup, don't show error - just silently return
-      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+      // Handle cancelled or errors
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request' || error.message?.includes('Sign in cancelled')) {
         return { success: false, cancelled: true };
       }
 

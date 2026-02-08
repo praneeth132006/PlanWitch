@@ -83,7 +83,6 @@ export function transformsArrayToProps(
     }
     const key = keys[0] as keyof TransformProps;
     const value = transformObject[key as keyof typeof transformObject];
-    // @ts-expect-error FIXME
     props[key] = value;
   });
   return props;
@@ -183,7 +182,6 @@ export function transformToMatrix(
         );
       } else {
         const transformProps = props2transform(
-          // @ts-expect-error FIXME
           transformsArrayToProps(transform as TransformsStyleArray)
         );
         transformProps && appendTransformProps(transformProps);
@@ -196,7 +194,6 @@ export function transformToMatrix(
         console.error(e);
       }
     } else {
-      // @ts-expect-error FIXME
       const transformProps = props2transform(transform);
       transformProps && appendTransformProps(transformProps);
     }

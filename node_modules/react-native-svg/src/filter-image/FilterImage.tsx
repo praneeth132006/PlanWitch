@@ -29,8 +29,6 @@ export const FilterImage = (props: FilterImageProps) => {
   const extractedFilters = [...filters, ...extractFiltersCss(stylesFilter)];
   const filterId = React.useMemo(() => `RNSVG-${getRandomNumber()}`, []);
 
-  if (!source) return null;
-
   const src =
     Platform.OS === 'web'
       ? resolveAssetUri(source)

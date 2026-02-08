@@ -26,7 +26,7 @@ class AdService {
         }
 
         try {
-            this.interstitial = InterstitialAd.createForAdUnitId(AD_UNIT_IDS.INTERSTITIAL, this.requestOptions);
+            this.interstitial = InterstitialAd.createForAdRequest(AD_UNIT_IDS.INTERSTITIAL, this.requestOptions);
 
             this.interstitial.addAdEventListener(AdEventType.LOADED, () => {
                 this.isLoaded = true;

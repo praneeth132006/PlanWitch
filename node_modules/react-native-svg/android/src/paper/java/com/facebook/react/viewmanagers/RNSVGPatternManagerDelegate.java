@@ -14,11 +14,10 @@ import androidx.annotation.Nullable;
 import com.facebook.react.bridge.ColorPropConverter;
 import com.facebook.react.bridge.DynamicFromObject;
 import com.facebook.react.bridge.ReadableArray;
-import com.facebook.react.uimanager.BaseViewManager;
 import com.facebook.react.uimanager.BaseViewManagerDelegate;
-import com.facebook.react.uimanager.LayoutShadowNode;
+import com.facebook.react.uimanager.BaseViewManagerInterface;
 
-public class RNSVGPatternManagerDelegate<T extends View, U extends BaseViewManager<T, ? extends LayoutShadowNode> & RNSVGPatternManagerInterface<T>> extends BaseViewManagerDelegate<T, U> {
+public class RNSVGPatternManagerDelegate<T extends View, U extends BaseViewManagerInterface<T> & RNSVGPatternManagerInterface<T>> extends BaseViewManagerDelegate<T, U> {
   public RNSVGPatternManagerDelegate(U viewManager) {
     super(viewManager);
   }

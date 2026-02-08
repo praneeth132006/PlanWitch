@@ -26,7 +26,7 @@ export const PremiumProvider = ({ children }) => {
                 if (Platform.OS === 'android') {
                     Purchases.configure({ apiKey: REVENUE_CAT_CONFIG.apiKey });
                 } else if (Platform.OS === 'ios') {
-                    // Purchases.configure({ apiKey: 'YOUR_IOS_API_KEY' });
+                    Purchases.configure({ apiKey: REVENUE_CAT_CONFIG.apiKey }); // Using same key as temporary measure
                 }
 
                 // Check active entitlements

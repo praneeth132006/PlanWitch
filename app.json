@@ -16,7 +16,8 @@
     "icon": "./assets/icons/mycollection/png/app_icon.png",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.travelwitch.app"
+      "bundleIdentifier": "com.travelwitch.app",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -56,7 +57,16 @@
           "androidAppId": "ca-app-pub-1266748452983907~1522508148",
           "iosAppId": "ca-app-pub-1266748452983907~1522508148"
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      "@react-native-google-signin/google-signin"
     ]
   }
 }
