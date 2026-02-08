@@ -18,15 +18,30 @@ export const PremiumProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [offerings, setOfferings] = useState(null);
 
+    const fetchOfferings = async () => {
+        try {
+            const offeringsData = await Purchases.getOfferings();
+            if (offeringsData.current !== null) {
+                setOfferings(offeringsData.current);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Fetch Offerings Error:', error);
+            return false;
+        }
+    };
+
     useEffect(() => {
         const initPurchases = async () => {
+            setLoading(true);
             try {
                 Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
 
                 if (Platform.OS === 'android') {
                     Purchases.configure({ apiKey: REVENUE_CAT_CONFIG.apiKey });
                 } else if (Platform.OS === 'ios') {
-                    Purchases.configure({ apiKey: REVENUE_CAT_CONFIG.apiKey }); // Using same key as temporary measure
+                    Purchases.configure({ apiKey: REVENUE_CAT_CONFIG.apiKey });
                 }
 
                 // Check active entitlements
@@ -34,10 +49,7 @@ export const PremiumProvider = ({ children }) => {
                 setIsPremium(customerInfo.entitlements.active[REVENUE_CAT_CONFIG.entitlementId] !== undefined);
 
                 // Load offerings
-                const offeringsData = await Purchases.getOfferings();
-                if (offeringsData.current !== null) {
-                    setOfferings(offeringsData.current);
-                }
+                await fetchOfferings();
             } catch (error) {
                 console.error('RevenueCat Init Error:', error);
             } finally {
@@ -103,7 +115,8 @@ export const PremiumProvider = ({ children }) => {
             offerings,
             purchasePackage,
             restorePurchases,
-            setPremiumStatus
+            setPremiumStatus,
+            refreshOfferings: fetchOfferings
         }}>
             {children}
         </PremiumContext.Provider>

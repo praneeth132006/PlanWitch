@@ -826,9 +826,9 @@ const createStyles = (colors) => StyleSheet.create({
     marginTop: 20
   },
   aiNextBtnText: {
-    color: colors.bg, // Contrast text
+    color: '#000000', // High contrast
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '900',
     marginRight: 8
   },
 
@@ -939,7 +939,7 @@ const createStyles = (colors) => StyleSheet.create({
   checkMark: { color: 'black', fontSize: 16, fontWeight: 'bold' },
 
   saveBtn: { backgroundColor: colors.primary, padding: 18, borderRadius: 20, alignItems: 'center', marginTop: 32 },
-  saveBtnText: { color: 'black', fontSize: 16, fontWeight: '800' },
+  saveBtnText: { color: '#000000', fontSize: 16, fontWeight: '900' },
 
   deleteBtn: { backgroundColor: '#FEE2E2', padding: 18, borderRadius: 20, alignItems: 'center', marginTop: 16 },
   deleteBtnText: { color: '#EF4444', fontSize: 16, fontWeight: '800' },

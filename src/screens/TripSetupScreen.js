@@ -734,8 +734,8 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                   onPress={handleNext}
                   disabled={!isStepValid() || isCreating}
                 >
-                  <Text style={styles.nextButtonText}>Continue</Text>
-                  <Text style={styles.nextButtonIcon}>→</Text>
+                  <Text style={[styles.nextButtonText, { color: '#000000', fontWeight: '900' }]}>Continue</Text>
+                  <Text style={[styles.nextButtonIcon, { color: '#000000', fontWeight: '900' }]}>→</Text>
                 </Pressable>
               </ScrollView>
             </View>

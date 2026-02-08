@@ -21,7 +21,11 @@ const SubscriptionScreen = ({ navigation, isPopover = false }) => {
         }
 
         if (!offerings) {
-            Alert.alert('Error', 'Subscription details not loaded yet. Please try again.');
+            if (premiumLoading) {
+                // Just wait for loading if it's currently in progress
+                return;
+            }
+            Alert.alert('Error', 'Subscription details not loaded yet. Please try again or check your internet connection.');
             return;
         }
 
@@ -290,9 +294,9 @@ const styles = StyleSheet.create({
         marginTop: 16,
     },
     subscribeButtonText: {
-        color: '#000',
+        color: '#000000', // Pure black for maximum contrast
         fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: '900', // Extra bold
     },
     restoreButton: {
         marginTop: 20,

@@ -24,38 +24,38 @@ const STEPS = [
 const TRAVEL_VIBES = [
     { id: 'relaxed', label: 'Relaxed', icon: 'coffee', desc: 'Chill, low-stress days' },
     { id: 'balanced', label: 'Balanced', icon: 'map', desc: 'Mix of sights & rest' },
-    { id: 'packed', label: 'Packed', icon: 'run', desc: 'See everything possible' },
+    { id: 'packed', label: 'Packed', icon: 'itinerary', desc: 'See everything possible' },
 ];
 
 const LUXURY_LEVELS = [
     { id: 'budget', label: 'Budget', icon: 'money', desc: 'Hostels & street food' },
-    { id: 'comfort', label: 'Comfort', icon: 'home', desc: 'Hotels & nice meals' },
-    { id: 'luxury', label: 'Luxury', icon: 'diamond', desc: 'Top-tier everything' },
+    { id: 'comfort', label: 'Comfort', icon: 'hotel', desc: 'Hotels & nice meals' },
+    { id: 'luxury', label: 'Luxury', icon: 'star', desc: 'Top-tier everything' },
 ];
 
 const IMMERSION_LEVELS = [
     { id: 'tourist', label: 'Highlights', icon: 'camera', desc: 'Major landmarks' },
     { id: 'mixed', label: 'Mixed', icon: 'compass', desc: 'Hits & hidden gems' },
-    { id: 'local', label: 'Deep Dive', icon: 'users', desc: 'Live like a local' },
+    { id: 'local', label: 'Deep Dive', icon: 'friends', desc: 'Live like a local' },
 ];
 
 const INTERESTS = [
-    { id: 'nature', label: 'Nature', icon: 'leaf' },
-    { id: 'history', label: 'History', icon: 'book' },
-    { id: 'art', label: 'Art & Culture', icon: 'palette' },
-    { id: 'food', label: 'Foodie', icon: 'restaurant' },
-    { id: 'adventure', label: 'Adventure', icon: 'compass' },
-    { id: 'nightlife', label: 'Nightlife', icon: 'moon' },
-    { id: 'shopping', label: 'Shopping', icon: 'bag' },
+    { id: 'nature', label: 'Nature', icon: 'nature' },
+    { id: 'history', label: 'History', icon: 'itinerary' },
+    { id: 'art', label: 'Art & Culture', icon: 'bulb' },
+    { id: 'food', label: 'Foodie', icon: 'food' },
+    { id: 'adventure', label: 'Adventure', icon: 'activities' },
+    { id: 'nightlife', label: 'Nightlife', icon: 'nightlife' },
+    { id: 'shopping', label: 'Shopping', icon: 'shopping' },
     { id: 'photography', label: 'Photography', icon: 'camera' },
     { id: 'wellness', label: 'Wellness', icon: 'heart' },
-    { id: 'family', label: 'Family Fun', icon: 'home' },
+    { id: 'family', label: 'Family Fun', icon: 'family' },
 ];
 
 const DAILY_RHYTHMS = [
-    { id: 'early', label: 'Early Bird', icon: 'sun', desc: 'Start by 7-8 AM' },
+    { id: 'early', label: 'Early Bird', icon: 'itinerary', desc: 'Start by 7-8 AM' },
     { id: 'standard', label: 'Standard', icon: 'clock', desc: 'Start by 9-10 AM' },
-    { id: 'late', label: 'Night Owl', icon: 'moon', desc: 'Start after 11 AM' },
+    { id: 'late', label: 'Night Owl', icon: 'nightlife', desc: 'Start after 11 AM' },
 ];
 
 // --- Component ---

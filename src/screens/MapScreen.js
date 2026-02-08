@@ -852,8 +852,8 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                     onPress={() => setAiPreferences(prev => ({ ...prev, pace }))}
                   >
                     <Text style={{
-                      fontWeight: '600',
-                      color: aiPreferences.pace === pace ? 'white' : colors.textMuted
+                      fontWeight: '800',
+                      color: aiPreferences.pace === pace ? '#000000' : colors.textMuted
                     }}>{pace}</Text>
                   </TouchableOpacity>
                 ))}
@@ -903,8 +903,8 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                   <ActivityIndicator color="white" />
                 ) : (
                   <>
-                    <Icon name="sparkles" size={20} color="white" />
-                    <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>Generate Timed Itinerary</Text>
+                    <Icon name="sparkles" size={20} color="#000000" />
+                    <Text style={{ color: '#000000', fontSize: 16, fontWeight: '900', marginLeft: 8 }}>Generate Timed Itinerary</Text>
                   </>
                 )}
               </TouchableOpacity>

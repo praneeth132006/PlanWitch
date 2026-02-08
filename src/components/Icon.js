@@ -55,11 +55,11 @@ const ICON_PATHS = {
     crown: require('../../assets/icons/mycollection/png/020-stars.png'), // Using stars/sparkles as crown placeholder for now
 
     // Trip Types
-    solo: require('../../assets/icons/mycollection/png/185-traveller.png'), // User explicitly requested change from gear
-    friends: require('../../assets/icons/mycollection/png/032-group.png'), // Friend group
-    family: require('../../assets/icons/mycollection/png/007-family.png'),
+    solo: require('../../assets/icons/mycollection/png/185-traveller.png'),
+    friends: require('../../assets/icons/mycollection/png/032-group.png'),
+    family: require('../../assets/icons/mycollection/png/191-family.png'),
     couple: require('../../assets/icons/mycollection/png/couple.png'),
-    business: require('../../assets/icons/mycollection/png/065-financial.png'), // More specific business icon
+    business: require('../../assets/icons/mycollection/png/065-financial.png'),
 
     // Itinerary/Transport
     flight: require('../../assets/icons/mycollection/png/188-airplane.png'),

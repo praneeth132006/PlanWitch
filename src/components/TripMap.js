@@ -309,7 +309,7 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
         return (
             <View style={[styles.container, style, { borderRadius, overflow: 'hidden' }]}>
                 <MapView
-                    provider={PROVIDER_GOOGLE}
+                    provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                     style={StyleSheet.absoluteFill}
                     initialRegion={{
                         latitude: coordinates.length > 0 ? coordinates[0].latitude : MAP_DEFAULTS.center.lat,

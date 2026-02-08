@@ -153,7 +153,7 @@ const HomeMap = ({ destination, markers = [], style }) => {
             ) : (
                 <View style={[StyleSheet.absoluteFill, { borderRadius: 24, overflow: 'hidden' }]}>
                     <MapView
-                        provider={PROVIDER_GOOGLE}
+                        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                         style={StyleSheet.absoluteFill}
                         initialRegion={{
                             latitude: destination?.latitude || MAP_DEFAULTS.center.lat,
