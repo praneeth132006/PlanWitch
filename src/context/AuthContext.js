@@ -34,6 +34,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
     // console.log('AuthProvider: Setting up listener');
@@ -146,8 +147,11 @@ export function AuthProvider({ children }) {
         email: result.user.email || '',
       });
 
+      // Mark as new user for onboarding
+      setIsNewUser(true);
+
       // console.log('signUp success:', result.user.email);
-      return { success: true, user: result.user };
+      return { success: true, user: result.user, isNewUser: true };
     } catch (error) {
       console.error('signUp error:', error.code);
       let msg = 'Failed to create account';
@@ -191,9 +195,15 @@ export function AuthProvider({ children }) {
         });
       }
 
+      // Mark as new user for onboarding if this is a new signup
+      const userIsNew = additionalUserInfo?.isNewUser || false;
+      if (userIsNew) {
+        setIsNewUser(true);
+      }
+
       // console.log('signInWithGoogle success:', result.user.email);
       setLoading(false);
-      return { success: true, user: result.user };
+      return { success: true, user: result.user, isNewUser: userIsNew };
     } catch (error) {
       console.error('signInWithGoogle error:', error.code, error.message);
       setLoading(false);
@@ -274,11 +284,17 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const clearNewUserFlag = () => {
+    setIsNewUser(false);
+  };
+
   const value = {
     user,
     loading,
     initializing,
     isAuthenticated: !!user,
+    isNewUser,
+    clearNewUserFlag,
     signIn,
     signUp,
     signInWithGoogle,

@@ -726,9 +726,9 @@ const createStyles = (colors) => StyleSheet.create({
   customSplitList: { gap: 12 },
   customRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   customName: { fontWeight: '600', color: colors.text },
-  customInputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, flex: 1, marginLeft: 16, borderWidth: 1, borderColor: colors.primaryBorder },
-  customSymbol: { color: colors.text, marginRight: 8, fontSize: 16, fontWeight: '700' },
-  customInput: { flex: 1, fontSize: 18, fontWeight: '700', color: colors.text, textAlign: 'right', padding: 0, outlineStyle: 'none' },
+  customInputWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', backgroundColor: colors.card, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, minWidth: 120, marginLeft: 16, borderWidth: 1, borderColor: colors.primaryBorder },
+  customSymbol: { color: colors.textMuted, marginRight: 8, fontSize: 16, fontWeight: '700' },
+  customInput: { fontSize: 18, fontWeight: '700', color: colors.text, textAlign: 'right', padding: 0, minWidth: 50, outlineStyle: 'none' },
 
   valMsg: { padding: 8, borderRadius: 8, marginBottom: 12, alignItems: 'center' },
   valSuccess: { backgroundColor: '#10B98120' },

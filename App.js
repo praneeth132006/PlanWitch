@@ -8,6 +8,8 @@ import { TravelProvider } from './src/context/TravelContext';
 import { AlertProvider } from './src/context/AlertContext';
 import MainNavigator from './src/navigation/MainNavigator';
 import AuthScreen from './src/screens/AuthScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import AlertSystem from './src/components/AlertSystem';
 import AppLoading from './src/components/AppLoading';
 import { Platform } from 'react-native';
@@ -54,8 +56,28 @@ const errorStyles = StyleSheet.create({
 
 function AppContent() {
   const { colors, isDark } = useTheme();
-  const { isAuthenticated, loading, initializing } = useAuth();
+  const { isAuthenticated, loading, initializing, isNewUser, clearNewUserFlag } = useAuth();
   const [showSplash, setShowSplash] = React.useState(true);
+  const [showOnboarding, setShowOnboarding] = React.useState(false);
+
+  // When isNewUser becomes true, show onboarding
+  React.useEffect(() => {
+    if (isAuthenticated && isNewUser) {
+      setShowOnboarding(true);
+    }
+  }, [isAuthenticated, isNewUser]);
+
+  const handleOnboardingFinish = async () => {
+    try {
+      await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+      setShowOnboarding(false);
+      clearNewUserFlag(); // Reset the flag after onboarding is done
+    } catch (error) {
+      console.error('Error saving onboarding status:', error);
+      setShowOnboarding(false);
+      clearNewUserFlag();
+    }
+  };
 
   React.useEffect(() => {
     // Show splash for at least 2 seconds if initializing or loading
@@ -81,12 +103,20 @@ function AppContent() {
           barStyle={isDark ? 'light-content' : 'dark-content'}
           backgroundColor={colors.bg}
         />
-        {isAuthenticated ? <MainNavigator /> : <AuthScreen />}
+        {!isAuthenticated ? (
+          <AuthScreen />
+        ) : showOnboarding ? (
+          <OnboardingScreen onFinish={handleOnboardingFinish} />
+        ) : (
+          <MainNavigator />
+        )}
         <AlertSystem />
       </View>
     </View>
   );
 }
+
+
 
 
 export default function App() {

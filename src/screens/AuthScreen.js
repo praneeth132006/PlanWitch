@@ -98,7 +98,25 @@ export default function AuthScreen() {
       // Handle login
       const result = await signIn(formData.email.trim(), formData.password);
       if (!result.success) {
-        Alert.alert('Sign In Failed', result.error);
+        // Check if user doesn't exist
+        if (result.error && (result.error.includes('No account found') || result.error.includes('user-not-found'))) {
+          Alert.alert(
+            'Account Not Found',
+            'No account found with this email. Please sign up first to create an account.',
+            [
+              {
+                text: 'Go to Sign Up',
+                onPress: () => {
+                  setIsLogin(false);
+                  setFormData({ ...formData, password: '', confirmPassword: '' });
+                },
+              },
+              { text: 'Cancel', style: 'cancel' },
+            ]
+          );
+        } else {
+          Alert.alert('Sign In Failed', result.error);
+        }
       }
     } else {
       // Handle sign up

@@ -29,7 +29,7 @@ const AI_QUESTIONS = [
   {
     id: 'priority',
     question: 'Major expense priority',
-    type: 'option',
+    type: 'multi-option',
     options: ['Stay', 'Food', 'Experiences', 'Shopping']
   },
   {
