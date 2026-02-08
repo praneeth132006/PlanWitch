@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Platform, ActivityIndicator, Text } from 'react-native';
 import GOOGLE_MAPS_CONFIG, { MAP_DEFAULTS } from '../config/googleMaps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useTheme } from '../context/ThemeContext';
 
 const HomeMap = ({ destination, markers = [], style }) => {
@@ -150,8 +151,42 @@ const HomeMap = ({ destination, markers = [], style }) => {
                     }}
                 />
             ) : (
-                <View style={styles.fallback}>
-                    <Text style={{ color: colors.textMuted }}>Map View (Mobile)</Text>
+                <View style={[StyleSheet.absoluteFill, { borderRadius: 24, overflow: 'hidden' }]}>
+                    <MapView
+                        provider={PROVIDER_GOOGLE}
+                        style={StyleSheet.absoluteFill}
+                        initialRegion={{
+                            latitude: destination?.latitude || MAP_DEFAULTS.center.lat,
+                            longitude: destination?.longitude || MAP_DEFAULTS.center.lng,
+                            latitudeDelta: 0.0922,
+                            longitudeDelta: 0.0421,
+                        }}
+                        customMapStyle={MAP_DEFAULTS.styles}
+                    >
+                        {destination?.latitude && destination?.longitude && (
+                            <Marker
+                                coordinate={{
+                                    latitude: parseFloat(destination.latitude),
+                                    longitude: parseFloat(destination.longitude)
+                                }}
+                                title={destination.name}
+                                pinColor="#8B5CF6"
+                            />
+                        )}
+                        {markers.map((stop, index) => (
+                            stop.latitude && stop.longitude && (
+                                <Marker
+                                    key={index}
+                                    coordinate={{
+                                        latitude: parseFloat(stop.latitude),
+                                        longitude: parseFloat(stop.longitude)
+                                    }}
+                                    title={stop.name}
+                                    pinColor="#3B82F6"
+                                />
+                            )
+                        ))}
+                    </MapView>
                 </View>
             )}
             {!isLoaded && Platform.OS === 'web' && (

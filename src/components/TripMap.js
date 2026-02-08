@@ -1,7 +1,8 @@
 import React, { useRef, useEffect } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Text } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import GOOGLE_MAPS_CONFIG, { MAP_DEFAULTS } from '../config/googleMaps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 
 /**
  * TripMap Component
@@ -281,14 +282,63 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
 
     const styles = createStyles(colors);
 
-    // Native Fallback - since we don't have react-native-maps installed
+    // Native Rendering with react-native-maps
     if (Platform.OS !== 'web') {
+        const nativePoints = [];
+        const startPoint = origin || start;
+        if (startPoint && startPoint.latitude && startPoint.longitude) {
+            nativePoints.push({ ...startPoint, type: 'start' });
+        }
+        if (stops && stops.length > 0) {
+            stops.forEach((s, i) => {
+                if (s.latitude && s.longitude) {
+                    nativePoints.push({ ...s, type: 'stop', index: i + 1 });
+                }
+            });
+        }
+        const endPoint = destination || end;
+        if (endPoint && endPoint.latitude && endPoint.longitude) {
+            nativePoints.push({ ...endPoint, type: 'end' });
+        }
+
+        const coordinates = nativePoints.map(p => ({
+            latitude: parseFloat(p.latitude),
+            longitude: parseFloat(p.longitude)
+        }));
+
         return (
-            <View style={[styles.container, style, { alignItems: 'center', justifyContent: 'center' }]}>
-                {/* Fallback View for Native */}
-                <View style={{ width: '100%', height: '100%', backgroundColor: colors.cardLight, alignItems: 'center', justifycontent: 'center' }}>
-                    {/* Placeholder content if needed, e.g. static image or nothing */}
-                </View>
+            <View style={[styles.container, style, { borderRadius, overflow: 'hidden' }]}>
+                <MapView
+                    provider={PROVIDER_GOOGLE}
+                    style={StyleSheet.absoluteFill}
+                    initialRegion={{
+                        latitude: coordinates.length > 0 ? coordinates[0].latitude : MAP_DEFAULTS.center.lat,
+                        longitude: coordinates.length > 0 ? coordinates[0].longitude : MAP_DEFAULTS.center.lng,
+                        latitudeDelta: 0.0922,
+                        longitudeDelta: 0.0421,
+                    }}
+                    customMapStyle={MAP_DEFAULTS.styles}
+                >
+                    {nativePoints.map((p, i) => (
+                        <Marker
+                            key={`${p.placeId || i}`}
+                            coordinate={{
+                                latitude: parseFloat(p.latitude),
+                                longitude: parseFloat(p.longitude)
+                            }}
+                            title={p.name}
+                            description={p.fullAddress}
+                            pinColor={p.type === 'start' ? '#10B981' : p.type === 'end' ? '#EF4444' : '#3B82F6'}
+                        />
+                    ))}
+                    {coordinates.length > 1 && (
+                        <Polyline
+                            coordinates={coordinates}
+                            strokeColor="#000"
+                            strokeWidth={3}
+                        />
+                    )}
+                </MapView>
             </View>
         );
     }

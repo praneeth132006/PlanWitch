@@ -546,7 +546,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
   }, [hasActiveTrip, tripInfo, allTrips]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header with Profile */}
       <View style={styles.topBar}>
         <View style={styles.logoContainer}>
@@ -868,7 +868,7 @@ const createStyles = (colors) => StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 0,
+    paddingBottom: 60,
     backgroundColor: colors.bg,
   },
 

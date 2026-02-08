@@ -12,7 +12,7 @@ const BannerAd = () => {
     if (isPremium) return null;
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.bg }]}>
+        <View style={styles.container}>
             <AdMobBanner
                 unitId={AD_UNIT_IDS.BANNER}
                 size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
@@ -26,15 +26,12 @@ const BannerAd = () => {
 
 const styles = StyleSheet.create({
     container: {
-        padding: 12,
-        flexDirection: 'row',
+        width: '100%',
         alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
         borderTopWidth: 1,
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        borderTopColor: 'rgba(0,0,0,0.05)',
     }
 });
 

@@ -17,7 +17,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.travelwitch.app",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "config": {
+        "googleMapsApiKey": "AIzaSyANRzgIniwwjDbW31gDIJ38iGpKdLng0yk"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "TravelWitch needs your location to show trips on the map."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,7 +31,12 @@
         "foregroundImage": "./assets/icons/mycollection/png/app_icon.png"
       },
       "package": "com.travelwitch.app",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyANRzgIniwwjDbW31gDIJ38iGpKdLng0yk"
+        }
+      }
     },
     "web": {
       "bundler": "metro",

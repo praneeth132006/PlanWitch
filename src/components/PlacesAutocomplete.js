@@ -8,6 +8,7 @@ import {
     ScrollView,
     ActivityIndicator,
     Platform,
+    Alert,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Icon from './Icon';
@@ -182,7 +183,43 @@ const PlacesAutocomplete = ({
             return;
         }
 
-        if (Platform.OS !== 'web' || !autocompleteService.current) {
+        if (Platform.OS !== 'web') {
+            setIsLoading(true);
+            try {
+                const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(searchQuery)}&key=${GOOGLE_MAPS_CONFIG.apiKey}&types=(cities)`;
+                const response = await fetch(url, {
+                    headers: {
+                        'X-Ios-Bundle-Identifier': 'com.travelwitch.app',
+                        'X-Android-Package': 'com.travelwitch.app',
+                    }
+                });
+                const data = await response.json();
+                setIsLoading(false);
+
+                if (data.status === 'OK' && data.predictions) {
+                    setPredictions(data.predictions.slice(0, 5));
+                    setShowDropdown(true);
+                } else if (data.status === 'REQUEST_DENIED') {
+                    console.error('Places API Request Denied:', data.error_message);
+                    Alert.alert('Places API Error', `Request Denied: ${data.error_message}\n\nPlease check if "Places API" is enabled in Google Cloud Console for this key.`);
+                } else if (data.status === 'ZERO_RESULTS') {
+                    setPredictions([]);
+                } else if (data.status === 'OVER_QUERY_LIMIT') {
+                    Alert.alert('API Limit', 'Google Maps API quota exceeded.');
+                } else {
+                    console.log('Places API Status:', data.status);
+                    setPredictions([]);
+                }
+            } catch (error) {
+                console.error('Places Search Fetch Error:', error);
+                Alert.alert('Network Error', 'Failed to reach Google Places API. Ensure your API key is correct and "Places API" is enabled.');
+                setIsLoading(false);
+                setPredictions([]);
+            }
+            return;
+        }
+
+        if (!autocompleteService.current) {
             // console.log('Google Places not available');
             return;
         }
@@ -231,6 +268,54 @@ const PlacesAutocomplete = ({
         }
         setShowDropdown(false);
         setPredictions([]);
+
+        if (Platform.OS !== 'web') {
+            setIsLoading(true);
+            fetch(
+                `https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.place_id}&key=${GOOGLE_MAPS_CONFIG.apiKey}&fields=geometry,formatted_address,name,photos`,
+                {
+                    headers: {
+                        'X-Ios-Bundle-Identifier': 'com.travelwitch.app',
+                        'X-Android-Package': 'com.travelwitch.app',
+                    }
+                }
+            )
+                .then(res => res.json())
+                .then(data => {
+                    setIsLoading(false);
+                    if (data.status === 'OK' && data.result) {
+                        const place = data.result;
+                        const location = place.geometry.location;
+
+                        onPlaceSelect({
+                            name: prediction.structured_formatting?.main_text || place.name,
+                            fullAddress: prediction.description,
+                            placeId: prediction.place_id,
+                            latitude: location.lat,
+                            longitude: location.lng,
+                        });
+                    } else {
+                        onPlaceSelect({
+                            name: prediction.structured_formatting?.main_text || prediction.description,
+                            fullAddress: prediction.description,
+                            placeId: prediction.place_id,
+                        });
+                    }
+                })
+                .catch(() => {
+                    setIsLoading(false);
+                    onPlaceSelect({
+                        name: prediction.structured_formatting?.main_text || prediction.description,
+                        fullAddress: prediction.description,
+                        placeId: prediction.place_id,
+                    });
+                });
+
+            if (clearOnSelect) {
+                setQuery('');
+            }
+            return;
+        }
 
         if (placesService.current) {
             placesService.current.getDetails(
