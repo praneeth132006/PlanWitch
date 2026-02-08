@@ -109,7 +109,7 @@ const AppLoading = () => {
 
             {/* Branding */}
             <View style={styles.footer}>
-                <Text style={[styles.appName, { color: colors.text }]}>RouteMate</Text>
+                <Text style={[styles.appName, { color: colors.text }]}>TravelWitch</Text>
                 <Text style={[styles.tagline, { color: colors.textMuted }]}>Your Premium Travel Companion</Text>
                 <View style={styles.loadingBarContainer}>
                     <View style={[styles.loadingBar, { backgroundColor: colors.primary }]} />

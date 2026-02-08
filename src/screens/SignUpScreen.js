@@ -60,7 +60,7 @@ export default function SignUpScreen({ onNavigateToSignIn }) {
           <View style={styles.header}>
             <Icon name="route" size={64} color={colors.primary} />
             <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join RouteMate and start planning</Text>
+            <Text style={styles.subtitle}>Join TravelWitch and start planning</Text>
           </View>
 
           {errors.general && <Text style={styles.errorBanner}>{errors.general}</Text>}

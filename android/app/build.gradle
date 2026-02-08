@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.routemate.app'
+    namespace 'com.travelwitch.app'
     defaultConfig {
-        applicationId 'com.routemate.app'
+        applicationId 'com.travelwitch.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

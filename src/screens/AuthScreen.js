@@ -239,7 +239,7 @@ export default function AuthScreen() {
             <View style={styles.logoBadge}>
               <Icon name="logo" size={42} color={colors.primary} />
             </View>
-            <Text style={styles.appName}>RouteMate</Text>
+            <Text style={styles.appName}>TravelWitch</Text>
             <Text style={styles.tagline}>Discover your next adventure</Text>
           </View>
 
@@ -410,7 +410,7 @@ export default function AuthScreen() {
               </Text>
               <Text style={styles.dialogDescription}>
                 {legalType === 'terms'
-                  ? 'Please review our rules and guidelines for using RouteMate.'
+                  ? 'Please review our rules and guidelines for using TravelWitch.'
                   : 'Learn how we collect, use, and protect your personal data.'}
               </Text>
             </View>
@@ -418,14 +418,14 @@ export default function AuthScreen() {
             <ScrollView style={styles.legalScroll} showsVerticalScrollIndicator={false}>
               <Text style={styles.legalContent}>
                 {legalType === 'terms' ? (
-                  `Welcome to RouteMate. By using our application, you agree to:
+                  `Welcome to TravelWitch. By using our application, you agree to:
 \n• Use the service responsibly for personal travel planning.
 • Provide accurate information for trip synchronization.
 • Respect international travel laws and local regulations.
 • Not attempt to reverse engineer or disrupt the service.
-\nRouteMate is designed to simplify your travel, but we are not responsible for delays, cancellations, or external service failures.`
+\nTravelWitch is designed to simplify your travel, but we are not responsible for delays, cancellations, or external service failures.`
                 ) : (
-                  `Your privacy is our priority. RouteMate collects:
+                  `Your privacy is our priority. TravelWitch collects:
 \n• Account details (Email, Name) for personalization.
 • Trip data (Destinations, Budgets) for persistence.
 • Device information for performance monitoring.

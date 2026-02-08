@@ -40,7 +40,7 @@ export default function SignInScreen({ onNavigateToSignUp, onNavigateToForgotPas
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Icon name="route" size={72} color={colors.primary} />
-            <Text style={styles.appName}>RouteMate</Text>
+            <Text style={styles.appName}>TravelWitch</Text>
             <Text style={styles.title}>Welcome Back!</Text>
           </View>
 

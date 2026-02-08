@@ -191,10 +191,10 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
     },
     {
       question: 'How do I share my trip with friends?',
-      answer: 'Each trip has a unique trip code. Share this code with your travel companions, and they can join by selecting "Join a Trip" on their RouteMate app and entering the code.'
+      answer: 'Each trip has a unique trip code. Share this code with your travel companions, and they can join by selecting "Join a Trip" on their TravelWitch app and entering the code.'
     },
     {
-      question: 'Can I use RouteMate offline?',
+      question: 'Can I use TravelWitch offline?',
       answer: 'Yes! Your trip data is stored locally on your device. You can view and edit your trips offline. Changes will sync to the cloud when you\'re back online.'
     },
     {
@@ -245,8 +245,8 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
 
   const handleSubmitRating = () => {
     const email = 'praneeth132006@gmail.com';
-    const subject = `RouteMate Rating: ${ratingForm.rating} Stars`;
-    const body = `Rating: ${ratingForm.rating}/5 Stars\n\nFeedback:\n${ratingForm.message}\n\n---\nSent from RouteMate App`;
+    const subject = `TravelWitch Rating: ${ratingForm.rating} Stars`;
+    const body = `Rating: ${ratingForm.rating}/5 Stars\n\nFeedback:\n${ratingForm.message}\n\n---\nSent from TravelWitch App`;
 
     if (Platform.OS === 'web') {
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -262,7 +262,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
 
   const handleHelpSupport = () => {
     const email = 'praneeth132006b@gmail.com';
-    const subject = 'RouteMate Support Request';
+    const subject = 'TravelWitch Support Request';
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${encodeURIComponent(subject)}`;
     const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
 
@@ -276,7 +276,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
   const handleRateApp = () => {
     // These IDs will be available once the app is published to the stores
     const itunesItemId = 'YOUR_APPLE_ID';
-    const androidPackageName = 'com.routemate.app';
+    const androidPackageName = 'com.travelwitch.app';
 
     if (Platform.OS === 'ios') {
       Linking.openURL(`itms-apps://itunes.apple.com/app/viewContentsUserReviews/id${itunesItemId}?action=write-review`);
@@ -577,7 +577,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
             </Text>
             <Text style={styles.dialogDescription}>
               {legalType === 'terms'
-                ? 'Please review our rules and guidelines for using RouteMate.'
+                ? 'Please review our rules and guidelines for using TravelWitch.'
                 : 'Learn how we collect, use, and protect your personal data.'}
             </Text>
           </View>
@@ -585,9 +585,9 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
           <ScrollView style={styles.legalScroll} showsVerticalScrollIndicator={false}>
             <Text style={styles.legalContent}>
               {legalType === 'terms' ? (
-                `Welcome to RouteMate. By using our application, you agree to:\n\n• Use the service responsibly for personal travel planning.\n\n• Provide accurate information for trip synchronization.\n\n• Respect international travel laws and local regulations.\n\n• Not attempt to reverse engineer or disrupt the service.\n\nRouteMate is designed to simplify your travel, but we are not responsible for delays, cancellations, or external service failures.`
+                `Welcome to TravelWitch. By using our application, you agree to:\n\n• Use the service responsibly for personal travel planning.\n\n• Provide accurate information for trip synchronization.\n\n• Respect international travel laws and local regulations.\n\n• Not attempt to reverse engineer or disrupt the service.\n\nTravelWitch is designed to simplify your travel, but we are not responsible for delays, cancellations, or external service failures.`
               ) : (
-                `Your privacy is our priority. RouteMate collects:\n\n• Account details (Email, Name) for personalization.\n\n• Trip data (Destinations, Budgets) for persistence.\n\n• Device information for performance monitoring.\n\nWe do NOT sell your data to third parties. All synchronization is handled through secure Firebase services. You can delete your account and all associated data at any time from the profile settings.`
+                `Your privacy is our priority. TravelWitch collects:\n\n• Account details (Email, Name) for personalization.\n\n• Trip data (Destinations, Budgets) for persistence.\n\n• Device information for performance monitoring.\n\nWe do NOT sell your data to third parties. All synchronization is handled through secure Firebase services. You can delete your account and all associated data at any time from the profile settings.`
               )}
             </Text>
 
@@ -673,7 +673,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
             <View style={[styles.dialogIconContainer, { backgroundColor: '#EC489920' }]}>
               <Icon name="heart" size={28} color="#EC4899" />
             </View>
-            <Text style={styles.dialogTitle}>Rate RouteMate</Text>
+            <Text style={styles.dialogTitle}>Rate TravelWitch</Text>
             <Text style={styles.dialogDescription}>
               Your feedback helps us improve! How would you rate your experience?
             </Text>
@@ -965,7 +965,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
                 </View>
                 <View style={styles.settingInfo}>
                   <Text style={styles.settingLabel}>Terms and Conditions</Text>
-                  <Text style={styles.settingValue}>Rules for using RouteMate</Text>
+                  <Text style={styles.settingValue}>Rules for using TravelWitch</Text>
                 </View>
               </View>
               <Text style={styles.settingArrow}>›</Text>
@@ -999,7 +999,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
                   <Icon name="heart" size={20} color="#EC4899" />
                 </View>
                 <View style={styles.settingInfo}>
-                  <Text style={styles.settingLabel}>Rate RouteMate</Text>
+                  <Text style={styles.settingLabel}>Rate TravelWitch</Text>
                   <Text style={styles.settingValue}>Love the app? Leave a review!</Text>
                 </View>
               </View>
@@ -1102,7 +1102,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
         <AnimatedCard delay={450}>
           <View style={styles.footer}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-              <Text style={styles.appLogo}>RouteMate</Text>
+              <Text style={styles.appLogo}>TravelWitch</Text>
             </View>
             <Text style={styles.copyright}>Made with ❤️ for travelers</Text>
           </View>

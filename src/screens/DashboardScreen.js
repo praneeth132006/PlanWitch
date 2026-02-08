@@ -34,7 +34,7 @@ export default function DashboardScreen({ navigation, onBack }) {
     if (tripInfo?.tripCode) {
       try {
         await Share.share({
-          message: `Join my trip to ${tripInfo.destination}! 🌍📍\n\nUse this code in RouteMate: ${tripInfo.tripCode}`,
+          message: `Join my trip to ${tripInfo.destination}! 🌍📍\n\nUse this code in TravelWitch: ${tripInfo.tripCode}`,
         });
       } catch (error) {
         console.log('Share error:', error);

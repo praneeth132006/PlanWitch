@@ -551,7 +551,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
       <View style={styles.topBar}>
         <View style={styles.logoContainer}>
           <Icon name="logo" size={28} color={colors.primary} style={{ marginRight: 8 }} />
-          <Text style={styles.logoText}>RouteMate</Text>
+          <Text style={styles.logoText}>TravelWitch</Text>
         </View>
         <Pressable style={({ pressed }) => [styles.profileButton, pressed && { opacity: 0.7 }]} onPress={handleProfilePress}>
           <View style={styles.profileAvatar}>
@@ -735,7 +735,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
 
         {/* Why Section */}
         <Animated.View style={[styles.whySection, { opacity: fadeAnim }]}>
-          <Text style={styles.whyTitle}>Why RouteMate?</Text>
+          <Text style={styles.whyTitle}>Why TravelWitch?</Text>
           <View style={styles.whyList}>
             {[
               { icon: 'like', text: 'Easy trip planning', color: '#EF4444' },
@@ -755,7 +755,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
         {/* Footer */}
         <View style={styles.footer}>
           <Icon name="logo" size={20} color={colors.textMuted} style={{ marginBottom: 8 }} />
-          <Text style={styles.footerText}>RouteMate</Text>
+          <Text style={styles.footerText}>TravelWitch</Text>
           <Text style={styles.footerVersion}>Version 1.0.0</Text>
         </View>
       </ScrollView>

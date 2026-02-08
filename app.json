@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "RouteMate",
-    "slug": "routemate",
+    "name": "TravelWitch",
+    "slug": "travelwitch",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
@@ -16,14 +16,14 @@
     "icon": "./assets/icons/mycollection/png/app_icon.png",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.routemate.app"
+      "bundleIdentifier": "com.travelwitch.app"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0D0D0D",
         "foregroundImage": "./assets/icons/mycollection/png/app_icon.png"
       },
-      "package": "com.routemate.app",
+      "package": "com.travelwitch.app",
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -31,8 +31,8 @@
       "output": "single",
       "favicon": "./assets/icons/mycollection/png/app_icon.png",
       "pwa": {
-        "name": "RouteMate",
-        "shortName": "RouteMate",
+        "name": "TravelWitch",
+        "shortName": "TravelWitch",
         "description": "Premium Travel Companion & Budget Tracker",
         "backgroundColor": "#0D0D0D",
         "themeColor": "#FFD2AD",
@@ -46,7 +46,7 @@
         }
       }
     },
-    "scheme": "routemate",
+    "scheme": "travelwitch",
     "plugins": [
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",

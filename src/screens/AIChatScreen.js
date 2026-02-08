@@ -13,7 +13,7 @@ import { chatWithAssistant } from '../services/aiService';
 const INITIAL_MESSAGES = [
     {
         id: '1',
-        text: "Hi! I'm your RouteMate Assistant. ✨ How can I help with your trip today?",
+        text: "Hi! I'm your TravelWitch Assistant. ✨ How can I help with your trip today?",
         sender: 'ai',
         timestamp: new Date()
     }
@@ -105,7 +105,7 @@ export default function AIChatScreen() {
                         <Text style={styles.avatarMini}>✨</Text>
                     </View>
                     <View style={{ marginLeft: 12 }}>
-                        <Text style={styles.headerTitle}>RouteMate Concierge</Text>
+                        <Text style={styles.headerTitle}>TravelWitch Concierge</Text>
                         <View style={styles.statusLine}>
                             <Text style={styles.headerStatusText}>Intelligent Assistant</Text>
                         </View>

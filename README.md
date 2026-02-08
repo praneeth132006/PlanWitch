@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/icons/mycollection/png/icon_512.png" alt="RouteMate Logo" width="120" height="120" style="border-radius: 24px;">
+  <img src="assets/icons/mycollection/png/icon_512.png" alt="TravelWitch Logo" width="120" height="120" style="border-radius: 24px;">
 </p>
 
-<h1 align="center">🗺️ RouteMate</h1>
+<h1 align="center">🗺️ TravelWitch</h1>
 
 <p align="center">
   <strong>Your Premium Travel Companion & Budget Tracker</strong>
@@ -27,9 +27,9 @@
 
 ## 📖 About
 
-**RouteMate** is a feature-rich, cross-platform travel companion application designed to make trip planning effortless and enjoyable. Whether you're traveling solo, with friends, or with family, RouteMate helps you organize every aspect of your journey — from budgeting and expense tracking to itinerary management and packing lists.
+**TravelWitch** is a feature-rich, cross-platform travel companion application designed to make trip planning effortless and enjoyable. Whether you're traveling solo, with friends, or with family, TravelWitch helps you organize every aspect of your journey — from budgeting and expense tracking to itinerary management and packing lists.
 
-Built with React Native and Expo, RouteMate works seamlessly across:
+Built with React Native and Expo, TravelWitch works seamlessly across:
 - 📱 **iOS** (Native App)
 - 🤖 **Android** (Native App)
 - 🌐 **Web** (Progressive Web App)
@@ -129,8 +129,8 @@ Built with React Native and Expo, RouteMate works seamlessly across:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/praneeth132006/RouteMate.git
-   cd RouteMate
+   git clone https://github.com/praneeth132006/TravelWitch.git
+   cd TravelWitch
    ```
 
 2. **Install dependencies**
@@ -221,7 +221,7 @@ firebase deploy
 ## 🏗️ Architecture
 
 ```
-RouteMate/
+TravelWitch/
 ├── App.js                    # Root component with providers
 ├── app.json                  # Expo configuration
 ├── package.json              # Dependencies and scripts
@@ -453,5 +453,5 @@ This project is private and proprietary.
 </p>
 
 <p align="center">
-  <a href="https://routemate-6a885.web.app">Try RouteMate Now →</a>
+  <a href="https://routemate-6a885.web.app">Try TravelWitch Now →</a>
 </p>
