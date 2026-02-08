@@ -19,33 +19,32 @@ const { width, height } = Dimensions.get('window');
 const SLIDES = [
     {
         id: '1',
-        title: 'Travel smarter,',
-        titleLine2: 'together with the',
-        titleLine3: 'help of',
-        highlight: 'AI',
-        image: require('../../assets/onboarding/ai_itinerary.png'),
+        title: 'Build your trip',
+        titleLine2: 'checklist',
+        highlight: 'together',
+        image: require('../../assets/onboarding/setup_new.png'),
         accent: '#10B981'
     },
     {
         id: '2',
         title: 'Pack like a',
         highlight: 'pro',
-        image: require('../../assets/onboarding/packing.png'),
+        image: require('../../assets/onboarding/packing_new.png'),
         accent: '#10B981'
     },
     {
         id: '3',
         title: 'Stay on budget',
         highlight: 'effortlessly',
-        image: require('../../assets/onboarding/finance.png'),
+        image: require('../../assets/onboarding/budget_new.png'),
         accent: '#10B981'
     },
     {
         id: '4',
-        title: 'See your travel',
-        titleLine2: 'plan at a',
-        highlight: 'glance',
-        image: require('../../assets/onboarding/welcome.png'),
+        title: 'Let AI plan',
+        titleLine2: 'your next',
+        highlight: 'bite',
+        image: require('../../assets/onboarding/food_new.png'),
         accent: '#10B981'
     }
 ];

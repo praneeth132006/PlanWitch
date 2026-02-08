@@ -1,4 +1,4 @@
-package com.routemate.app
+package com.travelwitch.app
 
 import android.app.Application
 import android.content.res.Configuration
