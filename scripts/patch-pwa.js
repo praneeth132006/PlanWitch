@@ -5,7 +5,7 @@ const distPath = path.join(__dirname, '..', 'dist');
 const indexPath = path.join(distPath, 'index.html');
 const manifestSrc = path.join(__dirname, '..', 'web', 'manifest.json');
 const manifestDest = path.join(distPath, 'manifest.json');
-const iconSrc = path.join(__dirname, '..', 'assets/icons/mycollection/png/icon_1024.png');
+const iconSrc = path.join(__dirname, '..', 'assets/icons/mycollection/png/app_icon.png');
 const iconDest = path.join(distPath, 'icon.png');
 
 // 1. Copy Manifest
@@ -38,34 +38,46 @@ if (fs.existsSync(indexPath)) {
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TravelWitch">
-    <meta name="theme-color" content="#0D0D0D">
+    <meta name="theme-color" content="#000000">
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/icon.png">`;
 
     // Insert tags at the beginning of head
     html = html.replace('<head>', '<head>' + pwaTags);
 
-    // Fix Background Colors
+    // Fix Background Colors and Safe Area
     html = html.replace(/html,\s*body\s*{[^}]+}/g, `html, body {
-        height: 100% !important;
-        background-color: #0D0D0D !important;
+        height: 100dvh !important;
+        background-color: #000000 !important;
         margin: 0 !important;
+        padding: 0 !important;
+        padding-bottom: 0 !important;
+        padding-bottom: env(safe-area-inset-bottom, 0px) !important; /* Override safe area */
         overscroll-behavior: none !important;
         -webkit-tap-highlight-color: transparent;
       }`);
 
     html = html.replace(/#root\s*{[^}]+}/g, `#root {
         display: flex;
-        height: 100% !important;
+        height: 100dvh !important;
         flex: 1;
-        background-color: #0D0D0D !important;
+        background-color: #000000 !important;
+        padding-bottom: 0 !important;
       }`);
 
     // Ensure the background color is also set on the html/body if not found by regex
-    if (!html.includes('background-color: #0D0D0D !important')) {
+    // Also add a style to force remove safe area
+    if (!html.includes('background-color: #000000 !important')) {
         html = html.replace('</style>', `
       html, body, #root {
-        background-color: #0D0D0D !important;
+        background-color: #000000 !important;
+        padding-bottom: 0 !important;
+      }
+      /* Force remove safe area inset */
+      @supports (padding-bottom: env(safe-area-inset-bottom)) {
+        html, body, #root {
+          padding-bottom: 0 !important;
+        }
       }
     </style>`);
     }

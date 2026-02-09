@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Dimensions,
-  Animated, TextInput, Modal, ScrollView, Pressable, Alert, Image
+  Animated, TextInput, Modal, ScrollView, Pressable, Alert, Image, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -868,7 +868,7 @@ const createStyles = (colors) => StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 60,
+    paddingBottom: Platform.OS === 'web' ? 20 : 60, // Reduced on web to avoid black bar
     backgroundColor: colors.bg,
   },
 

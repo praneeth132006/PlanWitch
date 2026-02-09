@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TravelWitch">
-    <meta name="theme-color" content="#0D0D0D">
+    <meta name="theme-color" content="#000000">
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/icon.png">
     <meta charset="utf-8" />
@@ -17,9 +17,12 @@
     <style id="expo-reset">
       /* These styles make the body full-height */
       html, body {
-        height: 100% !important;
-        background-color: #0D0D0D !important;
+        height: 100dvh !important;
+        background-color: #000000 !important;
         margin: 0 !important;
+        padding: 0 !important;
+        padding-bottom: 0 !important;
+        padding-bottom: env(safe-area-inset-bottom, 0px) !important; /* Override safe area */
         overscroll-behavior: none !important;
         -webkit-tap-highlight-color: transparent;
       }
@@ -30,9 +33,10 @@
       /* These styles make the root element full-height */
       #root {
         display: flex;
-        height: 100% !important;
+        height: 100dvh !important;
         flex: 1;
-        background-color: #0D0D0D !important;
+        background-color: #000000 !important;
+        padding-bottom: 0 !important;
       }
     </style>
   <link rel="shortcut icon" href="/favicon.ico" /></head>
@@ -44,6 +48,6 @@
     </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-  <script src="/_expo/static/js/web/AppEntry-3a58a34b74ccbf7df9f8075c96fdc209.js" defer></script>
+  <script src="/_expo/static/js/web/AppEntry-773ff77006acdfb10a1deb635c1c2660.js" defer></script>
 </body>
 </html>

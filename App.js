@@ -180,10 +180,11 @@ const styles = StyleSheet.create({
       container: {
         width: '100%',
         maxWidth: 500, // Mobile app appearance on desktop
-        height: '100%',
-        backgroundColor: '#0D0D0D',
+        height: '100dvh', // Use dynamic viewport height
+        backgroundColor: '#000000',
         alignSelf: 'center',
-        overflow: 'hidden',
+        paddingBottom: 0, // Force no bottom padding
+        // overflow: 'hidden', // Removed to prevent clipping safe area on some devices
         boxShadow: '0 0 50px rgba(0,0,0,0.5)',
       }
     },
