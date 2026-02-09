@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, Platform, Text } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import GOOGLE_MAPS_CONFIG, { MAP_DEFAULTS } from '../config/googleMaps';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from './MapLib';
 
 /**
  * TripMap Component

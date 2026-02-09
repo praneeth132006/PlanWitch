@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Platform, ActivityIndicator, Text } from 'react-native';
 import GOOGLE_MAPS_CONFIG, { MAP_DEFAULTS } from '../config/googleMaps';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from './MapLib';
 import { useTheme } from '../context/ThemeContext';
 
 const HomeMap = ({ destination, markers = [], style }) => {

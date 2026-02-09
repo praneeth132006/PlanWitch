@@ -1,7 +1,6 @@
 {
-  "name": "RouteMate",
-  "short_name": "RouteMate",
-  "description": "Premium Travel Companion & Budget Tracker",
+  "name": "TravelWitch",
+  "short_name": "TravelWitch",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0D0D0D",
