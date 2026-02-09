@@ -427,23 +427,23 @@ export default function AuthScreen() {
               <Text style={styles.legalContent}>
                 {legalType === 'terms' ? (
                   `Welcome to TravelWitch. By using our application, you agree to:
-\n• Use the service responsibly for personal travel planning.
-• Provide accurate information for trip synchronization.
-• Respect international travel laws and local regulations.
-• Not attempt to reverse engineer or disrupt the service.
-\nTravelWitch is designed to simplify your travel, but we are not responsible for delays, cancellations, or external service failures.`
+\n• Use the service responsibly for travel planning.
+• Not attempt to copy, modify, or reverse engineer the app.
+• Maintain your device security (avoid jailbreaking).
+• Acknowledge that AI is used to provide core features.
+• Accept responsibility for data charges from your provider.`
                 ) : (
                   `Your privacy is our priority. TravelWitch collects:
-\n• Account details (Email, Name) for personalization.
-• Trip data (Destinations, Budgets) for persistence.
-• Device information for performance monitoring.
-\nWe do NOT sell your data to third parties. All synchronization is handled through secure Firebase services. You can delete your account and all associated data at any time from the profile settings.`
+\n• Registration data (Email, Name) provided by you.
+• Automatic data (Device ID, usage patterns) for optimization.
+• AI processing data for personalized recommendations.
+\nWe do NOT track precise real-time location. Data is shared only with trusted partners like Google and RevenueCat. You can delete your data anytime via profile settings.`
                 )}
               </Text>
 
               <TouchableOpacity
                 style={styles.fullLegalLink}
-                onPress={() => Linking.openURL(legalType === 'terms' ? 'https://sites.google.com/view/routemate-terms-and-conditions/home' : 'https://sites.google.com/view/routemate-privacy-policy/home')}
+                onPress={() => Linking.openURL(legalType === 'terms' ? 'https://sites.google.com/view/travelwitch-tnc/home' : 'https://sites.google.com/view/travelwitch/home')}
               >
                 <Text style={styles.fullLegalLinkText}>View Full Document →</Text>
               </TouchableOpacity>

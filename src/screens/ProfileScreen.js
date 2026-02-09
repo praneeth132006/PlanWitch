@@ -585,15 +585,15 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
           <ScrollView style={styles.legalScroll} showsVerticalScrollIndicator={false}>
             <Text style={styles.legalContent}>
               {legalType === 'terms' ? (
-                `Welcome to TravelWitch. By using our application, you agree to:\n\n• Use the service responsibly for personal travel planning.\n\n• Provide accurate information for trip synchronization.\n\n• Respect international travel laws and local regulations.\n\n• Not attempt to reverse engineer or disrupt the service.\n\nTravelWitch is designed to simplify your travel, but we are not responsible for delays, cancellations, or external service failures.`
+                `Welcome to TravelWitch. By using our application, you agree to:\n\n• Use the service responsibly for travel planning.\n\n• Not attempt to copy, modify, or reverse engineer the app.\n\n• Maintain your device security (avoid jailbreaking).\n\n• Acknowledge that AI is used to provide core features.\n\n• Accept responsibility for data charges from your provider.`
               ) : (
-                `Your privacy is our priority. TravelWitch collects:\n\n• Account details (Email, Name) for personalization.\n\n• Trip data (Destinations, Budgets) for persistence.\n\n• Device information for performance monitoring.\n\nWe do NOT sell your data to third parties. All synchronization is handled through secure Firebase services. You can delete your account and all associated data at any time from the profile settings.`
+                `Your privacy is our priority. TravelWitch collects:\n\n• Registration data (Email, Name) provided by you.\n\n• Automatic data (Device ID, usage patterns) for optimization.\n\n• AI processing data for personalized recommendations.\n\nWe do NOT track precise real-time location. Data is shared only with trusted partners like Google and RevenueCat. You can delete your data anytime via profile settings.`
               )}
             </Text>
 
             <TouchableOpacity
               style={styles.fullLegalLink}
-              onPress={() => Linking.openURL(legalType === 'terms' ? 'https://sites.google.com/view/routemate-terms-and-conditions/home' : 'https://sites.google.com/view/routemate-privacy-policy/home')}
+              onPress={() => Linking.openURL(legalType === 'terms' ? 'https://sites.google.com/view/travelwitch-tnc/home' : 'https://sites.google.com/view/travelwitch/home')}
             >
               <Text style={styles.fullLegalLinkText}>View Full Document →</Text>
             </TouchableOpacity>
