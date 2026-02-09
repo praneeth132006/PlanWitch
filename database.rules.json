@@ -1,0 +1,42 @@
+{
+    "rules": {
+        "users": {
+            "$uid": {
+                ".read": "auth != null && auth.uid == $uid",
+                ".write": "auth != null && auth.uid == $uid"
+            }
+        },
+        "sharedTrips": {
+            "$tripId": {
+                ".read": "auth != null",
+                ".write": "auth != null"
+            }
+        },
+        "tripCodes": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+        },
+        "expenses": {
+            "$tripId": {
+                ".read": "auth != null",
+                ".write": "auth != null"
+            }
+        },
+        "itinerary": {
+            "$tripId": {
+                ".read": "auth != null",
+                ".write": "auth != null"
+            }
+        },
+        "packing": {
+            "$tripId": {
+                ".read": "auth != null",
+                ".write": "auth != null"
+            }
+        },
+        "feedback": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+        }
+    }
+}

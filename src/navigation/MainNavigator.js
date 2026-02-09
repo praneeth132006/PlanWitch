@@ -24,6 +24,7 @@ import AIPersonalizedPlanScreen from '../screens/AIPersonalizedPlanScreen';
 import TripPreferencesScreen from '../screens/TripPreferencesScreen';
 import Icon from '../components/Icon';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
+import AdminScreen from '../screens/AdminScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -302,6 +303,10 @@ export default function MainNavigator() {
 
   if (currentScreen === 'Subscription') {
     return <SubscriptionScreen navigation={{ goBack: () => setCurrentScreen('Profile'), navigate: setCurrentScreen }} />;
+  }
+
+  if (currentScreen === 'Admin') {
+    return <AdminScreen navigation={{ goBack: () => setCurrentScreen('Profile') }} />;
   }
 
   if (currentScreen === 'JoinSelection') {

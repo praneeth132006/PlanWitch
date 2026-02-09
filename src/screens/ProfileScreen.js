@@ -33,6 +33,7 @@ import Icon from '../components/Icon';
 import premiumIcon from '../../assets/icons/mycollection/png/premium.png';
 import SubscriptionScreen from './SubscriptionScreen';
 import AdService from '../services/AdService';
+import { saveFeedback } from '../services/databaseService';
 
 const AVATARS = [
   'man7', 'profile_avatar', 'man1', 'woman1', 'man2', 'woman2', 'man3', 'woman3',
@@ -243,20 +244,27 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
     setExpandedFaq(newExpanded);
   };
 
-  const handleSubmitRating = () => {
-    const email = 'praneeth132006@gmail.com';
-    const subject = `TravelWitch Rating: ${ratingForm.rating} Stars`;
-    const body = `Rating: ${ratingForm.rating}/5 Stars\n\nFeedback:\n${ratingForm.message}\n\n---\nSent from TravelWitch App`;
+  const handleSubmitRating = async () => {
+    try {
+      if (!ratingForm.message.trim()) {
+        showAlert('Please add some feedback before submitting.', 'warning');
+        return;
+      }
 
-    if (Platform.OS === 'web') {
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      Linking.openURL(gmailUrl);
-    } else {
-      Linking.openURL(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+      await saveFeedback({
+        rating: ratingForm.rating,
+        message: ratingForm.message.trim(),
+        userEmail: user?.email || 'anonymous',
+        userName: user?.displayName || 'Anonymous',
+      });
+
+      setShowRatingModal(false);
+      showAlert('Thank you for your feedback!', 'success');
+      setRatingForm({ rating: 5, message: '' }); // Reset form
+    } catch (error) {
+      console.error('Error saving feedback:', error);
+      showAlert(`Failed to submit feedback: ${error.message}`, 'error');
     }
-
-    setShowRatingModal(false);
-    showAlert('Thank you for your feedback!', 'success');
   };
   const [selectedAvatar, setSelectedAvatar] = useState(user?.photoURL || 'man7');
 
@@ -1101,9 +1109,21 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
         {/* App Version */}
         <AnimatedCard delay={450}>
           <View style={styles.footer}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+            <TouchableOpacity
+              onLongPress={() => {
+                const allowedEmails = ['praneeth132006b@gmail.com', 'bojanapuswathi12@gmail.com'];
+                if (user && allowedEmails.includes(user.email)) {
+                  onNavigate && onNavigate('Admin');
+                } else {
+                  Alert.alert('Access Denied', 'You do not have permission to access the Admin Dashboard.');
+                }
+              }}
+              delayLongPress={3000}
+              activeOpacity={1}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}
+            >
               <Text style={styles.appLogo}>TravelWitch</Text>
-            </View>
+            </TouchableOpacity>
             <Text style={styles.copyright}>Made with ❤️ for travelers</Text>
           </View>
         </AnimatedCard>

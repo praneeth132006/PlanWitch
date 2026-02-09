@@ -618,6 +618,42 @@ export const deleteAllUserData = async () => {
   // console.log('All user data deleted from database');
 };
 
+// ============ FEEDBACK ============
+export const saveFeedback = async (feedbackData) => {
+  const userId = getUserId();
+  const feedbackRef = push(ref(database, 'feedback'));
+  await set(feedbackRef, {
+    ...feedbackData,
+    userId: userId || 'anonymous',
+    createdAt: Date.now(),
+    id: feedbackRef.key
+  });
+  return feedbackRef.key;
+};
+
+export const getFeedbackList = async () => {
+  const snapshot = await get(ref(database, 'feedback'));
+  return snapshot.exists()
+    ? Object.values(snapshot.val()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    : [];
+};
+
+export const deleteFeedback = async (id) => {
+  if (!id) return;
+  await remove(ref(database, `feedback/${id}`));
+};
+
+export const subscribeToFeedback = (callback) => {
+  const dbRef = ref(database, 'feedback');
+  const unsubscribe = onValue(dbRef, (snapshot) => {
+    const data = snapshot.exists()
+      ? Object.values(snapshot.val()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      : [];
+    callback(data);
+  });
+  return () => off(dbRef, 'value', unsubscribe);
+};
+
 // ============ REAL-TIME SUBSCRIPTIONS ============
 // These functions set up listeners that automatically sync data across all users
 
