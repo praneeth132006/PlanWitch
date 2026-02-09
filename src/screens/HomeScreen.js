@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Animated, Pressable, Modal, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Animated, Pressable, Modal, Alert, ActivityIndicator, Image, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTravelContext } from '../context/TravelContext';
 import { useTheme } from '../context/ThemeContext';
@@ -664,7 +664,8 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
 
 
-        <View style={{ height: 20 }} />
+        {/* Only add bottom spacer on native, not needed on web */}
+        {Platform.OS !== 'web' && <View style={{ height: 20 }} />}
       </ScrollView>
 
       {/* Settings Modal */}
@@ -1005,7 +1006,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
 const createStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  scrollContent: { paddingBottom: 20 },
+  scrollContent: { paddingBottom: Platform.OS === 'web' ? 0 : 20 },
 
   // Header
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
