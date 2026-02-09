@@ -40,11 +40,13 @@ export function AuthProvider({ children }) {
   const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
-    // Configure Google Sign In
-    GoogleSignin.configure({
-      webClientId: '739103871364-8dbqif6ogn8fiiqf4j5gb0h17fj7gdq0.apps.googleusercontent.com',
-      offlineAccess: true,
-    });
+    // Configure Google Sign In (only on native platforms)
+    if (Platform.OS !== 'web') {
+      GoogleSignin.configure({
+        webClientId: '739103871364-8dbqif6ogn8fiiqf4j5gb0h17fj7gdq0.apps.googleusercontent.com',
+        offlineAccess: true,
+      });
+    }
     // console.log('AuthProvider: Setting up listener');
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {

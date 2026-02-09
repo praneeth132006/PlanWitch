@@ -1,0 +1,16 @@
+{
+    "mcpServers": {
+        "testsprite": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@testsprite/testsprite-mcp@latest"
+            ],
+            "env": {
+                "TESTSPRITE_API_KEY": "sk-user-djJ-ivb2xVWtCpi7G87pXBj1MnQODp1K1qiqmxSZcjR_eeWu1TiJ-IAmT8tCnP1o8cW2-IMCSSHflzo49TdbGU29mOwtVCR-RlGZjCRGeHatTqzRgbLnbDGy40ToO2yBFjI"
+            },
+            "description": "TestSprite AI Testing - E2E testing automation for RouteMate app",
+            "timeout": 300
+        }
+    }
+}
