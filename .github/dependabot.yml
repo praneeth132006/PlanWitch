@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # Maintain dependencies for npm in the root directory (React Native App)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "react-native" # usually manual upgrades are better for RN core
+
+  # Maintain dependencies for the Firebase functions directory
+  - package-ecosystem: "npm"
+    directory: "/functions"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    open-pull-requests-limit: 10
+
+  # Maintain GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

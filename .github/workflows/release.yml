@@ -2,11 +2,11 @@ name: Auto Versioning
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     # Don't trigger if only docs or the workflow itself changed
     paths-ignore:
-      - '**.md'
-      - '.github/workflows/**'
+      - "**.md"
+      - ".github/workflows/**"
 
 jobs:
   bump_version:
@@ -21,11 +21,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          
+          fetch-depth: 0 # Needed for tagging and versioning
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Configure Git User
         run: |
@@ -34,7 +34,8 @@ jobs:
 
       - name: Bump Version
         # Automatically bump the patch version (1.0.0 -> 1.0.1)
-        run: npm version patch -m "chore(release): bump version to %s [skip ci]"
+        run: |
+          npm version patch -m "chore(release): bump version to %s [skip ci]"
 
       - name: Push Version Bump
         # Push the updated package.json and the new version tag
