@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,10 +21,27 @@ import Icon from '../components/Icon';
 
 export default function AuthScreen() {
   const { colors } = useTheme();
-  const { signIn, signUp, signInWithGoogle, resetPassword, loading, isAuthenticated, user } = useAuth();
+  const { signIn, signUp, signInWithGoogle, resetPassword, requestOTP, verifyEmailOTP, loading, isAuthenticated, user } = useAuth();
 
   const [isLogin, setIsLogin] = useState(true);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showOTP, setShowOTP] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+  const otpInputRefs = useRef([]);
+
+  // Resend timer countdown
+  useEffect(() => {
+    let interval;
+    if (resendTimer > 0) {
+      interval = setInterval(() => setResendTimer(t => t - 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+
 
   // Show message if user is already logged in (edge case)
   React.useEffect(() => {
@@ -44,6 +61,56 @@ export default function AuthScreen() {
   });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleOtpDigitChange = useCallback((text, index) => {
+    const newDigits = [...otpDigits];
+    const cleaned = text.replace(/[^0-9]/g, '');
+
+    if (cleaned.length > 1) {
+      const chars = cleaned.slice(0, 6).split('');
+      const pastedDigits = ['', '', '', '', '', ''];
+      chars.forEach((c, i) => { pastedDigits[i] = c; });
+      setOtpDigits(pastedDigits);
+      setOtpValue(chars.join(''));
+      const nextIdx = Math.min(chars.length, 5);
+      otpInputRefs.current[nextIdx]?.focus();
+      return;
+    }
+
+    newDigits[index] = cleaned;
+    setOtpDigits(newDigits);
+    setOtpValue(newDigits.join(''));
+    if (errors.otp) setErrors({ ...errors, otp: null });
+
+    if (cleaned && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  }, [otpDigits, errors]);
+
+  const handleOtpKeyPress = useCallback((e, index) => {
+    if (e.nativeEvent.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+      const newDigits = [...otpDigits];
+      newDigits[index - 1] = '';
+      setOtpDigits(newDigits);
+      setOtpValue(newDigits.join(''));
+    }
+  }, [otpDigits]);
+
+  const handleResendOTP = async () => {
+    if (resendTimer > 0) return;
+    setOtpLoading(true);
+    const result = await requestOTP(formData.email.trim());
+    setOtpLoading(false);
+    if (result.success) {
+      setResendTimer(30);
+      setOtpDigits(['', '', '', '', '', '']);
+      setOtpValue('');
+      Alert.alert('Code Resent', 'A new verification code has been sent to your email.');
+    } else {
+      Alert.alert('Error', result.error || 'Failed to resend code.');
+    }
+  };
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isResetSent, setIsResetSent] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -120,35 +187,46 @@ export default function AuthScreen() {
         }
       }
     } else {
-      // Handle sign up
-      const result = await signUp(formData.email.trim(), formData.password, formData.name.trim());
-      if (!result.success) {
-        if (result.alreadyLoggedIn) {
-          // User is already logged in - show message
-          Alert.alert(
-            'Already Logged In',
-            result.error,
-            [{ text: 'OK' }]
-          );
-        } else if (result.emailExists) {
-          // User already exists - show message and switch to login form
-          Alert.alert(
-            'Account Already Exists',
-            'This email is already registered. Please use the Sign In option to log in.',
-            [
-              {
-                text: 'Go to Sign In',
-                onPress: () => {
-                  setIsLogin(true);
-                  setFormData({ ...formData, name: '', password: '', confirmPassword: '' });
-                },
-              },
-            ]
-          );
-        } else {
-          Alert.alert('Sign Up Failed', result.error);
-        }
+      // Handle sign up - First request OTP
+      setOtpLoading(true);
+      const result = await requestOTP(formData.email.trim());
+      setOtpLoading(false);
+
+      if (result.success) {
+        setShowOTP(true);
+        setResendTimer(30);
+        setOtpDigits(['', '', '', '', '', '']);
+        setOtpValue('');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to send verification code');
       }
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    const currentOtp = otpDigits.join('');
+    if (!currentOtp || currentOtp.length !== 6) {
+      setErrors({ ...errors, otp: 'Please enter a 6-digit code' });
+      return;
+    }
+
+    setOtpLoading(true);
+    const verifyResult = await verifyEmailOTP(formData.email.trim(), currentOtp);
+
+    if (verifyResult.success) {
+      // Proceed with actual signup after successful OTP verification
+      const signupResult = await signUp(formData.email.trim(), formData.password, formData.name.trim());
+      setOtpLoading(false);
+
+      if (!signupResult.success) {
+        setShowOTP(false);
+        Alert.alert('Sign Up Failed', signupResult.error);
+      } else {
+        // Success! Screen will likely navigate away due to AuthContext user state change
+      }
+    } else {
+      setOtpLoading(false);
+      Alert.alert('Verification Failed', verifyResult.error || 'Incorrect code');
     }
   };
 
@@ -376,6 +454,81 @@ export default function AuthScreen() {
                     </TouchableOpacity>
                   )}
                 </>
+              )}
+
+              {/* OTP Overlay/View */}
+              {showOTP && (
+                <View style={styles.otpContainer}>
+                  {/* Email Icon */}
+                  <View style={styles.otpIconCircle}>
+                    <Icon name="email" size={32} color={colors.primary} />
+                  </View>
+
+                  <Text style={styles.otpTitle}>Verify Your Email</Text>
+                  <Text style={styles.otpSubtitle}>
+                    We've sent a 6-digit code to
+                  </Text>
+                  <Text style={styles.otpEmail}>{formData.email}</Text>
+
+                  {/* 6 Individual Digit Boxes */}
+                  <View style={styles.otpDigitsRow}>
+                    {otpDigits.map((digit, idx) => (
+                      <TextInput
+                        key={idx}
+                        ref={el => otpInputRefs.current[idx] = el}
+                        style={[
+                          styles.otpDigitBox,
+                          digit ? styles.otpDigitBoxFilled : null,
+                          errors.otp ? styles.otpDigitBoxError : null,
+                        ]}
+                        value={digit}
+                        onChangeText={text => handleOtpDigitChange(text, idx)}
+                        onKeyPress={e => handleOtpKeyPress(e, idx)}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                        textContentType="oneTimeCode"
+                        autoComplete={idx === 0 ? 'one-time-code' : 'off'}
+                        selectionColor={colors.primary}
+                      />
+                    ))}
+                  </View>
+                  {errors.otp && <Text style={styles.otpErrorText}>{errors.otp}</Text>}
+
+                  {/* Resend Timer */}
+                  <View style={styles.otpResendRow}>
+                    <Text style={styles.otpResendLabel}>Didn't receive the code? </Text>
+                    <TouchableOpacity onPress={handleResendOTP} disabled={resendTimer > 0}>
+                      <Text style={[styles.otpResendBtn, resendTimer > 0 && styles.otpResendDisabled]}>
+                        {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend Code'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Verify Button */}
+                  <TouchableOpacity
+                    style={[styles.otpVerifyBtn, otpLoading && styles.submitButtonDisabled]}
+                    onPress={handleVerifyOTP}
+                    disabled={otpLoading}
+                  >
+                    {otpLoading ? (
+                      <ActivityIndicator color={colors.bg} size="small" />
+                    ) : (
+                      <Text style={styles.otpVerifyBtnText}>Verify & Create Account</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Edit Details Link */}
+                  <TouchableOpacity
+                    style={styles.otpBackBtn}
+                    onPress={() => {
+                      setShowOTP(false);
+                      setOtpDigits(['', '', '', '', '', '']);
+                      setOtpValue('');
+                    }}
+                  >
+                    <Text style={styles.otpBackText}>← Edit Details</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
 
@@ -727,6 +880,128 @@ const createStyles = (colors) => StyleSheet.create({
     color: colors.bg,
     fontSize: 17,
     fontWeight: 'bold',
+  },
+  otpContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.card,
+    borderRadius: 32,
+    padding: 28,
+    zIndex: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otpIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: colors.primaryBorder,
+    ...Platform.select({
+      ios: { shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 },
+      android: { elevation: 6 },
+      web: { boxShadow: `0 4px 12px rgba(0,0,0,0.08)` }
+    }),
+  },
+  otpTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  otpSubtitle: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  otpEmail: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: 28,
+  },
+  otpDigitsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 8,
+    width: '100%',
+  },
+  otpDigitBox: {
+    width: 46,
+    height: 54,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.primaryBorder,
+    backgroundColor: colors.cardLight,
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text,
+    outlineStyle: 'none',
+  },
+  otpDigitBoxFilled: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryMuted,
+  },
+  otpDigitBoxError: {
+    borderColor: '#EF4444',
+  },
+  otpErrorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  otpResendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  otpResendLabel: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  otpResendBtn: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  otpResendDisabled: {
+    color: colors.textMuted,
+    fontWeight: '400',
+  },
+  otpVerifyBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 52,
+    width: '100%',
+  },
+  otpVerifyBtnText: {
+    color: colors.bg,
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
+  otpBackBtn: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  otpBackText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
   },
   // Modal & Dialog Styles
   modalOverlay: {

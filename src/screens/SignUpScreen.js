@@ -17,7 +17,7 @@ import Icon from '../components/Icon';
 
 export default function SignUpScreen({ onNavigateToSignIn }) {
   const { colors } = useTheme();
-  const { signUp } = useAuth();
+  const { signUp, requestOTP, verifyEmailOTP } = useAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -26,6 +26,9 @@ export default function SignUpScreen({ onNavigateToSignIn }) {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showOTP, setShowOTP] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
 
   const styles = createStyles(colors);
 
@@ -45,12 +48,37 @@ export default function SignUpScreen({ onNavigateToSignIn }) {
     if (!validate()) return;
 
     setIsSubmitting(true);
-    const result = await signUp(email.trim(), password, name.trim());
-
-    if (!result.success) {
-      setErrors({ general: result.error });
-    }
+    const result = await requestOTP(email.trim());
     setIsSubmitting(false);
+
+    if (result.success) {
+      setShowOTP(true);
+    } else {
+      setErrors({ general: result.error || 'Failed to send verification code' });
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otpValue || otpValue.length !== 6) {
+      setErrors({ ...errors, otp: 'Please enter a 6-digit code' });
+      return;
+    }
+
+    setOtpLoading(true);
+    const verifyResult = await verifyEmailOTP(email.trim(), otpValue);
+
+    if (verifyResult.success) {
+      const signupResult = await signUp(email.trim(), password, name.trim());
+      setOtpLoading(false);
+
+      if (!signupResult.success) {
+        setShowOTP(false);
+        setErrors({ general: signupResult.error });
+      }
+    } else {
+      setOtpLoading(false);
+      setErrors({ otp: verifyResult.error || 'Incorrect code' });
+    }
   };
 
   return (
@@ -148,6 +176,49 @@ export default function SignUpScreen({ onNavigateToSignIn }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {showOTP && (
+        <View style={styles.otpOverlay}>
+          <View style={styles.otpCard}>
+            <Text style={styles.title}>Verify Email</Text>
+            <Text style={styles.subtitle}>Enter the 6-digit code sent to {email}</Text>
+
+            <View style={styles.inputGroup}>
+              <View style={[styles.inputContainer, errors.otp && styles.inputError]}>
+                <Text style={styles.inputIcon}>🔢</Text>
+                <TextInput
+                  style={styles.input}
+                  value={otpValue}
+                  onChangeText={(text) => {
+                    setOtpValue(text.replace(/[^0-9]/g, '').slice(0, 6));
+                    if (errors.otp) setErrors({ ...errors, otp: null });
+                  }}
+                  placeholder="000000"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                />
+              </View>
+              {errors.otp && <Text style={styles.errorText}>{errors.otp}</Text>}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, otpLoading && styles.buttonDisabled]}
+              onPress={handleVerifyOTP}
+              disabled={otpLoading}
+            >
+              {otpLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.buttonText}>Verify & Sign Up</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => setShowOTP(false)}
+            >
+              <Text style={styles.signInLink}>Edit Details</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -173,4 +244,21 @@ const createStyles = (colors) => StyleSheet.create({
   signInContainer: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
   signInText: { color: colors.textMuted },
   signInLink: { color: colors.primary, fontWeight: 'bold' },
+  otpOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 24,
+    zIndex: 100,
+  },
+  otpCard: {
+    backgroundColor: colors.bg,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+  },
+  secondaryButton: {
+    marginTop: 16,
+    padding: 8,
+  },
 });

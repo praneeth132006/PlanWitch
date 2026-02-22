@@ -20,7 +20,7 @@ import {
 } from 'firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import nativeAuth from '@react-native-firebase/auth';
-import { auth } from '../config/firebase';
+import { auth, getFunctions, httpsCallable } from '../config/firebase';
 import * as DB from '../services/databaseService';
 
 const AuthContext = createContext(null);
@@ -346,6 +346,28 @@ export function AuthProvider({ children }) {
     updateUserProfile,
     resetPassword,
     deleteAccount,
+    requestOTP: async (email) => {
+      try {
+        const functions = getFunctions(undefined, 'us-central1');
+        const requestOTPCall = httpsCallable(functions, 'requestOTP');
+        const result = await requestOTPCall({ email });
+        return result.data;
+      } catch (error) {
+        console.error('requestOTP error:', error);
+        return { success: false, error: error.message };
+      }
+    },
+    verifyEmailOTP: async (email, otp) => {
+      try {
+        const functions = getFunctions(undefined, 'us-central1');
+        const verifyOTPCall = httpsCallable(functions, 'verifyOTP');
+        const result = await verifyOTPCall({ email, otp });
+        return result.data;
+      } catch (error) {
+        console.error('verifyOTP error:', error);
+        return { success: false, error: error.message };
+      }
+    },
   };
 
   return (

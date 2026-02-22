@@ -1,4 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
 import {
   getAuth,
   initializeAuth,
@@ -76,6 +78,8 @@ if (Platform.OS === 'web') {
 export {
   auth,
   database,
+  getFunctions,
+  httpsCallable,
   analytics,
   performance,
   createUserWithEmailAndPassword,
