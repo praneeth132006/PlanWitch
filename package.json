@@ -42,6 +42,8 @@
   "devDependencies": {
     "@babel/core": "^7.25.0",
     "@types/react": "~18.3.0",
+    "eslint": "^8.57.0",
+    "eslint-config-expo": "~52.0.0",
     "typescript": "~5.9.2"
   },
   "private": true
