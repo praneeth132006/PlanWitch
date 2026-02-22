@@ -1,0 +1,41 @@
+name: Auto Versioning
+
+on:
+  push:
+    branches: [ "main" ]
+    # Don't trigger if only docs or the workflow itself changed
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/**'
+
+jobs:
+  bump_version:
+    name: Bump Package Version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to push back to the repository
+    # Only run if the commit wasn't a release itself
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure Git User
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump Version
+        # Automatically bump the patch version (1.0.0 -> 1.0.1)
+        run: npm version patch -m "chore(release): bump version to %s [skip ci]"
+
+      - name: Push Version Bump
+        # Push the updated package.json and the new version tag
+        run: git push --follow-tags
