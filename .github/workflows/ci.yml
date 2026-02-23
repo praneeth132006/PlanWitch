@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build_and_lint_root:
@@ -13,21 +13,21 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install App Dependencies
         run: npm ci || npm install
-        
+
       # Expo/React Native apps usually have custom build/lint commands.
       # We'll use a basic syntax check and expo export for validation.
       - name: Run ESLint (App)
-        run: npx eslint . --ext .js,.jsx,.ts,.tsx || true # Don't fail the build on first lint pass
-        
+        run: npm run lint
+
       - name: Test Build (Expo Export)
         run: npx expo export -p web
         continue-on-error: true # Not strictly necessary if web isn't fully configured
@@ -41,19 +41,19 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './functions/package-lock.json'
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "./functions/package-lock.json"
 
       - name: Install Functions Dependencies
         run: npm ci || npm install
 
       - name: Run ESLint (Functions)
         run: npm run lint
-        
+
       - name: Build TypeScript (Functions)
         run: npm run build

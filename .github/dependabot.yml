@@ -9,6 +9,11 @@ updates:
     open-pull-requests-limit: 10
     ignore:
       - dependency-name: "react-native" # usually manual upgrades are better for RN core
+    groups:
+      production-deps:
+        dependency-type: "production"
+      development-deps:
+        dependency-type: "development"
 
   # Maintain dependencies for the Firebase functions directory
   - package-ecosystem: "npm"
@@ -17,9 +22,17 @@ updates:
       interval: "weekly"
       day: "tuesday"
     open-pull-requests-limit: 10
+    groups:
+      functions-deps:
+        patterns:
+          - "*"
 
   # Maintain GitHub Actions dependencies
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
+    groups:
+      actions-deps:
+        patterns:
+          - "*"

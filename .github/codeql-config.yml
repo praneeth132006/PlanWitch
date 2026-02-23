@@ -1,0 +1,16 @@
+name: "CodeQL Custom Config"
+
+paths-ignore:
+  - "node_modules"
+  - "**/node_modules"
+  - "dist"
+  - "**/dist"
+  - ".expo"
+  - "ios"
+  - "android"
+  - "web"
+  - "**/web"
+  - "scripts"
+
+queries:
+  - uses: security-extended
