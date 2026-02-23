@@ -21,7 +21,7 @@ jobs:
           cache: "npm"
 
       - name: Install App Dependencies
-        run: npm ci || npm install
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       # Expo/React Native apps usually have custom build/lint commands.
       # We'll use a basic syntax check and expo export for validation.
