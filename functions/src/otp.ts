@@ -12,13 +12,21 @@ if (admin.apps.length === 0) {
 // Use Realtime Database (already working in the project) instead of Firestore
 const db = admin.database();
 
-// Transporter configuration
+// Transporter configuration — credentials from environment variables
+// Set these via: firebase functions:secrets:set GMAIL_USER / GMAIL_PASS
+// Or in .env file for local development
+const GMAIL_USER = process.env.GMAIL_USER || "praneeth132006b@gmail.com";
+const GMAIL_PASS = process.env.GMAIL_PASS || "";
+
 const getTransporter = () => {
+    if (!GMAIL_PASS) {
+        throw new Error("GMAIL_PASS environment variable is not set. Run: firebase functions:secrets:set GMAIL_PASS");
+    }
     return nodemailer.createTransport({
         service: "gmail",
         auth: {
-            user: "praneeth132006b@gmail.com",
-            pass: "vmirekqpvmlawxxm",
+            user: GMAIL_USER,
+            pass: GMAIL_PASS,
         },
     });
 };
@@ -57,7 +65,7 @@ export const requestOTP = onCall({ region: "us-central1" }, async (request) => {
 
         // 4. Send Email
         const mailOptions = {
-            from: `"TravelWitch" <praneeth132006b@gmail.com>`,
+            from: `"TravelWitch" <${GMAIL_USER}>`,
             to: email,
             subject: "Your TravelWitch Verification Code",
             text: `Your verification code is: ${otp}. It expires in 5 minutes.`,
