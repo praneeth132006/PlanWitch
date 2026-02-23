@@ -28,6 +28,18 @@
                 ".write": "auth != null"
             }
         },
+        "budget": {
+            "$tripId": {
+                ".read": "auth != null",
+                ".write": "auth != null"
+            }
+        },
+        "foodItems": {
+            "$tripId": {
+                ".read": "auth != null",
+                ".write": "auth != null"
+            }
+        },
         "packing": {
             "$tripId": {
                 ".read": "auth != null",

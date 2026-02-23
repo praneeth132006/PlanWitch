@@ -104,6 +104,42 @@ export const TravelProvider = ({ children }) => {
     // console.log('[Context] Cleaned up real-time listeners');
   };
 
+  const setupRealTimeListeners = (id, owner) => {
+    // 1. Clean up existing listeners if any
+    cleanupListeners();
+
+    if (!id || !isAuthenticated) return;
+
+    // console.log('[Context] Setting up real-time listeners for trip:', id, 'owned by:', owner);
+
+    // A. Subscribe to trip info changes
+    unsubscribersRef.current.info = DB.subscribeToTripInfo(id, (data) => {
+      if (data) {
+        setTripInfoState(prev => ({ ...prev, ...data }));
+      }
+    });
+
+    // B. Subscribe to expenses
+    unsubscribersRef.current.expenses = DB.subscribeToExpenses(id, owner, (data) => {
+      setExpenses(data || []);
+    });
+
+    // C. Subscribe to budget
+    unsubscribersRef.current.budget = DB.subscribeToBudget(id, owner, (data) => {
+      setBudgetState(data || { total: 0, categories: {} });
+    });
+
+    // D. Subscribe to itinerary
+    unsubscribersRef.current.itinerary = DB.subscribeToItinerary(id, owner, (data) => {
+      setItinerary(data || []);
+    });
+
+    // E. Subscribe to food items
+    unsubscribersRef.current.foodItems = DB.subscribeToFoodItems(id, owner, (data) => {
+      setFoodItems(data || []);
+    });
+  };
+
   // New State for AI Personalization
   const [tripPreferences, setTripPreferences] = useState({});
   const { isPremium, loading: premiumLoading } = usePremium();
@@ -163,6 +199,9 @@ export const TravelProvider = ({ children }) => {
     if (isAuthenticated && user) {
       loadUserData().then(({ trips, currentTrip }) => {
         checkAndAutoEndTrips(trips, currentTrip);
+        if (currentTrip) {
+          setupRealTimeListeners(currentTrip.id, currentTrip.ownerId || user.uid);
+        }
       });
     } else {
       resetLocalState();
@@ -642,6 +681,43 @@ export const TravelProvider = ({ children }) => {
     }
   };
 
+  // Wrapped List Setters
+  const setExpensesSync = async (updater) => {
+    const newExpenses = typeof updater === 'function' ? updater(expenses) : updater;
+    setExpenses(newExpenses);
+    if (isAuthenticated) {
+      try {
+        await DB.saveExpenses(newExpenses, tripInfo.id, tripOwnerId);
+      } catch (error) {
+        console.error('Error saving expenses list:', error);
+      }
+    }
+  };
+
+  const setItinerarySync = async (updater) => {
+    const newItinerary = typeof updater === 'function' ? updater(itinerary) : updater;
+    setItinerary(newItinerary);
+    if (isAuthenticated) {
+      try {
+        await DB.saveItinerary(newItinerary, tripInfo.id, tripOwnerId);
+      } catch (error) {
+        console.error('Error saving itinerary list:', error);
+      }
+    }
+  };
+
+  const setFoodItemsSync = async (updater) => {
+    const newFoodItems = typeof updater === 'function' ? updater(foodItems) : updater;
+    setFoodItems(newFoodItems);
+    if (isAuthenticated) {
+      try {
+        await DB.saveFoodItems(newFoodItems, tripInfo.id, tripOwnerId);
+      } catch (error) {
+        console.error('Error saving food items list:', error);
+      }
+    }
+  };
+
   // End trip - move to history
   const endTrip = async () => {
     if (tripInfo && tripInfo.destination) {
@@ -740,6 +816,9 @@ export const TravelProvider = ({ children }) => {
       const owner = trip.ownerId || user?.uid;
       setTripOwnerId(owner);
 
+      // Setup real-time listeners
+      setupRealTimeListeners(trip.id, owner);
+
       // Refetch from shared node if it's a shared trip to get latest participants/info
       if (trip.tripCode) {
         try {
@@ -755,50 +834,11 @@ export const TravelProvider = ({ children }) => {
       // Update trip info state
       setTripInfoState(trip);
 
-      // Load data for this trip
+      // Load shared data for this trip
       if (isAuthenticated) {
         // Fetch packing items (per-user, not shared)
         const savedPacking = await DB.getPackingItems(trip.id);
         setPackingItems(savedPacking || []);
-
-        // Set up real-time listeners for shared trip data
-        // console.log('[Context] Setting up real-time listeners for trip:', trip.id);
-
-        // Subscribe to expenses - updates will sync across all users
-        unsubscribersRef.current.expenses = DB.subscribeToExpenses(
-          trip.id,
-          owner,
-          (data) => {
-            setExpenses(data || []);
-          }
-        );
-
-        // Subscribe to budget
-        unsubscribersRef.current.budget = DB.subscribeToBudget(
-          trip.id,
-          owner,
-          (data) => {
-            setBudgetState(data || { total: 0, categories: {} });
-          }
-        );
-
-        // Subscribe to itinerary
-        unsubscribersRef.current.itinerary = DB.subscribeToItinerary(
-          trip.id,
-          owner,
-          (data) => {
-            setItinerary(data || []);
-          }
-        );
-
-        // Subscribe to food items
-        unsubscribersRef.current.foodItems = DB.subscribeToFoodItems(
-          trip.id,
-          owner,
-          (data) => {
-            setFoodItems(data || []);
-          }
-        );
       }
 
       setIsLoading(false);
@@ -1162,7 +1202,7 @@ export const TravelProvider = ({ children }) => {
       },
       setTripInfo,
       budget, setBudget,
-      expenses, setExpenses,
+      expenses, setExpenses: setExpensesSync,
       addExpense,
       updateExpense,
       deleteExpense,
@@ -1175,12 +1215,13 @@ export const TravelProvider = ({ children }) => {
       deletePackingItem,
       // --- FOOD ITEMS EXPORT ---
       foodItems,
+      setFoodItems: setFoodItemsSync,
       addFoodItem,
       toggleFoodItem,
       deleteFoodItem,
       // -------------------------
       itinerary,
-      setItinerary,
+      setItinerary: setItinerarySync,
       addItineraryItem,
       deleteItineraryItem,
       updateItineraryItem,
