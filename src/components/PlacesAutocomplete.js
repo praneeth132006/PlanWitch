@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Icon from './Icon';
-import GOOGLE_MAPS_CONFIG, { MAP_DEFAULTS } from '../config/googleMaps';
+import GOOGLE_MAPS_CONFIG, { MAP_DEFAULTS, DAWN_MAP_STYLE, DUSK_MAP_STYLE } from '../config/googleMaps';
 
 /**
  * PlacesAutocomplete Component
@@ -27,7 +27,7 @@ const PlacesAutocomplete = ({
     showMap = false,
     clearOnSelect = false,
 }) => {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const [query, setQuery] = useState(value || '');
     const [predictions, setPredictions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -87,6 +87,7 @@ const PlacesAutocomplete = ({
                         mapTypeControl: false,
                         fullscreenControl: false,
                         streetViewControl: false,
+                        styles: isDark ? DUSK_MAP_STYLE : DAWN_MAP_STYLE,
                     });
 
                     // Add click listener to map

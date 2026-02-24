@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, Platform, Text } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import GOOGLE_MAPS_CONFIG, { MAP_DEFAULTS } from '../config/googleMaps';
+import GOOGLE_MAPS_CONFIG, { MAP_DEFAULTS, DAWN_MAP_STYLE, DUSK_MAP_STYLE } from '../config/googleMaps';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from './MapLib';
 
 /**
@@ -9,7 +9,7 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from './MapLib';
  * Visualizes the trip Start, Visit, and End points on a read-only map.
  */
 const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, borderRadius = 0 }) => {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
     const markers = useRef([]);
@@ -56,10 +56,11 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                         ...MAP_DEFAULTS,
                         disableDefaultUI: true,
                         zoomControl: false,
-                        gestureHandling: 'none',
+                        gestureHandling: 'greedy',
                         keyboardShortcuts: false,
                         clickableIcons: false,
                         mapTypeId: 'roadmap',
+                        styles: isDark ? DUSK_MAP_STYLE : DAWN_MAP_STYLE,
                         mapId: '330d727194d831d02de90356', // User provided Map ID
                     });
 
@@ -317,7 +318,7 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                         latitudeDelta: 0.0922,
                         longitudeDelta: 0.0421,
                     }}
-                    customMapStyle={MAP_DEFAULTS.styles}
+                    customMapStyle={isDark ? DUSK_MAP_STYLE : DAWN_MAP_STYLE}
                 >
                     {nativePoints.map((p, i) => (
                         <Marker
@@ -328,14 +329,21 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                             }}
                             title={p.name}
                             description={p.fullAddress}
-                            pinColor={p.type === 'start' ? '#10B981' : p.type === 'end' ? '#EF4444' : '#3B82F6'}
-                        />
+                        >
+                            <View style={[
+                                styles.markerBadge,
+                                { backgroundColor: p.type === 'start' ? colors.success : p.type === 'end' ? colors.error : colors.primary }
+                            ]}>
+                                <Text style={styles.markerText}>{p.index || (p.type === 'start' ? 'A' : p.type === 'end' ? 'B' : '')}</Text>
+                            </View>
+                        </Marker>
                     ))}
                     {coordinates.length > 1 && (
                         <Polyline
                             coordinates={coordinates}
-                            strokeColor="#000"
-                            strokeWidth={3}
+                            strokeColor={colors.primary}
+                            strokeWidth={4}
+                            lineDashPattern={[1]}
                         />
                     )}
                 </MapView>
@@ -360,11 +368,30 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
 
 const createStyles = (colors) => StyleSheet.create({
     container: {
-        height: 300,
+        flex: 1, // Change from fixed height to flexible
         width: '100%',
         overflow: 'hidden',
         backgroundColor: colors.cardLight,
     },
+    markerBadge: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    markerText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: 'bold',
+    }
 });
 
 export default TripMap;

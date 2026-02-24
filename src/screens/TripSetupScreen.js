@@ -44,7 +44,7 @@ const BUDGET_PRESETS = [
 ];
 
 export default function TripSetupScreen({ onComplete, onBack }) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -101,7 +101,10 @@ export default function TripSetupScreen({ onComplete, onBack }) {
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 5,
+      onMoveShouldSetPanResponder: (_, gesture) => {
+        // Only capture vertical drags that are significant enough
+        return Math.abs(gesture.dy) > 10;
+      },
       onPanResponderGrant: () => {
         sheetY.setOffset(sheetY._value);
         sheetY.setValue(0);
@@ -623,21 +626,41 @@ export default function TripSetupScreen({ onComplete, onBack }) {
       case 'location':
         return (
           <View style={{ flex: 1, backgroundColor: colors.bg }}>
-            {/* 1. Map (Fixed Top 50%) */}
-            <View style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '50%',
-              zIndex: 0
-            }}>
+            {/* 0. Floating Back Button */}
+            <Pressable
+              onPress={() => onBack()}
+              style={({ pressed }) => [{
+                position: 'absolute',
+                top: 50,
+                left: 20,
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: isDark ? 'rgba(23, 23, 23, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 200,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+                elevation: 10,
+                borderWidth: 1,
+                borderColor: colors.primaryBorder + '40',
+                opacity: pressed ? 0.8 : 1,
+                transform: [{ scale: pressed ? 0.95 : 1 }]
+              }]}>
+              <Icon name="back" size={20} color={colors.primary} />
+            </Pressable>
+
+            {/* 1. Map (Full Screen Background) */}
+            <View style={StyleSheet.absoluteFill}>
               <TripMap
                 stops={tripData.stops}
                 origin={tripData.origin}
                 destination={tripData.endLocation}
                 mode="multi-city"
-                style={{ height: '100%', width: '100%' }}
+                style={StyleSheet.absoluteFill}
               />
             </View>
 
@@ -649,7 +672,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: colors.bg,
+                backgroundColor: isDark ? 'rgba(23, 23, 23, 0.85)' : 'rgba(255, 255, 255, 0.85)',
                 borderTopLeftRadius: 32,
                 borderTopRightRadius: 32,
                 overflow: 'hidden',
@@ -659,6 +682,9 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                 shadowRadius: 16,
                 elevation: 25,
                 zIndex: 100,
+                borderWidth: 1,
+                borderColor: colors.primaryBorder + '30',
+                backdropFilter: 'blur(10px)', // For Web
               }}>
               {/* Drag Handle & Header */}
               <View
@@ -667,9 +693,9 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                   paddingHorizontal: 24,
                   paddingTop: 12,
                   paddingBottom: 16,
-                  backgroundColor: colors.bg,
+                  backgroundColor: 'transparent', // Integrated glass feel
                   borderBottomWidth: 1,
-                  borderBottomColor: colors.primaryBorder + '20',
+                  borderBottomColor: colors.primaryBorder + '15',
                   alignItems: 'center',
                   cursor: 'grab'
                 }}>

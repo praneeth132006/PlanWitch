@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Platform, ActivityIndicator, Text } from 'react-native';
-import GOOGLE_MAPS_CONFIG, { MAP_DEFAULTS } from '../config/googleMaps';
+import GOOGLE_MAPS_CONFIG, { MAP_DEFAULTS, DAWN_MAP_STYLE, DUSK_MAP_STYLE } from '../config/googleMaps';
 import MapView, { Marker, PROVIDER_GOOGLE } from './MapLib';
 import { useTheme } from '../context/ThemeContext';
 
 const HomeMap = ({ destination, markers = [], style }) => {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
     const googleMarkers = useRef([]);
@@ -49,6 +49,7 @@ const HomeMap = ({ destination, markers = [], style }) => {
                     streetViewControl: false,
                     fullscreenControl: false,
                     gestureHandling: 'cooperative', // Better for mobile/web scrolling
+                    styles: isDark ? DUSK_MAP_STYLE : DAWN_MAP_STYLE,
                     mapId: '330d727194d831d02de90356',
                 });
                 setIsLoaded(true);
@@ -161,7 +162,7 @@ const HomeMap = ({ destination, markers = [], style }) => {
                             latitudeDelta: 0.0922,
                             longitudeDelta: 0.0421,
                         }}
-                        customMapStyle={MAP_DEFAULTS.styles}
+                        customMapStyle={isDark ? DUSK_MAP_STYLE : DAWN_MAP_STYLE}
                     >
                         {destination?.latitude && destination?.longitude && (
                             <Marker
@@ -170,8 +171,11 @@ const HomeMap = ({ destination, markers = [], style }) => {
                                     longitude: parseFloat(destination.longitude)
                                 }}
                                 title={destination.name}
-                                pinColor="#8B5CF6"
-                            />
+                            >
+                                <View style={[styles.markerBadge, { backgroundColor: '#8B5CF6' }]}>
+                                    <Text style={styles.markerText}>📍</Text>
+                                </View>
+                            </Marker>
                         )}
                         {markers.map((stop, index) => (
                             stop.latitude && stop.longitude && (
@@ -182,8 +186,11 @@ const HomeMap = ({ destination, markers = [], style }) => {
                                         longitude: parseFloat(stop.longitude)
                                     }}
                                     title={stop.name}
-                                    pinColor="#3B82F6"
-                                />
+                                >
+                                    <View style={[styles.markerBadge, { backgroundColor: '#3B82F6' }]}>
+                                        <Text style={styles.markerText}>{index + 1}</Text>
+                                    </View>
+                                </Marker>
                             )
                         ))}
                     </MapView>
@@ -217,6 +224,25 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(0,0,0,0.3)',
+    },
+    markerBadge: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    markerText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: 'bold',
     }
 });
 
