@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import { generateUniqueTripCode } from '../utils/tripCodeGenerator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { usePremium } from './PremiumContext';
 import * as DB from '../services/databaseService';
@@ -148,6 +149,40 @@ export const TravelProvider = ({ children }) => {
   const CONSTANTS = {
     FREE_TRIP_LIMIT: 3,
     FREE_TRAVELER_LIMIT: 5
+  };
+
+  // --- Guest Persistence Keys ---
+  const STORAGE_KEYS = {
+    CURRENT_TRIP: 'guest_current_trip',
+    ALL_TRIPS: 'guest_all_trips',
+    TRIP_HISTORY: 'guest_trip_history'
+  };
+
+  // Helper to save guest data
+  const saveGuestData = async (info, trips) => {
+    if (isAuthenticated) return;
+    try {
+      if (info) await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_TRIP, JSON.stringify(info));
+      if (trips) await AsyncStorage.setItem(STORAGE_KEYS.ALL_TRIPS, JSON.stringify(trips));
+    } catch (e) {
+      console.warn('Failed to save guest data:', e);
+    }
+  };
+
+  // Helper to load guest data
+  const loadGuestData = async () => {
+    try {
+      const [infoStr, tripsStr] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.CURRENT_TRIP),
+        AsyncStorage.getItem(STORAGE_KEYS.ALL_TRIPS)
+      ]);
+      return {
+        info: infoStr ? JSON.parse(infoStr) : null,
+        trips: tripsStr ? JSON.parse(tripsStr) : []
+      };
+    } catch (e) {
+      console.warn('Failed to load guest data:', e);
+    }
   };
 
   const checkFeatureAccess = (feature, currentCount = 0) => {
@@ -912,6 +947,9 @@ export const TravelProvider = ({ children }) => {
       } catch (error) {
         console.error('Error saving trip to list:', error);
       }
+    } else {
+      // Handle Guest Persistence
+      await saveGuestData(newTrip, [newTrip, ...allTrips.filter(t => t.id !== newTrip.id)]);
     }
 
     return newTrip;

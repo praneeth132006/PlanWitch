@@ -116,26 +116,29 @@ export default function TripSetupScreen({ onComplete, onBack }) {
         const absoluteY = sheetY._value;
         let targetY = MID_Y;
 
+        // Snapping logic based on velocity and position
         if (gesture.vy < -0.5) {
-          targetY = MIN_Y;
+          // Fast swipe up
+          targetY = absoluteY > MID_Y ? MID_Y : MIN_Y;
         } else if (gesture.vy > 0.5) {
-          targetY = absoluteY > MID_Y + 50 ? MAX_Y : MID_Y;
+          // Fast swipe down
+          targetY = absoluteY < MID_Y ? MID_Y : MAX_Y;
         } else {
-          if (absoluteY < (MIN_Y + MID_Y) / 2) {
-            targetY = MIN_Y;
-          } else if (absoluteY > (MID_Y + MAX_Y) / 2) {
-            targetY = MAX_Y;
-          } else {
-            targetY = MID_Y;
-          }
+          // Slow drag - snap to nearest
+          const distances = [
+            { y: MIN_Y, d: Math.abs(absoluteY - MIN_Y) },
+            { y: MID_Y, d: Math.abs(absoluteY - MID_Y) },
+            { y: MAX_Y, d: Math.abs(absoluteY - MAX_Y) }
+          ];
+          targetY = distances.sort((a, b) => a.d - b.d)[0].y;
         }
 
         lastY.current = targetY;
         Animated.spring(sheetY, {
           toValue: targetY,
           useNativeDriver: false,
-          tension: 50,
-          friction: 8
+          tension: 60,
+          friction: 10
         }).start();
       },
     })
@@ -1212,7 +1215,15 @@ export default function TripSetupScreen({ onComplete, onBack }) {
             borderBottomWidth: 0,
           } : {}
         ]}>
-          <PremiumBackButton onPress={onBack} />
+          <PremiumBackButton
+            onPress={onBack}
+            style={STEPS[currentStep]?.key === 'location' && tripData.mode === 'multi-city' ? {
+              backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.85)',
+              shadowOpacity: 0.3,
+              marginTop: 10,
+              marginLeft: 10
+            } : {}}
+          />
           <View style={styles.headerCenter}>
             <Text style={styles.stepIndicator}>Step {currentStep + 1} of {totalSteps}</Text>
             {/* Tiny Pill Progress Bar */}
