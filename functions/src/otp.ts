@@ -31,7 +31,7 @@ const getTransporter = () => {
     });
 };
 
-export const requestOTP = onCall({ region: "us-central1" }, async (request) => {
+export const requestOTP = onCall({ region: "us-central1", secrets: ["GMAIL_USER", "GMAIL_PASS"] }, async (request) => {
     const { email } = request.data;
     logger.info(`requestOTP called for: ${email}`);
 
@@ -82,7 +82,7 @@ export const requestOTP = onCall({ region: "us-central1" }, async (request) => {
     }
 });
 
-export const verifyOTP = onCall({ region: "us-central1" }, async (request) => {
+export const verifyOTP = onCall({ region: "us-central1", secrets: ["GMAIL_USER", "GMAIL_PASS"] }, async (request) => {
     const { email, otp } = request.data;
 
     if (!email || !otp) {
