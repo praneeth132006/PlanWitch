@@ -11,6 +11,4 @@ paths-ignore:
   - "web"
   - "**/web"
   - "scripts"
-
-queries:
-  - uses: security-extended
+# Queries are now specified in the workflow file for better reliability

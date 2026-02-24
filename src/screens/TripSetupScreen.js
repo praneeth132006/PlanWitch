@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, ScrollView,
-  StyleSheet, Animated, Pressable, KeyboardAvoidingView, Platform, Alert, Image, Modal, Keyboard
+  StyleSheet, Animated, Pressable, KeyboardAvoidingView, Platform, Alert, Image, Modal, Keyboard,
+  Dimensions, PanResponder
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -88,6 +89,63 @@ export default function TripSetupScreen({ onComplete, onBack }) {
   const fadeAnim = useState(new Animated.Value(0))[0];
   const slideAnim = useState(new Animated.Value(30))[0];
   const progressAnim = useState(new Animated.Value(0))[0];
+
+  const SCREEN_HEIGHT = Dimensions.get('window').height;
+  const MIN_Y = 60; // Expanded top (distance from top)
+  const MID_Y = SCREEN_HEIGHT * 0.47; // Current half state
+  const MAX_Y = SCREEN_HEIGHT - 120; // Collapsed top position
+
+  const lastY = useRef(MID_Y);
+  const sheetY = useRef(new Animated.Value(MID_Y)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 5,
+      onPanResponderGrant: () => {
+        sheetY.setOffset(sheetY._value);
+        sheetY.setValue(0);
+      },
+      onPanResponderMove: Animated.event([null, { dy: sheetY }], { useNativeDriver: false }),
+      onPanResponderRelease: (_, gesture) => {
+        sheetY.flattenOffset();
+        const absoluteY = sheetY._value;
+        let targetY = MID_Y;
+
+        if (gesture.vy < -0.5) {
+          targetY = MIN_Y;
+        } else if (gesture.vy > 0.5) {
+          targetY = absoluteY > MID_Y + 50 ? MAX_Y : MID_Y;
+        } else {
+          if (absoluteY < (MIN_Y + MID_Y) / 2) {
+            targetY = MIN_Y;
+          } else if (absoluteY > (MID_Y + MAX_Y) / 2) {
+            targetY = MAX_Y;
+          } else {
+            targetY = MID_Y;
+          }
+        }
+
+        lastY.current = targetY;
+        Animated.spring(sheetY, {
+          toValue: targetY,
+          useNativeDriver: false,
+          tension: 50,
+          friction: 8
+        }).start();
+      },
+    })
+  ).current;
+
+  // Sync sheetY when step changes to 'location'
+  useEffect(() => {
+    if (STEPS[currentStep]?.key === 'location') {
+      Animated.spring(sheetY, {
+        toValue: MID_Y,
+        useNativeDriver: false
+      }).start();
+    }
+  }, [currentStep]);
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -583,43 +641,47 @@ export default function TripSetupScreen({ onComplete, onBack }) {
               />
             </View>
 
-            {/* 2. Content (Fixed Bottom 50%) */}
-            <View style={{
-              position: 'absolute',
-              top: '47%',
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: colors.bg,
-              borderTopLeftRadius: 30,
-              borderTopRightRadius: 30,
-              overflow: 'hidden',
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: -5 },
-              shadowOpacity: 0.15,
-              shadowRadius: 10,
-              elevation: 15,
-              zIndex: 100
-            }}>
-              {/* Fixed Header */}
-              <View style={{
-                paddingHorizontal: 24,
-                paddingTop: 20,
-                paddingBottom: 12,
+            {/* 2. Draggable Bottom Sheet */}
+            <Animated.View
+              style={{
+                position: 'absolute',
+                top: sheetY,
+                left: 0,
+                right: 0,
+                bottom: 0,
                 backgroundColor: colors.bg,
-                borderBottomWidth: 1,
-                borderBottomColor: colors.primaryBorder + '30',
-                alignItems: 'center'
+                borderTopLeftRadius: 32,
+                borderTopRightRadius: 32,
+                overflow: 'hidden',
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: -8 },
+                shadowOpacity: 0.25,
+                shadowRadius: 16,
+                elevation: 25,
+                zIndex: 100,
               }}>
+              {/* Drag Handle & Header */}
+              <View
+                {...panResponder.panHandlers}
+                style={{
+                  paddingHorizontal: 24,
+                  paddingTop: 12,
+                  paddingBottom: 16,
+                  backgroundColor: colors.bg,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.primaryBorder + '20',
+                  alignItems: 'center',
+                  cursor: 'grab'
+                }}>
                 <View style={{
-                  width: 40,
-                  height: 4,
-                  borderRadius: 2,
-                  backgroundColor: colors.cardLight,
-                  marginBottom: 12
+                  width: 36,
+                  height: 5,
+                  borderRadius: 3,
+                  backgroundColor: colors.primary + '30',
+                  marginBottom: 16
                 }} />
-                <Text style={[styles.plannerTitle, { fontSize: 20 }]}>Plan Your Route</Text>
-                <Text style={[styles.plannerSubtitle, { textAlign: 'center' }]}>
+                <Text style={[styles.plannerTitle, { fontSize: 22, color: colors.primary }]}>Plan Your Route</Text>
+                <Text style={[styles.plannerSubtitle, { textAlign: 'center', opacity: 0.8 }]}>
                   Add your departure, stops, and final destination.
                 </Text>
               </View>
@@ -738,7 +800,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
                   <Text style={[styles.nextButtonIcon, { color: '#000000', fontWeight: '900' }]}>→</Text>
                 </Pressable>
               </ScrollView>
-            </View>
+            </Animated.View>
           </View>
         );
 
