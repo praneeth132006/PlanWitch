@@ -287,7 +287,7 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
     if (Platform.OS !== 'web') {
         const nativePoints = [];
         const startPoint = origin || start;
-        if (startPoint && startPoint.latitude && startPoint.longitude) {
+        if (startPoint && typeof startPoint.latitude === 'number' && typeof startPoint.longitude === 'number' && !isNaN(startPoint.latitude)) {
             nativePoints.push({ ...startPoint, type: 'start' });
         }
         if (stops && stops.length > 0) {
@@ -313,8 +313,8 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                     provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                     style={StyleSheet.absoluteFill}
                     initialRegion={{
-                        latitude: coordinates.length > 0 ? coordinates[0].latitude : MAP_DEFAULTS.center.lat,
-                        longitude: coordinates.length > 0 ? coordinates[0].longitude : MAP_DEFAULTS.center.lng,
+                        latitude: (coordinates.length > 0 && typeof coordinates[0].latitude === 'number' && !isNaN(coordinates[0].latitude)) ? coordinates[0].latitude : MAP_DEFAULTS.center.lat,
+                        longitude: (coordinates.length > 0 && typeof coordinates[0].longitude === 'number' && !isNaN(coordinates[0].longitude)) ? coordinates[0].longitude : MAP_DEFAULTS.center.lng,
                         latitudeDelta: 0.0922,
                         longitudeDelta: 0.0421,
                     }}
@@ -368,7 +368,6 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
 
 const createStyles = (colors) => StyleSheet.create({
     container: {
-        flex: 1, // Change from fixed height to flexible
         width: '100%',
         overflow: 'hidden',
         backgroundColor: colors.cardLight,

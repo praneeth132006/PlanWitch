@@ -662,9 +662,9 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
                 <View>
                   <Text style={styles.upcomingTripsTitle}>Upcoming Trips</Text>
                   <Text style={styles.upcomingTripsSubtitle}>
-                    {/* Logic: Show total active trips count */}
-                    {upcomingTrips && upcomingTrips.length > 0
-                      ? `${upcomingTrips.length} trip${upcomingTrips.length > 1 ? 's' : ''} planned`
+                    {/* Logic: Show total active trips count from allTrips to avoid confusion if only one trip exists (and is featured) */}
+                    {allTrips && allTrips.length > 0
+                      ? `${allTrips.length} trip${allTrips.length > 1 ? 's' : ''} in your journey`
                       : 'No upcoming trips yet'
                     }
                   </Text>
@@ -1038,7 +1038,7 @@ const createStyles = (colors) => StyleSheet.create({
     justifyContent: 'center',
     marginTop: 16,
     backgroundColor: colors.primary,
-    borderRadius: 14,
+    borderRadius: 24,
     paddingVertical: 14,
     paddingHorizontal: 20,
     gap: 8,
@@ -1328,7 +1328,7 @@ const createStyles = (colors) => StyleSheet.create({
   upcomingTripIconBg: {
     width: 46,
     height: 46,
-    borderRadius: 14,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
   },

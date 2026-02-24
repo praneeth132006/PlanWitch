@@ -14,6 +14,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
 import Icon from '../components/Icon';
+import PremiumBackButton from '../components/PremiumBackButton';
 
 export default function JoinSelectionScreen({ trip, onBack, onJoinComplete }) {
     const { colors, isDark } = useTheme();
@@ -83,9 +84,7 @@ export default function JoinSelectionScreen({ trip, onBack, onJoinComplete }) {
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
             <View style={styles.header}>
-                <Pressable onPress={onBack} style={styles.backButton}>
-                    <Icon name="back" size={24} color={colors.text} />
-                </Pressable>
+                <PremiumBackButton onPress={onBack} />
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Identity Selection</Text>
                 <View style={{ width: 60 }} />
             </View>

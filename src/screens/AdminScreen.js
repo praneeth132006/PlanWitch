@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
+import PremiumBackButton from '../components/PremiumBackButton';
 import { subscribeToFeedback, deleteFeedback } from '../services/databaseService';
 
 export default function AdminScreen({ navigation }) {
@@ -72,12 +73,7 @@ export default function AdminScreen({ navigation }) {
 
             {/* Header */}
             <View style={[styles.header, { borderBottomColor: isDark ? '#333' : '#eee' }]}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Icon name="back" size={24} color={colors.text} />
-                </TouchableOpacity>
+                <PremiumBackButton onPress={() => navigation.goBack()} />
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Admin Dashboard</Text>
                 <View style={{ width: 40 }} />
             </View>

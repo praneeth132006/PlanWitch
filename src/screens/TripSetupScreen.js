@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icon';
 import PlacesAutocomplete from '../components/PlacesAutocomplete';
 import TripMap from '../components/TripMap';
+import PremiumBackButton from '../components/PremiumBackButton';
 import { generateTripItinerary } from '../services/aiService';
 
 const TRIP_TYPES = [
@@ -626,32 +627,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
       case 'location':
         return (
           <View style={{ flex: 1, backgroundColor: colors.bg }}>
-            {/* 0. Floating Back Button */}
-            <Pressable
-              onPress={() => onBack()}
-              style={({ pressed }) => [{
-                position: 'absolute',
-                top: 50,
-                left: 20,
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: isDark ? 'rgba(23, 23, 23, 0.8)' : 'rgba(255, 255, 255, 0.8)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 200,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
-                shadowRadius: 8,
-                elevation: 10,
-                borderWidth: 1,
-                borderColor: colors.primaryBorder + '40',
-                opacity: pressed ? 0.8 : 1,
-                transform: [{ scale: pressed ? 0.95 : 1 }]
-              }]}>
-              <Icon name="back" size={20} color={colors.primary} />
-            </Pressable>
+            {/* 0. Floating Back Button - REMOVED, now uses the standard header button */}
 
             {/* 1. Map (Full Screen Background) */}
             <View style={StyleSheet.absoluteFill}>
@@ -1236,9 +1212,7 @@ export default function TripSetupScreen({ onComplete, onBack }) {
             borderBottomWidth: 0,
           } : {}
         ]}>
-          <Pressable style={styles.backButton} onPress={handleBack}>
-            <Icon name="back" size={24} color={colors.text} />
-          </Pressable>
+          <PremiumBackButton onPress={onBack} />
           <View style={styles.headerCenter}>
             <Text style={styles.stepIndicator}>Step {currentStep + 1} of {totalSteps}</Text>
             {/* Tiny Pill Progress Bar */}

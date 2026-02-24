@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTravelContext } from '../context/TravelContext';
 import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
+import PremiumBackButton from '../components/PremiumBackButton';
 import PremiumButton from '../components/PremiumButton';
 import { generateBudgetPlan } from '../services/aiService';
 import { CustomAlert } from '../components/CustomAlert';
@@ -599,10 +600,7 @@ export default function BudgetScreen({ onSetScreen }) {
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
                   {currentQIndex > 0 ? (
-                    <TouchableOpacity onPress={handleBack} style={styles.navBackBtn}>
-                      {/* FIXED ICON: "back" instead of "arrow-left" */}
-                      <Icon name="back" size={20} color={colors.text} />
-                    </TouchableOpacity>
+                    <PremiumBackButton onPress={handleBack} size={40} iconSize={18} />
                   ) : <View style={{ width: 40 }} />}
 
                   {/* Removed the 'Step X of Y' Header as requested */}

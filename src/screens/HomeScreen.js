@@ -9,6 +9,7 @@ import { auth } from '../config/firebase';
 import Icon from '../components/Icon';
 import Calendar from '../components/Calendar';
 import TripMap from '../components/TripMap';
+import PremiumBackButton from '../components/PremiumBackButton';
 import PlacesAutocomplete from '../components/PlacesAutocomplete';
 import { generateDestinationInfo } from '../services/aiService';
 import BannerAd from '../components/BannerAd';
@@ -461,15 +462,18 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               </View>
             </View>
             <View style={styles.headerActions}>
-              <Pressable
-                style={styles.settingsButton}
+              <PremiumBackButton
                 onPress={() => setShowSettingsModal(true)}
+                style={{ backgroundColor: colors.card, borderColor: colors.primaryBorder }}
               >
                 <Icon name="settings" size={24} color={colors.text} />
-              </Pressable>
-              <Pressable style={styles.backButton} onPress={onBackToHome}>
-                <Icon name="close" size={24} color={colors.text} />
-              </Pressable>
+              </PremiumBackButton>
+              <PremiumBackButton
+                onPress={onBackToHome}
+                style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+              >
+                <Icon name="close" size={24} color="#EF4444" />
+              </PremiumBackButton>
             </View>
           </View>
         </Animated.View>
@@ -478,8 +482,8 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         <Animated.View style={[styles.mainSection, { transform: [{ scale: scaleAnim }] }]}>
           {/* Top: Interactive Map (Read-Only visualization) */}
           <TripMap
-            origin={tripInfo.origin || (tripInfo.latitude ? { latitude: tripInfo.latitude, longitude: tripInfo.longitude, name: tripInfo.destination } : null)}
-            stops={[...(tripInfo.stops || []), ...itinerary]}
+            origin={tripInfo.origin || (tripInfo.latitude ? { latitude: Math.fround(tripInfo.latitude), longitude: Math.fround(tripInfo.longitude), name: tripInfo.destination } : null)}
+            stops={Array.isArray(tripInfo.stops) ? [...tripInfo.stops, ...itinerary] : itinerary}
             destination={tripInfo.endLocation}
             style={styles.mapContainer}
             borderRadius={24}

@@ -30,6 +30,7 @@ import { useTravelContext } from '../context/TravelContext';
 import { usePremium } from '../context/PremiumContext';
 import { useAlert } from '../context/AlertContext';
 import Icon from '../components/Icon';
+import PremiumBackButton from '../components/PremiumBackButton';
 import premiumIcon from '../../assets/icons/mycollection/png/premium.png';
 import SubscriptionScreen from './SubscriptionScreen';
 import AdService from '../services/AdService';
@@ -805,9 +806,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
           },
         ]}
       >
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Icon name="back" size={24} color={colors.text} />
-        </TouchableOpacity>
+        <PremiumBackButton onPress={onBack} />
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity
           style={styles.editButton}
