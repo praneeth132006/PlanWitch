@@ -8,7 +8,7 @@ const PERIODS = ['AM', 'PM'];
 
 export default function TimePickerModal({ visible, onClose, onSelect, selectedTime, title }) {
   const { colors } = useTheme();
-  
+
   // Parse existing time or default
   const parseTime = (timeStr) => {
     if (!timeStr) return { hour: 9, minute: '00', period: 'AM' };

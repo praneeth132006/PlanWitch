@@ -120,11 +120,11 @@ export const softDeleteTrip = async (tripId) => {
       deletedAt: Date.now()
     };
 
-    // Update private trip node
-    await set(tripRef, softDeletedData);
+    // Update private trip node using update to preserve sub-nodes (expenses, etc.)
+    await update(tripRef, softDeletedData);
 
     // Update shared trip node
-    await set(ref(database, `sharedTrips/${tripId}`), {
+    await update(ref(database, `sharedTrips/${tripId}`), {
       ...softDeletedData,
       ownerId: userId
     });

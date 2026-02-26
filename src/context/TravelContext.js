@@ -264,86 +264,84 @@ export const TravelProvider = ({ children }) => {
       const historyToAdd = [];
 
       for (let i = 0; i < updatedTrips.length; i++) {
-        for (let i = 0; i < updatedTrips.length; i++) {
-          // Create a shallow copy to avoid mutating the original object in the array if it came from state
-          const trip = { ...updatedTrips[i] };
+        // Create a shallow copy to avoid mutating the original object in the array if it came from state
+        const trip = { ...updatedTrips[i] };
 
-          if (trip.isCompleted) continue; // Already done
+        if (trip.isCompleted) continue; // Already done
 
-          // Parse date - Robust handling for ISO and formatted strings
-          let tripEndDate;
-          if (!trip.endDate) continue;
+        // Parse date - Robust handling for ISO and formatted strings
+        let tripEndDate;
+        if (!trip.endDate) continue;
 
-          try {
-            // Try parsing ISO string or standard date format directly
-            const parsedDate = new Date(trip.endDate);
-            if (!isNaN(parsedDate.getTime())) {
-              tripEndDate = parsedDate;
-            } else {
-              // Fallback for "2 Jan 2026" format
-              const parts = trip.endDate.split(' ');
-              if (parts.length >= 3) {
-                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                const monthIndex = months.findIndex(m => m.toLowerCase().startsWith(parts[1].toLowerCase()));
-                if (monthIndex !== -1) {
-                  // Ensure properly parsed integers
-                  const day = parseInt(parts[0], 10);
-                  const year = parseInt(parts[2], 10);
-                  if (!isNaN(day) && !isNaN(year)) {
-                    tripEndDate = new Date(year, monthIndex, day);
-                  }
+        try {
+          // Try parsing ISO string or standard date format directly
+          const parsedDate = new Date(trip.endDate);
+          if (!isNaN(parsedDate.getTime())) {
+            tripEndDate = parsedDate;
+          } else {
+            // Fallback for "2 Jan 2026" or "02 Jan 2026" format
+            const parts = trip.endDate.trim().split(/\s+/);
+            if (parts.length >= 3) {
+              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              const monthIndex = months.findIndex(m => m.toLowerCase().startsWith(parts[1].toLowerCase()));
+              if (monthIndex !== -1) {
+                // Ensure properly parsed integers
+                const day = parseInt(parts[0], 10);
+                const year = parseInt(parts[2], 10);
+                if (!isNaN(day) && !isNaN(year)) {
+                  tripEndDate = new Date(year, monthIndex, day);
                 }
               }
             }
-
-            if (!tripEndDate || isNaN(tripEndDate.getTime())) {
-              // console.warn('[Context] Could not parse date for trip:', trip.destination, trip.endDate);
-              continue;
-            }
-
-            tripEndDate.setHours(0, 0, 0, 0);
-
-            // Check if expired
-            // Use a buffer? No, strict check: if today is AFTER the end date.
-            if (today > tripEndDate) {
-              // console.log(`[Context] Auto-completing expired trip: ${trip.destination}. End: ${tripEndDate.toDateString()}, Today: ${today.toDateString()}`);
-
-              // Complete it
-              trip.isCompleted = true;
-              trip.completedAt = Date.now();
-              trip.completedDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-
-              hasUpdates = true;
-              historyToAdd.push(trip);
-              // Replace the item in our local updatedTrips array with the completed version
-              updatedTrips[i] = trip;
-
-              // Save to DB
-              if (isAuthenticated) {
-                await DB.saveTrip(trip);
-                await DB.saveToHistory(trip);
-              }
-
-              // If this was the ACTIVE trip, clear it from DB and State
-              if (activeTrip && trip.id === activeTrip.id) {
-                // console.log('[Context] The expired trip is currently active. Clearing it.');
-                if (isAuthenticated) {
-                  await DB.clearCurrentTripData();
-                }
-                // Clear local active state
-                setTripInfoState({
-                  destination: '', startDate: '', endDate: '', name: '',
-                  participants: [], tripCode: '', tripType: '', isCompleted: false,
-                });
-                setBudgetState({ total: 0, categories: {} });
-                setExpenses([]);
-                setItinerary([]);
-                setTripOwnerId(null);
-              }
-            }
-          } catch (err) {
-            console.error('[Context] Error checking trip date:', err);
           }
+
+          if (!tripEndDate || isNaN(tripEndDate.getTime())) {
+            // console.warn('[Context] Could not parse date for trip:', trip.destination, trip.endDate);
+            continue;
+          }
+
+          tripEndDate.setHours(0, 0, 0, 0);
+
+          // Check if expired
+          // Use a buffer? No, strict check: if today is AFTER the end date.
+          if (today > tripEndDate) {
+            // console.log(`[Context] Auto-completing expired trip: ${trip.destination}. End: ${tripEndDate.toDateString()}, Today: ${today.toDateString()}`);
+
+            // Complete it
+            trip.isCompleted = true;
+            trip.completedAt = Date.now();
+            trip.completedDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+            hasUpdates = true;
+            historyToAdd.push(trip);
+            // Replace the item in our local updatedTrips array with the completed version
+            updatedTrips[i] = trip;
+
+            // Save to DB
+            if (isAuthenticated) {
+              await DB.saveTrip(trip);
+              await DB.saveToHistory(trip);
+            }
+
+            // If this was the ACTIVE trip, clear it from DB and State
+            if (activeTrip && trip.id === activeTrip.id) {
+              // console.log('[Context] The expired trip is currently active. Clearing it.');
+              if (isAuthenticated) {
+                await DB.clearCurrentTripData();
+              }
+              // Clear local active state
+              setTripInfoState({
+                destination: '', startDate: '', endDate: '', name: '',
+                participants: [], tripCode: '', tripType: '', isCompleted: false,
+              });
+              setBudgetState({ total: 0, categories: {} });
+              setExpenses([]);
+              setItinerary([]);
+              setTripOwnerId(null);
+            }
+          }
+        } catch (err) {
+          console.error('[Context] Error checking trip date:', err);
         }
       }
 

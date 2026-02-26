@@ -78,9 +78,10 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         today.setHours(0, 0, 0, 0);
 
         try {
-          const parts = tripInfo.endDate.split(' ');
+          const parts = tripInfo.endDate.trim().split(/\s+/);
           const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          const endDate = new Date(parseInt(parts[2]), months.indexOf(parts[1]), parseInt(parts[0]));
+          const monthIndex = months.findIndex(m => m.toLowerCase().startsWith(parts[1].toLowerCase()));
+          const endDate = new Date(parseInt(parts[2]), monthIndex, parseInt(parts[0]));
           endDate.setHours(23, 59, 59, 999);
 
           if (today > endDate) {
@@ -93,7 +94,6 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
       }
     };
 
-    checkTripEnded();
     checkTripEnded();
   }, [tripInfo.endDate]);
 
