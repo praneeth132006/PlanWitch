@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "TravelWitch",
-    "slug": "travelwitch",
+    "name": "PlanWitch",
+    "slug": "planwitch",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
@@ -16,13 +16,13 @@
     "icon": "./assets/icons/mycollection/png/app_icon.png",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.travelwitch.app",
+      "bundleIdentifier": "com.praneeth132006.planwitch",
       "googleServicesFile": "./GoogleService-Info.plist",
       "config": {
         "googleMapsApiKey": "AIzaSyANRzgIniwwjDbW31gDIJ38iGpKdLng0yk"
       },
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "TravelWitch needs your location to show trips on the map."
+        "NSLocationWhenInUseUsageDescription": "PlanWitch needs your location to show trips on the map."
       }
     },
     "android": {
@@ -30,7 +30,7 @@
         "backgroundColor": "#0D0D0D",
         "foregroundImage": "./assets/icons/mycollection/png/app_icon.png"
       },
-      "package": "com.travelwitch.app",
+      "package": "com.praneeth132006.planwitch",
       "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
@@ -43,8 +43,8 @@
       "output": "single",
       "favicon": "./assets/icons/mycollection/png/app_icon.png",
       "pwa": {
-        "name": "TravelWitch",
-        "shortName": "TravelWitch",
+        "name": "PlanWitch",
+        "shortName": "PlanWitch",
         "description": "Premium Travel Companion & Budget Tracker",
         "backgroundColor": "#0D0D0D",
         "themeColor": "#FFD2AD",
@@ -58,7 +58,7 @@
         }
       }
     },
-    "scheme": "travelwitch",
+    "scheme": "planwitch",
     "plugins": [
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",

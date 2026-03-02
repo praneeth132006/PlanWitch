@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "TravelWitch.app"
-               BlueprintName = "TravelWitch"
-               ReferencedContainer = "container:TravelWitch.xcodeproj">
+               BuildableName = "PlanWitch.app"
+               BlueprintName = "PlanWitch"
+               ReferencedContainer = "container:PlanWitch.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "TravelWitchTests.xctest"
-               BlueprintName = "TravelWitchTests"
-               ReferencedContainer = "container:TravelWitch.xcodeproj">
+               BuildableName = "PlanWitchTests.xctest"
+               BlueprintName = "PlanWitchTests"
+               ReferencedContainer = "container:PlanWitch.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "TravelWitch.app"
-            BlueprintName = "TravelWitch"
-            ReferencedContainer = "container:TravelWitch.xcodeproj">
+            BuildableName = "PlanWitch.app"
+            BlueprintName = "PlanWitch"
+            ReferencedContainer = "container:PlanWitch.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "TravelWitch.app"
-            BlueprintName = "TravelWitch"
-            ReferencedContainer = "container:TravelWitch.xcodeproj">
+            BuildableName = "PlanWitch.app"
+            BlueprintName = "PlanWitch"
+            ReferencedContainer = "container:PlanWitch.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

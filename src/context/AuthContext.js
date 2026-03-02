@@ -73,6 +73,17 @@ export function AuthProvider({ children }) {
       setInitializing(false);
     });
 
+    // DEBUG: Force clear initializing state after 10s to prevent permanent blank screen
+    const forceClearTimer = setTimeout(() => {
+      setInitializing(prev => {
+        if (prev) {
+          console.warn('AuthContext: Initializing state stuck, forcing clear.');
+          return false;
+        }
+        return prev;
+      });
+    }, 10000);
+
     // Handle Redirect Result (for Google Sign In) - WEB ONLY
     if (Platform.OS === 'web') {
       getRedirectResult(auth).then(async (result) => {

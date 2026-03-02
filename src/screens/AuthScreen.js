@@ -325,7 +325,7 @@ export default function AuthScreen() {
             <View style={styles.logoBadge}>
               <Icon name="logo" size={42} color={colors.primary} />
             </View>
-            <Text style={styles.appName}>TravelWitch</Text>
+            <Text style={styles.appName}>PlanWitch</Text>
             <Text style={styles.tagline}>Discover your next adventure</Text>
           </View>
 
@@ -571,7 +571,7 @@ export default function AuthScreen() {
               </Text>
               <Text style={styles.dialogDescription}>
                 {legalType === 'terms'
-                  ? 'Please review our rules and guidelines for using TravelWitch.'
+                  ? 'Please review our rules and guidelines for using PlanWitch.'
                   : 'Learn how we collect, use, and protect your personal data.'}
               </Text>
             </View>
@@ -579,14 +579,14 @@ export default function AuthScreen() {
             <ScrollView style={styles.legalScroll} showsVerticalScrollIndicator={false}>
               <Text style={styles.legalContent}>
                 {legalType === 'terms' ? (
-                  `Welcome to TravelWitch. By using our application, you agree to:
+                  `Welcome to PlanWitch. By using our application, you agree to:
 \n• Use the service responsibly for travel planning.
 • Not attempt to copy, modify, or reverse engineer the app.
 • Maintain your device security (avoid jailbreaking).
 • Acknowledge that AI is used to provide core features.
 • Accept responsibility for data charges from your provider.`
                 ) : (
-                  `Your privacy is our priority. TravelWitch collects:
+                  `Your privacy is our priority. PlanWitch collects:
 \n• Registration data (Email, Name) provided by you.
 • Automatic data (Device ID, usage patterns) for optimization.
 • AI processing data for personalized recommendations.
@@ -596,7 +596,7 @@ export default function AuthScreen() {
 
               <TouchableOpacity
                 style={styles.fullLegalLink}
-                onPress={() => Linking.openURL(legalType === 'terms' ? 'https://sites.google.com/view/travelwitch-tnc/home' : 'https://sites.google.com/view/travelwitch/home')}
+                onPress={() => Linking.openURL(legalType === 'terms' ? 'https://sites.google.com/view/planwitch-tnc/home' : 'https://sites.google.com/view/planwitch/home')}
               >
                 <Text style={styles.fullLegalLinkText}>View Full Document →</Text>
               </TouchableOpacity>

@@ -190,8 +190,8 @@ const PlacesAutocomplete = ({
                 const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(searchQuery)}&key=${GOOGLE_MAPS_CONFIG.apiKey}&types=(cities)`;
                 const response = await fetch(url, {
                     headers: {
-                        'X-Ios-Bundle-Identifier': 'com.travelwitch.app',
-                        'X-Android-Package': 'com.travelwitch.app',
+                        'X-Ios-Bundle-Identifier': 'com.planwitch.app',
+                        'X-Android-Package': 'com.planwitch.app',
                     }
                 });
                 const data = await response.json();
@@ -276,8 +276,8 @@ const PlacesAutocomplete = ({
                 `https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.place_id}&key=${GOOGLE_MAPS_CONFIG.apiKey}&fields=geometry,formatted_address,name,photos`,
                 {
                     headers: {
-                        'X-Ios-Bundle-Identifier': 'com.travelwitch.app',
-                        'X-Android-Package': 'com.travelwitch.app',
+                        'X-Ios-Bundle-Identifier': 'com.planwitch.app',
+                        'X-Android-Package': 'com.planwitch.app',
                     }
                 }
             )

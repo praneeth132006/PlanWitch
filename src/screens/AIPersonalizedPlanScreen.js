@@ -176,7 +176,7 @@ Return ONLY a JSON object (no extra text) with this exact structure:
                     >
                         <View style={styles.resultHeader}>
                             <Text style={styles.resultMainTitle}>Epic Journey Found! ✨</Text>
-                            <Text style={styles.resultSubtitle}>Refined by TravelWitch AI</Text>
+                            <Text style={styles.resultSubtitle}>Refined by PlanWitch AI</Text>
                         </View>
 
                         {/* Itinerary Section */}

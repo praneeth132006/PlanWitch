@@ -193,10 +193,10 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
     },
     {
       question: 'How do I share my trip with friends?',
-      answer: 'Each trip has a unique trip code. Share this code with your travel companions, and they can join by selecting "Join a Trip" on their TravelWitch app and entering the code.'
+      answer: 'Each trip has a unique trip code. Share this code with your travel companions, and they can join by selecting "Join a Trip" on their PlanWitch app and entering the code.'
     },
     {
-      question: 'Can I use TravelWitch offline?',
+      question: 'Can I use PlanWitch offline?',
       answer: 'Yes! Your trip data is stored locally on your device. You can view and edit your trips offline. Changes will sync to the cloud when you\'re back online.'
     },
     {
@@ -271,7 +271,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
 
   const handleHelpSupport = () => {
     const email = 'praneeth132006b@gmail.com';
-    const subject = 'TravelWitch Support Request';
+    const subject = 'PlanWitch Support Request';
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${encodeURIComponent(subject)}`;
     const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
 
@@ -285,7 +285,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
   const handleRateApp = () => {
     // These IDs will be available once the app is published to the stores
     const itunesItemId = 'YOUR_APPLE_ID';
-    const androidPackageName = 'com.travelwitch.app';
+    const androidPackageName = 'com.praneeth132006.planwitch';
 
     if (Platform.OS === 'ios') {
       Linking.openURL(`itms-apps://itunes.apple.com/app/viewContentsUserReviews/id${itunesItemId}?action=write-review`);
@@ -586,7 +586,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
             </Text>
             <Text style={styles.dialogDescription}>
               {legalType === 'terms'
-                ? 'Please review our rules and guidelines for using TravelWitch.'
+                ? 'Please review our rules and guidelines for using PlanWitch.'
                 : 'Learn how we collect, use, and protect your personal data.'}
             </Text>
           </View>
@@ -594,15 +594,15 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
           <ScrollView style={styles.legalScroll} showsVerticalScrollIndicator={false}>
             <Text style={styles.legalContent}>
               {legalType === 'terms' ? (
-                `Welcome to TravelWitch. By using our application, you agree to:\n\n• Use the service responsibly for travel planning.\n\n• Not attempt to copy, modify, or reverse engineer the app.\n\n• Maintain your device security (avoid jailbreaking).\n\n• Acknowledge that AI is used to provide core features.\n\n• Accept responsibility for data charges from your provider.`
+                `Welcome to PlanWitch. By using our application, you agree to:\n\n• Use the service responsibly for travel planning.\n\n• Not attempt to copy, modify, or reverse engineer the app.\n\n• Maintain your device security (avoid jailbreaking).\n\n• Acknowledge that AI is used to provide core features.\n\n• Accept responsibility for data charges from your provider.`
               ) : (
-                `Your privacy is our priority. TravelWitch collects:\n\n• Registration data (Email, Name) provided by you.\n\n• Automatic data (Device ID, usage patterns) for optimization.\n\n• AI processing data for personalized recommendations.\n\nWe do NOT track precise real-time location. Data is shared only with trusted partners like Google and RevenueCat. You can delete your data anytime via profile settings.`
+                `Your privacy is our priority. PlanWitch collects:\n\n• Registration data (Email, Name) provided by you.\n\n• Automatic data (Device ID, usage patterns) for optimization.\n\n• AI processing data for personalized recommendations.\n\nWe do NOT track precise real-time location. Data is shared only with trusted partners like Google and RevenueCat. You can delete your data anytime via profile settings.`
               )}
             </Text>
 
             <TouchableOpacity
               style={styles.fullLegalLink}
-              onPress={() => Linking.openURL(legalType === 'terms' ? 'https://sites.google.com/view/travelwitch-tnc/home' : 'https://sites.google.com/view/travelwitch/home')}
+              onPress={() => Linking.openURL(legalType === 'terms' ? 'https://sites.google.com/view/planwitch-tnc/home' : 'https://sites.google.com/view/planwitch/home')}
             >
               <Text style={styles.fullLegalLinkText}>View Full Document →</Text>
             </TouchableOpacity>
@@ -682,7 +682,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
             <View style={[styles.dialogIconContainer, { backgroundColor: '#EC489920' }]}>
               <Icon name="heart" size={28} color="#EC4899" />
             </View>
-            <Text style={styles.dialogTitle}>Rate TravelWitch</Text>
+            <Text style={styles.dialogTitle}>Rate PlanWitch</Text>
             <Text style={styles.dialogDescription}>
               Your feedback helps us improve! How would you rate your experience?
             </Text>
@@ -972,7 +972,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
                 </View>
                 <View style={styles.settingInfo}>
                   <Text style={styles.settingLabel}>Terms and Conditions</Text>
-                  <Text style={styles.settingValue}>Rules for using TravelWitch</Text>
+                  <Text style={styles.settingValue}>Rules for using PlanWitch</Text>
                 </View>
               </View>
               <Text style={styles.settingArrow}>›</Text>
@@ -1006,7 +1006,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
                   <Icon name="heart" size={20} color="#EC4899" />
                 </View>
                 <View style={styles.settingInfo}>
-                  <Text style={styles.settingLabel}>Rate TravelWitch</Text>
+                  <Text style={styles.settingLabel}>Rate PlanWitch</Text>
                   <Text style={styles.settingValue}>Love the app? Leave a review!</Text>
                 </View>
               </View>
@@ -1076,7 +1076,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
         <AnimatedCard delay={450}>
           <View style={styles.footer}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-              <Text style={styles.appLogo}>TravelWitch</Text>
+              <Text style={styles.appLogo}>PlanWitch</Text>
             </View>
             <Text style={styles.copyright}>Made with ❤️ for travelers</Text>
           </View>

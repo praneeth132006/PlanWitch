@@ -121,7 +121,7 @@ export default function AdminScreen({ navigation }) {
             return;
         }
 
-        const subject = 'Re: Your TravelWitch Feedback';
+        const subject = 'Re: Your PlanWitch Feedback';
         const body = `Hi ${feedback.userName || 'there'},\n\nThanks for your feedback!\n\n> "${feedback.message}"\n\n`;
 
         if (Platform.OS === 'web') {

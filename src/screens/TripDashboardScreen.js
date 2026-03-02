@@ -39,7 +39,7 @@ export default function TripDashboardScreen({ route, navigation }) {
 
     try {
       await Share.share({
-        message: `Join my trip to ${trip.destination}! 🌍📍\n\nUse this code in TravelWitch: ${trip.tripCode}`,
+        message: `Join my trip to ${trip.destination}! 🌍📍\n\nUse this code in PlanWitch: ${trip.tripCode}`,
         title: 'Share Trip Code',
       });
     } catch (error) {

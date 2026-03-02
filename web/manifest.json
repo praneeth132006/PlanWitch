@@ -1,6 +1,6 @@
 {
-    "name": "TravelWitch",
-    "short_name": "TravelWitch",
+    "name": "PlanWitch",
+    "short_name": "PlanWitch",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0D0D0D",

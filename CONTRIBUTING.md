@@ -1,6 +1,6 @@
-# Contributing to TravelWitch
+# Contributing to PlanWitch
 
-First off, thank you for considering contributing to TravelWitch! It's people like you who make travel planning better for everyone.
+First off, thank you for considering contributing to PlanWitch! It's people like you who make travel planning better for everyone.
 
 This guide will help you get started with the development environment and explain our workflow.
 
@@ -16,8 +16,8 @@ This guide will help you get started with the development environment and explai
 
 1.  **Fork and Clone**:
     ```bash
-    git clone https://github.com/your-username/TravelWitch.git
-    cd TravelWitch
+    git clone https://github.com/your-username/PlanWitch.git
+    cd PlanWitch
     ```
 
 2.  **Install Dependencies**:

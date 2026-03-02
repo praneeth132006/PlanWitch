@@ -64,7 +64,7 @@ const AddToHomeScreenPrompt = () => {
                     <Icon name="route" size={32} />
                 </View>
                 <View style={styles.textContainer}>
-                    <Text style={[styles.title, { color: colors.text }]}>Add TravelWitch to Home Screen</Text>
+                    <Text style={[styles.title, { color: colors.text }]}>Add PlanWitch to Home Screen</Text>
                     <Text style={[styles.subtitle, { color: colors.textMuted }]}>
                         Install the app for a better experience and quick access!
                     </Text>

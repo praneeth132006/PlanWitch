@@ -65,11 +65,11 @@ export const requestOTP = onCall({ region: "us-central1", secrets: ["GMAIL_USER"
 
         // 4. Send Email
         const mailOptions = {
-            from: `"TravelWitch" <${GMAIL_USER}>`,
+            from: `"PlanWitch" <${GMAIL_USER}>`,
             to: email,
-            subject: "Your TravelWitch Verification Code",
+            subject: "Your PlanWitch Verification Code",
             text: `Your verification code is: ${otp}. It expires in 5 minutes.`,
-            html: `<div style="font-family:Arial,sans-serif;max-width:400px;margin:auto;padding:20px;border:1px solid #eee;border-radius:12px;"><h2 style="text-align:center;color:#333;">TravelWitch</h2><p style="text-align:center;color:#666;">Your verification code is:</p><h1 style="text-align:center;letter-spacing:8px;color:#4F46E5;font-size:32px;">${otp}</h1><p style="text-align:center;color:#999;font-size:12px;">This code expires in 5 minutes.</p></div>`,
+            html: `<div style="font-family:Arial,sans-serif;max-width:400px;margin:auto;padding:20px;border:1px solid #eee;border-radius:12px;"><h2 style="text-align:center;color:#333;">PlanWitch</h2><p style="text-align:center;color:#666;">Your verification code is:</p><h1 style="text-align:center;letter-spacing:8px;color:#4F46E5;font-size:32px;">${otp}</h1><p style="text-align:center;color:#999;font-size:12px;">This code expires in 5 minutes.</p></div>`,
         };
         await getTransporter().sendMail(mailOptions);
         logger.info(`Email sent to ${email}`);

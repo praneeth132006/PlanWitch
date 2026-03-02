@@ -10,43 +10,43 @@ const iconDest = path.join(distPath, 'icon.png');
 
 // 1. Copy Manifest
 if (fs.existsSync(manifestSrc)) {
-    fs.copyFileSync(manifestSrc, manifestDest);
-    console.log('✅ manifest.json copied to dist/');
+  fs.copyFileSync(manifestSrc, manifestDest);
+  console.log('✅ manifest.json copied to dist/');
 }
 
 // 2. Copy Icon
 if (fs.existsSync(iconSrc)) {
-    fs.copyFileSync(iconSrc, iconDest);
-    console.log('✅ icon.png copied to dist/');
+  fs.copyFileSync(iconSrc, iconDest);
+  console.log('✅ icon.png copied to dist/');
 }
 
 // 3. Patch index.html
 if (fs.existsSync(indexPath)) {
-    let html = fs.readFileSync(indexPath, 'utf8');
+  let html = fs.readFileSync(indexPath, 'utf8');
 
-    // Remove any existing viewport, title, or apple tags to avoid duplicates
-    html = html.replace(/<meta name="viewport"[^>]*>/g, '');
-    html = html.replace(/<meta name="apple-mobile-web-app-[^>]*>/g, '');
-    html = html.replace(/<link rel="apple-touch-icon"[^>]*>/g, '');
-    html = html.replace(/<link rel="manifest"[^>]*>/g, '');
-    html = html.replace(/<title>[^<]*<\/title>/g, '');
+  // Remove any existing viewport, title, or apple tags to avoid duplicates
+  html = html.replace(/<meta name="viewport"[^>]*>/g, '');
+  html = html.replace(/<meta name="apple-mobile-web-app-[^>]*>/g, '');
+  html = html.replace(/<link rel="apple-touch-icon"[^>]*>/g, '');
+  html = html.replace(/<link rel="manifest"[^>]*>/g, '');
+  html = html.replace(/<title>[^<]*<\/title>/g, '');
 
-    // Add PWA Meta Tags
-    const pwaTags = `
-    <title>TravelWitch</title>
+  // Add PWA Meta Tags
+  const pwaTags = `
+    <title>PlanWitch</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="TravelWitch">
+    <meta name="apple-mobile-web-app-title" content="PlanWitch">
     <meta name="theme-color" content="#000000">
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/icon.png">`;
 
-    // Insert tags at the beginning of head
-    html = html.replace('<head>', '<head>' + pwaTags);
+  // Insert tags at the beginning of head
+  html = html.replace('<head>', '<head>' + pwaTags);
 
-    // Fix Background Colors and Safe Area
-    html = html.replace(/html,\s*body\s*{[^}]+}/g, `html, body {
+  // Fix Background Colors and Safe Area
+  html = html.replace(/html,\s*body\s*{[^}]+}/g, `html, body {
         height: 100dvh !important;
         background-color: #000000 !important;
         margin: 0 !important;
@@ -57,7 +57,7 @@ if (fs.existsSync(indexPath)) {
         -webkit-tap-highlight-color: transparent;
       }`);
 
-    html = html.replace(/#root\s*{[^}]+}/g, `#root {
+  html = html.replace(/#root\s*{[^}]+}/g, `#root {
         display: flex;
         height: 100dvh !important;
         flex: 1;
@@ -65,10 +65,10 @@ if (fs.existsSync(indexPath)) {
         padding-bottom: 0 !important;
       }`);
 
-    // Ensure the background color is also set on the html/body if not found by regex
-    // Also add a style to force remove safe area
-    if (!html.includes('background-color: #000000 !important')) {
-        html = html.replace('</style>', `
+  // Ensure the background color is also set on the html/body if not found by regex
+  // Also add a style to force remove safe area
+  if (!html.includes('background-color: #000000 !important')) {
+    html = html.replace('</style>', `
       html, body, #root {
         background-color: #000000 !important;
         padding-bottom: 0 !important;
@@ -80,33 +80,33 @@ if (fs.existsSync(indexPath)) {
         }
       }
     </style>`);
-    }
+  }
 
-    fs.writeFileSync(indexPath, html);
-    console.log('✅ index.html patched with PWA tags and dark background');
+  fs.writeFileSync(indexPath, html);
+  console.log('✅ index.html patched with PWA tags and dark background');
 }
 
 // 4. Update manifest.json to use icon.png
 if (fs.existsSync(manifestDest)) {
-    let manifest = JSON.parse(fs.readFileSync(manifestDest, 'utf8'));
-    manifest.icons = [
-        {
-            "src": "/icon.png",
-            "sizes": "192x192",
-            "type": "image/png"
-        },
-        {
-            "src": "/icon.png",
-            "sizes": "512x512",
-            "type": "image/png"
-        },
-        {
-            "src": "/icon.png",
-            "sizes": "1024x1024",
-            "type": "image/png",
-            "purpose": "any maskable"
-        }
-    ];
-    fs.writeFileSync(manifestDest, JSON.stringify(manifest, null, 2));
-    console.log('✅ manifest.json updated with /icon.png');
+  let manifest = JSON.parse(fs.readFileSync(manifestDest, 'utf8'));
+  manifest.icons = [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ];
+  fs.writeFileSync(manifestDest, JSON.stringify(manifest, null, 2));
+  console.log('✅ manifest.json updated with /icon.png');
 }
