@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Animated, Switch, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Animated, Switch, ActivityIndicator, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
@@ -13,6 +13,24 @@ const SubscriptionScreen = ({ navigation, isPopover = false }) => {
     const { isPremium, offerings, purchasePackage, restorePurchases, loading: premiumLoading } = usePremium();
     const [billingCycle, setBillingCycle] = useState('yearly'); // 'monthly' or 'yearly'
     const [isPurchasing, setIsPurchasing] = useState(false);
+    const [couponCode, setCouponCode] = useState('');
+    const [discount, setDiscount] = useState(0); // 0 to 1 (e.g., 0.5 for 50%)
+    const [isCouponApplied, setIsCouponApplied] = useState(false);
+
+    const handleApplyCoupon = () => {
+        const code = couponCode.trim().toUpperCase();
+        if (code === 'PLANWITCH50') {
+            setDiscount(0.5);
+            setIsCouponApplied(true);
+            Alert.alert('Success', '50% discount applied!');
+        } else if (code === 'WELCOME10') {
+            setDiscount(0.1);
+            setIsCouponApplied(true);
+            Alert.alert('Success', '10% discount applied!');
+        } else {
+            Alert.alert('Invalid Code', 'The coupon code you entered is not valid.');
+        }
+    };
 
     const handleSubscribe = async () => {
         if (isPremium) {
@@ -75,10 +93,19 @@ const SubscriptionScreen = ({ navigation, isPopover = false }) => {
     const Container = isPopover ? View : SafeAreaView;
 
     const getPrice = () => {
-        if (!offerings) return billingCycle === 'yearly' ? '1490' : '149';
-        const packageType = billingCycle === 'yearly' ? 'annual' : 'monthly';
-        const pack = offerings.availablePackages.find(p => p.packageType.toLowerCase().includes(packageType));
-        return pack ? pack.product.priceString.replace(/[^0-9.]/g, '') : (billingCycle === 'yearly' ? '1490' : '149');
+        let basePrice = 0;
+        if (!offerings) {
+            basePrice = billingCycle === 'yearly' ? 1490 : 149;
+        } else {
+            const packageType = billingCycle === 'yearly' ? 'annual' : 'monthly';
+            const pack = offerings.availablePackages.find(p => p.packageType.toLowerCase().includes(packageType));
+            basePrice = pack ? parseFloat(pack.product.priceString.replace(/[^0-9.]/g, '')) : (billingCycle === 'yearly' ? 1490 : 149);
+        }
+
+        if (discount > 0) {
+            return (basePrice * (1 - discount)).toFixed(0);
+        }
+        return basePrice.toString();
     };
 
     const getSymbol = () => {
@@ -165,6 +192,36 @@ const SubscriptionScreen = ({ navigation, isPopover = false }) => {
                         <Text style={styles.billingNote}>
                             {billingCycle === 'yearly' ? 'per user, billed annually' : 'per user, billed monthly'}
                         </Text>
+                    </View>
+
+                    <View style={styles.cardDivider} />
+
+                    {/* Coupon Code Section */}
+                    <View style={styles.couponSection}>
+                        <Text style={styles.couponLabel}>Have a coupon code?</Text>
+                        <View style={styles.couponInputRow}>
+                            <TextInput
+                                style={[styles.couponInput, isCouponApplied && styles.couponInputDisabled]}
+                                placeholder="Enter code"
+                                placeholderTextColor="#666"
+                                value={couponCode}
+                                onChangeText={setCouponCode}
+                                autoCapitalize="characters"
+                                editable={!isCouponApplied}
+                            />
+                            <Pressable
+                                style={[styles.applyBtn, isCouponApplied && styles.applyBtnDisabled]}
+                                onPress={handleApplyCoupon}
+                                disabled={isCouponApplied}
+                            >
+                                <Text style={styles.applyBtnText}>{isCouponApplied ? 'Applied' : 'Apply'}</Text>
+                            </Pressable>
+                        </View>
+                        {isCouponApplied && (
+                            <Pressable onPress={() => { setIsCouponApplied(false); setDiscount(0); setCouponCode(''); }}>
+                                <Text style={styles.removeCouponText}>Remove coupon</Text>
+                            </Pressable>
+                        )}
                     </View>
 
                     <View style={styles.cardDivider} />
@@ -306,6 +363,56 @@ const styles = StyleSheet.create({
         color: '#AAA',
         fontSize: 14,
         textDecorationLine: 'underline',
+    },
+    couponSection: {
+        marginBottom: 24,
+    },
+    couponLabel: {
+        fontSize: 14,
+        color: '#AAA',
+        marginBottom: 8,
+        fontWeight: '500',
+    },
+    couponInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    couponInput: {
+        flex: 1,
+        backgroundColor: '#000',
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        color: '#FFF',
+        fontSize: 16,
+        borderWidth: 1,
+        borderColor: '#333',
+    },
+    couponInputDisabled: {
+        opacity: 0.7,
+        backgroundColor: '#111',
+    },
+    applyBtn: {
+        backgroundColor: '#FFF',
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        marginLeft: 10,
+    },
+    applyBtnDisabled: {
+        backgroundColor: '#333',
+    },
+    applyBtnText: {
+        color: '#000',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    removeCouponText: {
+        color: '#DB2777',
+        fontSize: 12,
+        marginTop: 8,
+        fontWeight: '600',
+        paddingLeft: 4,
     }
 
 });
