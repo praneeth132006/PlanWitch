@@ -8,10 +8,15 @@ import {
 } from 'firebase/auth';
 import { ref, set, get, update } from 'firebase/database';
 import { auth, database } from '../config/firebase';
+import crashlytics from '@react-native-firebase/crashlytics';
+import { Platform } from 'react-native';
 
 // Sign up with email and password
 export const signUp = async (email, password, displayName) => {
   try {
+    if (Platform.OS !== 'web') {
+      crashlytics().log('User attempting to sign up');
+    }
     // console.log('Signing up user:', email);
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;

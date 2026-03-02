@@ -79,6 +79,26 @@ export default function AdminScreen({ navigation }) {
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
+                {/* Test Crash Section */}
+                <View style={[styles.card, { backgroundColor: isDark ? '#1F2937' : '#fff', borderColor: isDark ? '#374151' : '#eee', marginBottom: 24 }]}>
+                    <Text style={[styles.userName, { color: colors.text, marginBottom: 8 }]}>Debug Actions</Text>
+                    <Text style={[styles.userEmail, { color: colors.textMuted, marginBottom: 16 }]}>Use these for testing Firebase integration.</Text>
+                    <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: '#EF444415', maxWidth: 200 }]}
+                        onPress={() => {
+                            if (Platform.OS !== 'web') {
+                                crashlytics().log('User triggered manual crash for testing');
+                                crashlytics().crash();
+                            } else {
+                                Alert.alert('Platform Not Supported', 'Crashlytics crash() is not supported on Web.');
+                            }
+                        }}
+                    >
+                        <Icon name="delete" size={18} color="#EF4444" />
+                        <Text style={[styles.actionText, { color: '#EF4444' }]}>Test Crash</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>User Feedback ({feedbackList.length})</Text>
 
                 {feedbackList.length === 0 ? (

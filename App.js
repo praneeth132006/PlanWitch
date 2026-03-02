@@ -12,9 +12,8 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AlertSystem from './src/components/AlertSystem';
 import AppLoading from './src/components/AppLoading';
+import crashlytics from '@react-native-firebase/crashlytics';
 import { Platform } from 'react-native';
-import { PremiumProvider } from './src/context/PremiumContext';
-import AdService from './src/services/AdService';
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -24,11 +23,17 @@ class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
+    if (Platform.OS !== 'web') {
+      crashlytics().log('Error Boundary caught an error (getDerivedStateFromError)');
+    }
     return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
     console.error('Error caught by boundary:', error, errorInfo);
+    if (Platform.OS !== 'web') {
+      crashlytics().recordError(error);
+    }
   }
 
   render() {

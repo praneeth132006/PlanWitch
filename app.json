@@ -62,6 +62,7 @@
     "plugins": [
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
+      "@react-native-firebase/perf",
       [
         "react-native-google-mobile-ads",
         {
