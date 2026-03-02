@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -9,17 +9,23 @@ import {
     Linking,
     Platform,
     SafeAreaView,
-    StatusBar
+    StatusBar,
+    Dimensions,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import PremiumBackButton from '../components/PremiumBackButton';
-import { subscribeToFeedback, deleteFeedback } from '../services/databaseService';
+import { subscribeToFeedback, deleteFeedback, updateFeedbackReadStatus } from '../services/databaseService';
+
+const { width } = Dimensions.get('window');
 
 export default function AdminScreen({ navigation }) {
     const { colors, isDark } = useTheme();
     const [feedbackList, setFeedbackList] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filter, setFilter] = useState('all'); // all, read, unread
+    const [sortBy, setSortBy] = useState('newest'); // newest, oldest
 
     useEffect(() => {
         const unsubscribe = subscribeToFeedback((data) => {
@@ -28,6 +34,84 @@ export default function AdminScreen({ navigation }) {
         });
         return () => unsubscribe();
     }, []);
+
+    // Calculate Stats
+    const stats = useMemo(() => {
+        if (!feedbackList.length) return { total: 0, avg: 0, fiveStar: 0, unread: 0 };
+        const total = feedbackList.length;
+        const sum = feedbackList.reduce((acc, curr) => acc + (curr.rating || 0), 0);
+        const avg = (sum / total).toFixed(1);
+        const fiveStar = feedbackList.filter(f => f.rating === 5).length;
+        const unread = feedbackList.filter(f => !f.isRead).length;
+        return { total, avg, fiveStar, unread };
+    }, [feedbackList]);
+
+    const filteredFeedback = useMemo(() => {
+        let result = [...feedbackList];
+
+        // 1. Filter by Read/Unread
+        if (filter === 'read') {
+            result = result.filter(f => f.isRead);
+        } else if (filter === 'unread') {
+            result = result.filter(f => !f.isRead);
+        }
+
+        // 2. Search query
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(f =>
+                (f.userName || '').toLowerCase().includes(query) ||
+                (f.message || '').toLowerCase().includes(query) ||
+                (f.userEmail || '').toLowerCase().includes(query)
+            );
+        }
+
+        // 3. Sort
+        result.sort((a, b) => {
+            if (sortBy === 'newest') {
+                return (b.createdAt || 0) - (a.createdAt || 0);
+            } else {
+                return (a.createdAt || 0) - (b.createdAt || 0);
+            }
+        });
+
+        return result;
+    }, [feedbackList, searchQuery, filter, sortBy]);
+
+    const handleMarkAsRead = async (id, currentStatus) => {
+        try {
+            await updateFeedbackReadStatus(id, !currentStatus);
+        } catch (error) {
+            Alert.alert('Error', 'Failed to update status');
+        }
+    };
+
+    const handleMarkAllAsRead = async () => {
+        const unreadItems = feedbackList.filter(f => !f.isRead);
+        if (unreadItems.length === 0) {
+            Alert.alert('No Unread', 'All feedback are already marked as read.');
+            return;
+        }
+
+        Alert.alert(
+            'Mark All as Read',
+            `Are you sure you want to mark all ${unreadItems.length} unread items as read?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Confirm',
+                    onPress: async () => {
+                        try {
+                            const promises = unreadItems.map(item => updateFeedbackReadStatus(item.id, true));
+                            await Promise.all(promises);
+                        } catch (error) {
+                            Alert.alert('Error', 'Failed to update some items');
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const handleReply = (feedback) => {
         if (!feedback.userEmail || feedback.userEmail === 'anonymous') {
@@ -40,7 +124,7 @@ export default function AdminScreen({ navigation }) {
 
         if (Platform.OS === 'web') {
             const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${feedback.userEmail}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-            Linking.openURL(gmailUrl);
+            window.open(gmailUrl, '_blank');
         } else {
             Linking.openURL(`mailto:${feedback.userEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
         }
@@ -49,7 +133,7 @@ export default function AdminScreen({ navigation }) {
     const handleDelete = (id) => {
         Alert.alert(
             'Delete Feedback',
-            'Are you sure you want to delete this feedback?',
+            'This action is permanent.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -67,86 +151,175 @@ export default function AdminScreen({ navigation }) {
         );
     };
 
+    const GlassCard = ({ children, style }) => {
+        return (
+            <View style={[
+                styles.glassCard,
+                { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.7)' },
+                style
+            ]}>
+                {children}
+            </View>
+        );
+    };
+
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#000' : '#F9FAFB' }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-            {/* Header */}
-            <View style={[styles.header, { borderBottomColor: isDark ? '#333' : '#eee' }]}>
+            {/* Premium Header */}
+            <View style={styles.header}>
                 <PremiumBackButton onPress={() => navigation.goBack()} />
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Admin Dashboard</Text>
-                <View style={{ width: 40 }} />
+                <View style={styles.headerTitleContainer}>
+                    <Text style={[styles.headerSubtitle, { color: colors.primary }]}>ADMIN PANEL</Text>
+                    <Text style={[styles.headerTitle, { color: isDark ? '#FFF' : '#000' }]}>Dashboard</Text>
+                </View>
+                <View style={styles.headerRight}>
+                    <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
+                    <Text style={[styles.statusText, { color: colors.textMuted }]}>System Live</Text>
+                </View>
             </View>
 
-            <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
-                {/* Test Crash Section */}
-                <View style={[styles.card, { backgroundColor: isDark ? '#1F2937' : '#fff', borderColor: isDark ? '#374151' : '#eee', marginBottom: 24 }]}>
-                    <Text style={[styles.userName, { color: colors.text, marginBottom: 8 }]}>Debug Actions</Text>
-                    <Text style={[styles.userEmail, { color: colors.textMuted, marginBottom: 16 }]}>Use these for testing Firebase integration.</Text>
+            <ScrollView
+                style={styles.content}
+                contentContainerStyle={{ paddingBottom: 60 }}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Statistics Row */}
+                <View style={styles.statsRow}>
+                    <GlassCard style={styles.statItem}>
+                        <Icon name="message" size={20} color={colors.primary} />
+                        <Text style={styles.statValue}>{stats.total}</Text>
+                        <Text style={styles.statLabel}>Total</Text>
+                    </GlassCard>
+                    <GlassCard style={styles.statItem}>
+                        <Icon name="notification" size={20} color={stats.unread > 0 ? colors.warning : colors.success} />
+                        <Text style={styles.statValue}>{stats.unread}</Text>
+                        <Text style={styles.statLabel}>Unread</Text>
+                    </GlassCard>
+                    <GlassCard style={styles.statItem}>
+                        <Icon name="star" size={20} color="#F59E0B" />
+                        <Text style={styles.statValue}>{stats.avg}</Text>
+                        <Text style={styles.statLabel}>Rating</Text>
+                    </GlassCard>
+                </View>
+
+                {/* Filters & Actions */}
+                <View style={styles.filterSection}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+                        {['all', 'unread', 'read'].map((f) => (
+                            <TouchableOpacity
+                                key={f}
+                                style={[
+                                    styles.filterChip,
+                                    filter === f && { backgroundColor: colors.primary, borderColor: colors.primary }
+                                ]}
+                                onPress={() => setFilter(f)}
+                            >
+                                <Text style={[
+                                    styles.filterChipText,
+                                    { color: isDark ? '#FFF' : '#000' },
+                                    filter === f && { color: isDark ? '#000' : '#FFF' }
+                                ]}>
+                                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+
                     <TouchableOpacity
-                        style={[styles.actionButton, { backgroundColor: '#EF444415', maxWidth: 200 }]}
-                        onPress={() => {
-                            if (Platform.OS !== 'web') {
-                                crashlytics().log('User triggered manual crash for testing');
-                                crashlytics().crash();
-                            } else {
-                                Alert.alert('Platform Not Supported', 'Crashlytics crash() is not supported on Web.');
-                            }
-                        }}
+                        style={styles.sortToggle}
+                        onPress={() => setSortBy(sortBy === 'newest' ? 'oldest' : 'newest')}
                     >
-                        <Icon name="delete" size={18} color="#EF4444" />
-                        <Text style={[styles.actionText, { color: '#EF4444' }]}>Test Crash</Text>
+                        <Icon name="sort" size={16} color={colors.primary} />
+                        <Text style={[styles.sortText, { color: colors.primary }]}>
+                            {sortBy === 'newest' ? 'Newest' : 'Oldest'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
 
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>User Feedback ({feedbackList.length})</Text>
+                {/* Section Header */}
+                <View style={styles.sectionHeader}>
+                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#111' }]}>
+                        {filter === 'unread' ? 'Unread Feedback' : filter === 'read' ? 'Read Feedback' : 'All Feedback'}
+                    </Text>
+                    {filter !== 'read' && stats.unread > 0 && (
+                        <TouchableOpacity onPress={handleMarkAllAsRead}>
+                            <Text style={[styles.markAllText, { color: colors.primary }]}>Mark all as read</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
 
-                {feedbackList.length === 0 ? (
+                {filteredFeedback.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Icon name="chat" size={48} color={colors.textMuted} />
-                        <Text style={[styles.emptyText, { color: colors.textMuted }]}>No feedback yet</Text>
+                        <Icon name="chat" size={64} color={isDark ? '#333' : '#CCC'} />
+                        <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                            {searchQuery ? 'No matching feedback' : `No ${filter} feedback found`}
+                        </Text>
                     </View>
                 ) : (
-                    feedbackList.map((item) => (
-                        <View key={item.id} style={[styles.card, { backgroundColor: isDark ? '#1F2937' : '#fff', borderColor: isDark ? '#374151' : '#eee' }]}>
+                    filteredFeedback.map((item, index) => (
+                        <GlassCard
+                            key={item.id}
+                            style={[
+                                styles.feedbackCard,
+                                !item.isRead && { borderColor: colors.primary + '40', borderWidth: 1.5 }
+                            ]}
+                        >
                             <View style={styles.cardHeader}>
                                 <View style={styles.userInfo}>
-                                    <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
-                                        <Text style={styles.avatarText}>{(item.userName || 'A')[0].toUpperCase()}</Text>
+                                    <View style={[styles.avatar, { backgroundColor: colors.primary + '20', borderColor: colors.primary + '40' }]}>
+                                        <Text style={[styles.avatarText, { color: colors.primary }]}>
+                                            {(item.userName || 'A')[0].toUpperCase()}
+                                        </Text>
                                     </View>
                                     <View>
-                                        <Text style={[styles.userName, { color: colors.text }]}>{item.userName || 'Anonymous'}</Text>
-                                        <Text style={[styles.userEmail, { color: colors.textMuted }]}>{item.userEmail || 'No email'}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <Text style={[styles.userName, { color: isDark ? '#FFF' : '#111' }]}>{item.userName || 'Anonymous'}</Text>
+                                            {!item.isRead && (
+                                                <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]} />
+                                            )}
+                                        </View>
+                                        <Text style={[styles.userEmail, { color: colors.textMuted }]}>{item.userEmail || 'no-email@anonymous.com'}</Text>
                                     </View>
                                 </View>
-                                <View style={styles.ratingBadge}>
-                                    <Text style={styles.ratingText}>⭐ {item.rating}</Text>
+                                <View style={[styles.ratingContainer, { backgroundColor: '#F59E0B15' }]}>
+                                    <Icon name="star" size={12} color="#F59E0B" />
+                                    <Text style={styles.ratingText}>{item.rating}</Text>
                                 </View>
                             </View>
 
-                            <Text style={[styles.message, { color: colors.text }]}>{item.message}</Text>
-                            <Text style={[styles.date, { color: colors.textMuted }]}>
-                                {new Date(item.createdAt).toLocaleDateString()} • {new Date(item.createdAt).toLocaleTimeString()}
-                            </Text>
+                            <Text style={[styles.message, { color: isDark ? '#E5E7EB' : '#374151' }]}>{item.message}</Text>
 
-                            <View style={[styles.actions, { borderTopColor: isDark ? '#374151' : '#f3f4f6' }]}>
-                                <TouchableOpacity
-                                    style={[styles.actionButton, { backgroundColor: colors.primary + '15' }]}
-                                    onPress={() => handleReply(item)}
-                                >
-                                    <Icon name="email" size={18} color={colors.primary} />
-                                    <Text style={[styles.actionText, { color: colors.primary }]}>Reply</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={[styles.actionButton, { backgroundColor: '#EF444415' }]}
-                                    onPress={() => handleDelete(item.id)}
-                                >
-                                    <Icon name="delete" size={18} color="#EF4444" />
-                                    <Text style={[styles.actionText, { color: '#EF4444' }]}>Delete</Text>
-                                </TouchableOpacity>
+                            <View style={styles.cardFooter}>
+                                <Text style={[styles.date, { color: colors.textLight }]}>
+                                    {new Date(item.createdAt).toLocaleDateString()} • {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                                <View style={styles.cardActions}>
+                                    <TouchableOpacity
+                                        style={[styles.miniAction, { backgroundColor: colors.primary + '15' }]}
+                                        onPress={() => handleMarkAsRead(item.id, item.isRead)}
+                                    >
+                                        <Icon name={item.isRead ? 'eye_off' : 'eye'} size={16} color={colors.primary} />
+                                        <Text style={[styles.miniActionText, { color: colors.primary }]}>
+                                            {item.isRead ? 'Unread' : 'Read'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.miniAction, { backgroundColor: colors.primary + '15' }]}
+                                        onPress={() => handleReply(item)}
+                                    >
+                                        <Icon name="email" size={16} color={colors.primary} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.miniAction, { backgroundColor: '#EF444415' }]}
+                                        onPress={() => handleDelete(item.id)}
+                                    >
+                                        <Icon name="delete" size={16} color="#EF4444" />
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        </View>
+                        </GlassCard>
                     ))
                 )}
             </ScrollView>
@@ -161,118 +334,242 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        height: 60,
-        borderBottomWidth: 1,
+        paddingHorizontal: 20,
+        height: 80,
+        paddingTop: 10,
     },
-    backButton: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
+    headerTitleContainer: {
+        flex: 1,
+        marginLeft: 15,
+    },
+    headerSubtitle: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 2,
+        marginBottom: 2,
     },
     headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 24,
+        fontWeight: 'bold',
+    },
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        marginRight: 6,
+    },
+    statusText: {
+        fontSize: 10,
+        fontWeight: '600',
     },
     content: {
         flex: 1,
-        padding: 16,
+        paddingHorizontal: 20,
+    },
+    statsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 10,
+        marginBottom: 25,
+    },
+    statItem: {
+        width: (width - 60) / 3,
+        height: 100,
+        borderRadius: 20,
+        padding: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...Platform.select({
+            web: {
+                backgroundColor: 'rgba(255,255,255,0.03)',
+                backdropFilter: 'blur(10px)',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.05)',
+            }
+        })
+    },
+    statValue: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#FFF',
+        marginTop: 8,
+        marginBottom: 2,
+    },
+    statLabel: {
+        fontSize: 10,
+        color: '#888',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+        marginBottom: 20,
+        paddingHorizontal: 5,
     },
     sectionTitle: {
         fontSize: 20,
-        fontWeight: '700',
+        fontWeight: 'bold',
+    },
+    sectionCount: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    glassCard: {
+        borderRadius: 24,
+        overflow: 'hidden',
         marginBottom: 16,
-    },
-    emptyState: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 100,
-        opacity: 0.5,
-    },
-    emptyText: {
-        marginTop: 12,
-        fontSize: 16,
-    },
-    card: {
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 16,
+        padding: 20,
         borderWidth: 1,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 5,
-        elevation: 2,
+        borderColor: 'rgba(255,255,255,0.08)',
+    },
+    feedbackCard: {
+        ...Platform.select({
+            ios: { padding: 20 },
+            android: { padding: 20 },
+        })
     },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
+        alignItems: 'flex-start',
+        marginBottom: 15,
     },
     userInfo: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-    avatarPlaceholder: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+    avatar: {
+        width: 44,
+        height: 44,
+        borderRadius: 15,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
+        borderWidth: 1,
     },
     avatarText: {
-        color: 'white',
         fontWeight: '700',
         fontSize: 18,
     },
     userName: {
-        fontWeight: '600',
+        fontWeight: 'bold',
         fontSize: 16,
+        marginBottom: 2,
     },
     userEmail: {
         fontSize: 12,
     },
-    ratingBadge: {
-        backgroundColor: '#FEF3C7',
+    ratingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: 8,
+        borderRadius: 10,
     },
     ratingText: {
-        color: '#D97706',
-        fontWeight: '700',
-        fontSize: 14,
+        color: '#F59E0B',
+        fontWeight: 'bold',
+        fontSize: 12,
+        marginLeft: 4,
     },
     message: {
         fontSize: 15,
         lineHeight: 22,
-        marginBottom: 12,
+        marginBottom: 20,
+    },
+    cardFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.05)',
+        paddingTop: 15,
     },
     date: {
-        fontSize: 12,
-        marginBottom: 16,
+        fontSize: 11,
+        fontWeight: '500',
     },
-    actions: {
+    cardActions: {
         flexDirection: 'row',
-        borderTopWidth: 1,
-        paddingTop: 12,
-        gap: 12,
-    },
-    actionButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 10,
-        borderRadius: 8,
         gap: 8,
     },
-    actionText: {
-        fontWeight: '600',
-        fontSize: 14,
+    miniAction: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+        gap: 6,
+    },
+    miniActionText: {
+        fontWeight: 'bold',
+        fontSize: 12,
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 60,
+        opacity: 0.6,
+    },
+    emptyText: {
+        marginTop: 15,
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    filterSection: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+        gap: 12,
+    },
+    filterContainer: {
+        gap: 8,
+        paddingRight: 10,
+    },
+    filterChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.03)',
+    },
+    filterChipText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    sortToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        gap: 6,
+    },
+    sortText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    unreadBadge: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        marginLeft: 8,
+    },
+    markAllText: {
+        fontSize: 13,
+        fontWeight: 'bold',
+        textDecorationLine: 'underline',
     }
 });

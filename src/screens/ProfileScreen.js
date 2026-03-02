@@ -1071,62 +1071,6 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
           </View>
         )}
 
-        {/* Developer Options (Only for Admins) */}
-        {user?.isAdmin && (
-          <Animated.View style={[styles.section, { opacity: headerAnim }]}>
-            <Text style={styles.sectionTitle}>Developer Options</Text>
-            <View style={styles.sectionContent}>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  const newStatus = !isPremium;
-                  if (typeof setPremiumStatus === 'function') {
-                    setPremiumStatus(newStatus);
-                    Alert.alert(
-                      newStatus ? 'Premium Activated (Fake)' : 'Premium Deactivated',
-                      newStatus
-                        ? 'You now have access to all Pro features for testing purposes.'
-                        : 'You are back to the free plan.',
-                      [{ text: 'OK' }]
-                    );
-                  } else {
-                    Alert.alert('Error', 'setPremiumStatus not available');
-                  }
-                }}
-              >
-                <View style={[styles.menuIcon, { backgroundColor: '#F59E0B20' }]}>
-                  <Icon name="crown" size={20} color="#F59E0B" />
-                </View>
-                <Text style={styles.menuText}>
-                  {isPremium ? 'Disable Fake Premium' : 'Enable Fake Premium'}
-                </Text>
-                <Icon name="arrow_right" size={16} color={colors.textMuted} />
-              </TouchableOpacity>
-
-              <View style={styles.menuDivider} />
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  Alert.alert('Loading Ad...', 'Attempting to show a test interstitial ad.');
-                  // Small timeout to allow the alert to show before the ad takes over (optional, but good for UX)
-                  setTimeout(() => {
-                    const result = AdService.showInterstitial();
-                    if (!result) {
-                      Alert.alert('Ad Not Ready', 'The test ad is not loaded yet. It will reload automatically. Try again in a few seconds.');
-                    }
-                  }, 500);
-                }}
-              >
-                <View style={[styles.menuIcon, { backgroundColor: '#3B82F620' }]}>
-                  <Icon name="notification" size={20} color="#3B82F6" />
-                </View>
-                <Text style={styles.menuText}>Show Test Ad</Text>
-                <Icon name="arrow_right" size={16} color={colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        )}
 
         {/* App Version */}
         <AnimatedCard delay={450}>

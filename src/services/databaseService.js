@@ -731,6 +731,11 @@ export const subscribeToFeedback = (callback) => {
   return () => off(dbRef, 'value', unsubscribe);
 };
 
+export const updateFeedbackReadStatus = async (id, isRead) => {
+  if (!id) return;
+  await update(ref(database, `feedback/${id}`), { isRead });
+};
+
 // ============ REAL-TIME SUBSCRIPTIONS ============
 // These functions set up listeners that automatically sync data across all users
 
