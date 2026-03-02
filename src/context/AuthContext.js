@@ -53,12 +53,18 @@ export function AuthProvider({ children }) {
       // console.log('onAuthStateChanged:', firebaseUser?.email || 'null');
 
       if (firebaseUser) {
+        const isAdmin = firebaseUser.email && [
+          'praneeth132006b@gmail.com',
+          'bojanapuswathi12@gmail.com'
+        ].includes(firebaseUser.email.toLowerCase());
+
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           displayName: firebaseUser.displayName || '',
           emailVerified: firebaseUser.emailVerified,
           photoURL: firebaseUser.photoURL || '',
+          isAdmin: isAdmin,
         });
       } else {
         setUser(null);

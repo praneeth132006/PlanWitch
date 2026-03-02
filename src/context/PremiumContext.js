@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Alert } from 'react-native';
+import { useAuth } from './AuthContext';
+import AdService from '../services/AdService';
 
 const PremiumContext = createContext(null);
 
@@ -12,9 +14,20 @@ export const usePremium = () => {
 };
 
 export const PremiumProvider = ({ children }) => {
+    const { user } = useAuth();
     const [isPremium, setIsPremium] = useState(false);
     const [loading, setLoading] = useState(false);
     const [offerings, setOfferings] = useState(null);
+
+    useEffect(() => {
+        if (user?.isAdmin) {
+            setIsPremium(true);
+        }
+    }, [user?.isAdmin]);
+
+    useEffect(() => {
+        AdService.setDisabled(isPremium);
+    }, [isPremium]);
 
     const purchasePackage = async (pack) => {
         Alert.alert('Not Available', 'Subscriptions are only available on the mobile app.');

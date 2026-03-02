@@ -1050,79 +1050,90 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
           </AnimatedCard>
         </View>
 
-        {/* Developer Options (Hidden/Visible for testing) */}
-        <Animated.View style={[styles.section, { opacity: headerAnim }]}>
-          <Text style={styles.sectionTitle}>Developer Options</Text>
-          <View style={styles.sectionContent}>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                const newStatus = !isPremium;
-                if (typeof setPremiumStatus === 'function') {
-                  setPremiumStatus(newStatus);
-                  Alert.alert(
-                    newStatus ? 'Premium Activated (Fake)' : 'Premium Deactivated',
-                    newStatus
-                      ? 'You now have access to all Pro features for testing purposes.'
-                      : 'You are back to the free plan.',
-                    [{ text: 'OK' }]
-                  );
-                } else {
-                  Alert.alert('Error', 'setPremiumStatus not available');
-                }
-              }}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: '#F59E0B20' }]}>
-                <Icon name="crown" size={20} color="#F59E0B" />
+        {/* Admin Section - Only for Admins */}
+        {user?.isAdmin && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.primary }]}>Admin</Text>
+            <AnimatedCard delay={380} onPress={() => onNavigate && onNavigate('Admin')}>
+              <View style={styles.settingItem}>
+                <View style={styles.settingLeft}>
+                  <View style={[styles.settingIconBg, { backgroundColor: colors.primary + '20' }]}>
+                    <Icon name="settings" size={20} color={colors.primary} />
+                  </View>
+                  <View style={styles.settingInfo}>
+                    <Text style={styles.settingLabel}>Admin Dashboard</Text>
+                    <Text style={styles.settingValue}>Manage feedback and system settings</Text>
+                  </View>
+                </View>
+                <Text style={styles.settingArrow}>›</Text>
               </View>
-              <Text style={styles.menuText}>
-                {isPremium ? 'Disable Fake Premium' : 'Enable Fake Premium'}
-              </Text>
-              <Icon name="arrow_right" size={16} color={colors.textMuted} />
-            </TouchableOpacity>
-
-            <View style={styles.menuDivider} />
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                Alert.alert('Loading Ad...', 'Attempting to show a test interstitial ad.');
-                // Small timeout to allow the alert to show before the ad takes over (optional, but good for UX)
-                setTimeout(() => {
-                  const result = AdService.showInterstitial();
-                  if (!result) {
-                    Alert.alert('Ad Not Ready', 'The test ad is not loaded yet. It will reload automatically. Try again in a few seconds.');
-                  }
-                }, 500);
-              }}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: '#3B82F620' }]}>
-                <Icon name="notification" size={20} color="#3B82F6" />
-              </View>
-              <Text style={styles.menuText}>Show Test Ad</Text>
-              <Icon name="arrow_right" size={16} color={colors.textMuted} />
-            </TouchableOpacity>
+            </AnimatedCard>
           </View>
-        </Animated.View>
+        )}
+
+        {/* Developer Options (Only for Admins) */}
+        {user?.isAdmin && (
+          <Animated.View style={[styles.section, { opacity: headerAnim }]}>
+            <Text style={styles.sectionTitle}>Developer Options</Text>
+            <View style={styles.sectionContent}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  const newStatus = !isPremium;
+                  if (typeof setPremiumStatus === 'function') {
+                    setPremiumStatus(newStatus);
+                    Alert.alert(
+                      newStatus ? 'Premium Activated (Fake)' : 'Premium Deactivated',
+                      newStatus
+                        ? 'You now have access to all Pro features for testing purposes.'
+                        : 'You are back to the free plan.',
+                      [{ text: 'OK' }]
+                    );
+                  } else {
+                    Alert.alert('Error', 'setPremiumStatus not available');
+                  }
+                }}
+              >
+                <View style={[styles.menuIcon, { backgroundColor: '#F59E0B20' }]}>
+                  <Icon name="crown" size={20} color="#F59E0B" />
+                </View>
+                <Text style={styles.menuText}>
+                  {isPremium ? 'Disable Fake Premium' : 'Enable Fake Premium'}
+                </Text>
+                <Icon name="arrow_right" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+
+              <View style={styles.menuDivider} />
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  Alert.alert('Loading Ad...', 'Attempting to show a test interstitial ad.');
+                  // Small timeout to allow the alert to show before the ad takes over (optional, but good for UX)
+                  setTimeout(() => {
+                    const result = AdService.showInterstitial();
+                    if (!result) {
+                      Alert.alert('Ad Not Ready', 'The test ad is not loaded yet. It will reload automatically. Try again in a few seconds.');
+                    }
+                  }, 500);
+                }}
+              >
+                <View style={[styles.menuIcon, { backgroundColor: '#3B82F620' }]}>
+                  <Icon name="notification" size={20} color="#3B82F6" />
+                </View>
+                <Text style={styles.menuText}>Show Test Ad</Text>
+                <Icon name="arrow_right" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        )}
 
         {/* App Version */}
         <AnimatedCard delay={450}>
           <View style={styles.footer}>
-            <TouchableOpacity
-              onLongPress={() => {
-                const allowedEmails = ['praneeth132006b@gmail.com', 'bojanapuswathi12@gmail.com'];
-                if (user && allowedEmails.includes(user.email)) {
-                  onNavigate && onNavigate('Admin');
-                } else {
-                  Alert.alert('Access Denied', 'You do not have permission to access the Admin Dashboard.');
-                }
-              }}
-              delayLongPress={3000}
-              activeOpacity={1}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}
-            >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
               <Text style={styles.appLogo}>TravelWitch</Text>
-            </TouchableOpacity>
+            </View>
             <Text style={styles.copyright}>Made with ❤️ for travelers</Text>
           </View>
         </AnimatedCard>

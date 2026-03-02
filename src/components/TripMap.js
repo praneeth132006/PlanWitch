@@ -16,6 +16,7 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
     const bounds = useRef(null);
     const directionsService = useRef(null);
     const directionsRenderer = useRef(null);
+    const geocoder = useRef(null);
 
     useEffect(() => {
         if (Platform.OS !== 'web') return;

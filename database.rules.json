@@ -7,9 +7,10 @@
             }
         },
         "sharedTrips": {
+            ".read": "auth != null",
             "$tripId": {
                 ".read": "auth != null",
-                ".write": "auth != null"
+                ".write": "auth != null && (!data.exists() || data.child('ownerId').val() == auth.uid)"
             }
         },
         "tripCodes": {
@@ -47,8 +48,12 @@
             }
         },
         "feedback": {
-            ".read": "auth != null",
-            ".write": "auth != null"
+            ".read": "auth != null && (auth.token.email == 'praneeth132006b@gmail.com' || auth.token.email == 'bojanapuswathi12@gmail.com')",
+            ".write": "auth != null",
+            "$feedbackId": {
+                ".read": "auth != null && (data.child('userId').val() == auth.uid || auth.token.email == 'praneeth132006b@gmail.com' || auth.token.email == 'bojanapuswathi12@gmail.com')",
+                ".write": "auth != null && (!data.exists() || data.child('userId').val() == auth.uid)"
+            }
         }
     }
 }

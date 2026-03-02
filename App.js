@@ -14,6 +14,8 @@ import AlertSystem from './src/components/AlertSystem';
 import AppLoading from './src/components/AppLoading';
 import crashlytics from '@react-native-firebase/crashlytics';
 import { Platform } from 'react-native';
+import { PremiumProvider } from './src/context/PremiumContext';
+import AdService from './src/services/AdService';
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
