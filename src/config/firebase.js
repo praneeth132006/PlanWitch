@@ -21,7 +21,10 @@ import {
   update,
   remove,
   onValue,
-  off
+  off,
+  query,
+  orderByChild,
+  limitToLast
 } from 'firebase/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
@@ -96,7 +99,10 @@ export {
   update,
   remove,
   onValue,
-  off
+  off,
+  query,
+  orderByChild,
+  limitToLast
 };
 
 export default app;

@@ -24,7 +24,6 @@ import { subscribeToLogs, getSystemStats, LogLevel, LogType } from '../services/
 import crashlytics from '@react-native-firebase/crashlytics';
 import perf from '@react-native-firebase/perf';
 import DatePickerModal from '../components/DatePickerModal';
-import GlassCard from '../components/GlassCard';
 import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');

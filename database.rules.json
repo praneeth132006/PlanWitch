@@ -54,6 +54,23 @@
                 ".read": "auth != null && (data.child('userId').val() == auth.uid || auth.token.email == 'praneeth132006b@gmail.com' || auth.token.email == 'bojanapuswathi12@gmail.com')",
                 ".write": "auth != null && (!data.exists() || data.child('userId').val() == auth.uid)"
             }
+        },
+        "coupons": {
+            ".read": "auth != null",
+            ".write": "auth != null && (auth.token.email == 'praneeth132006b@gmail.com' || auth.token.email == 'bojanapuswathi12@gmail.com')",
+            "$couponId": {
+                "usageCount": {
+                    ".write": "auth != null"
+                },
+                "usedBy": {
+                    "$uid": {
+                        ".write": "auth != null && auth.uid == $uid"
+                    }
+                },
+                "updatedAt": {
+                    ".write": "auth != null"
+                }
+            }
         }
     }
 }
