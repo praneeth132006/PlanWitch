@@ -19,9 +19,10 @@ import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import PremiumBackButton from '../components/PremiumBackButton';
 import { subscribeToFeedback, deleteFeedback, updateFeedbackReadStatus } from '../services/databaseService';
-import { createCoupon, subscribeToCoupons, updateCoupon, deleteCoupon } from '../services/couponService';
+import { createCoupon, subscribeToCoupons, updateCoupon, deleteCoupon, getCouponUsageDetails } from '../services/couponService';
 import crashlytics from '@react-native-firebase/crashlytics';
 import perf from '@react-native-firebase/perf';
+import DatePickerModal from '../components/DatePickerModal';
 
 const { width } = Dimensions.get('window');
 
@@ -49,13 +50,20 @@ export default function AdminScreen({ navigation }) {
 
     // Coupon Form State
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [datePickingFor, setDatePickingFor] = useState(null); // 'validFrom' or 'validTo'
     const [couponForm, setCouponForm] = useState({
         code: '',
         discount: '',
         maxJoiners: '',
-        validFrom: '',
-        validTo: '',
+        validFrom: null,
+        validTo: null,
     });
+
+    // Usage Details Modal State
+    const [selectedCouponForDetails, setSelectedCouponForDetails] = useState(null);
+    const [usageDetails, setUsageDetails] = useState([]);
+    const [loadingUsage, setLoadingUsage] = useState(false);
 
     useEffect(() => {
         const unsubscribeFeedback = subscribeToFeedback((data) => {
@@ -254,6 +262,19 @@ export default function AdminScreen({ navigation }) {
             Alert.alert('Success', 'Coupon created successfully!');
         } catch (error) {
             Alert.alert('Error', 'Failed to create coupon: ' + error.message);
+        }
+    };
+
+    const handleShowUsageDetails = async (coupon) => {
+        setSelectedCouponForDetails(coupon);
+        setLoadingUsage(true);
+        try {
+            const details = await getCouponUsageDetails(coupon.id);
+            setUsageDetails(details);
+        } catch (error) {
+            console.error('Error fetching usage details:', error);
+        } finally {
+            setLoadingUsage(false);
         }
     };
 
@@ -519,34 +540,43 @@ export default function AdminScreen({ navigation }) {
                         </View>
 
                         {/* Filters & Actions - Coupons */}
-                        <View style={styles.filterSection}>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
-                                {['all', 'active', 'expired'].map((f) => (
-                                    <TouchableOpacity
-                                        key={f}
-                                        style={[
-                                            styles.filterChip,
-                                            filter === f && { backgroundColor: colors.primary, borderColor: colors.primary }
-                                        ]}
-                                        onPress={() => setFilter(f)}
-                                    >
-                                        <Text style={[
-                                            styles.filterChipText,
-                                            { color: isDark ? '#FFF' : '#000' },
-                                            filter === f && { color: isDark ? '#000' : '#FFF' }
-                                        ]}>
-                                            {f.charAt(0).toUpperCase() + f.slice(1)}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
+                        <View style={[styles.filterSection, { paddingHorizontal: 4 }]}>
+                            <View style={{ flex: 1 }}>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+                                    {['all', 'active', 'expired'].map((f) => (
+                                        <TouchableOpacity
+                                            key={f}
+                                            style={[
+                                                styles.filterChip,
+                                                filter === f && { backgroundColor: colors.primary, borderColor: colors.primary }
+                                            ]}
+                                            onPress={() => setFilter(f)}
+                                        >
+                                            <Text style={[
+                                                styles.filterChipText,
+                                                { color: isDark ? '#FFF' : '#000' },
+                                                filter === f && { color: isDark ? '#000' : '#FFF' }
+                                            ]}>
+                                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
 
                             <TouchableOpacity
-                                style={[styles.diagButton, { backgroundColor: colors.primary, flex: 0, paddingHorizontal: 15 }]}
+                                style={[styles.diagButton, {
+                                    backgroundColor: colors.primary,
+                                    flex: 0,
+                                    paddingHorizontal: 12,
+                                    height: 38,
+                                    minWidth: 90,
+                                    marginLeft: 8
+                                }]}
                                 onPress={() => setShowCreateModal(true)}
                             >
-                                <Icon name="add" size={18} color="#000" />
-                                <Text style={[styles.diagButtonText, { color: '#000' }]}>Create</Text>
+                                <Icon name="add" size={16} color="#000" />
+                                <Text style={[styles.diagButtonText, { color: '#000', fontSize: 13 }]} numberOfLines={1}>Create</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -577,13 +607,18 @@ export default function AdminScreen({ navigation }) {
                                     >
                                         <View style={styles.cardHeader}>
                                             <View style={styles.userInfo}>
-                                                <View style={[styles.avatar, { backgroundColor: colors.primary + '20', borderColor: colors.primary + '40', borderRadius: 10 }]}>
+                                                <TouchableOpacity
+                                                    style={[styles.avatar, { backgroundColor: colors.primary + '20', borderColor: colors.primary + '40', borderRadius: 10 }]}
+                                                    onPress={() => handleShowUsageDetails(coupon)}
+                                                >
                                                     <Icon name="link" size={24} color={colors.primary} />
-                                                </View>
+                                                </TouchableOpacity>
                                                 <View>
-                                                    <Text style={[styles.userName, { color: isDark ? '#FFF' : '#111', fontSize: 18, letterSpacing: 1 }]}>
-                                                        {coupon.code}
-                                                    </Text>
+                                                    <TouchableOpacity onPress={() => handleShowUsageDetails(coupon)}>
+                                                        <Text style={[styles.userName, { color: isDark ? '#FFF' : '#111', fontSize: 18, letterSpacing: 1 }]}>
+                                                            {coupon.code}
+                                                        </Text>
+                                                    </TouchableOpacity>
                                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                                         <View style={[styles.statusDot, { backgroundColor: coupon.isActive && !isActuallyExpired ? colors.success : '#EF4444', height: 8, width: 8 }]} />
                                                         <Text style={[styles.userEmail, { color: colors.textMuted, marginLeft: 6 }]}>
@@ -597,7 +632,7 @@ export default function AdminScreen({ navigation }) {
                                             </View>
                                         </View>
 
-                                        <View style={styles.couponStatsGrid}>
+                                        <TouchableOpacity style={styles.couponStatsGrid} onPress={() => handleShowUsageDetails(coupon)}>
                                             <View style={styles.couponStatBox}>
                                                 <Text style={[styles.couponStatLabel, { color: colors.textMuted }]}>Usage</Text>
                                                 <Text style={[styles.couponStatValue, { color: isDark ? '#FFF' : '#000' }]}>
@@ -614,7 +649,7 @@ export default function AdminScreen({ navigation }) {
                                                     {coupon.validTo ? formatDate(coupon.validTo) : 'Forever'}
                                                 </Text>
                                             </View>
-                                        </View>
+                                        </TouchableOpacity>
 
                                         <View style={styles.cardFooter}>
                                             <Text style={[styles.date, { color: colors.textLight }]}>
@@ -700,25 +735,33 @@ export default function AdminScreen({ navigation }) {
                             </View>
 
                             <View style={styles.formGroup}>
-                                <Text style={[styles.formLabel, { color: colors.textMuted }]}>VALID FROM (YYYY-MM-DD)</Text>
-                                <TextInput
-                                    style={[styles.formInput, { color: colors.text, borderColor: colors.primaryBorder }]}
-                                    placeholder="e.g. 2026-03-01"
-                                    placeholderTextColor={colors.textMuted}
-                                    value={couponForm.validFrom}
-                                    onChangeText={(text) => setCouponForm({ ...couponForm, validFrom: text })}
-                                />
+                                <Text style={[styles.formLabel, { color: colors.textMuted }]}>VALID FROM</Text>
+                                <TouchableOpacity
+                                    style={[styles.formInput, { justifyContent: 'center', borderColor: colors.primaryBorder }]}
+                                    onPress={() => {
+                                        setDatePickingFor('validFrom');
+                                        setShowDatePicker(true);
+                                    }}
+                                >
+                                    <Text style={{ color: couponForm.validFrom ? colors.text : colors.textMuted }}>
+                                        {couponForm.validFrom ? formatDate(couponForm.validFrom) : 'Select Start Date'}
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
 
                             <View style={styles.formGroup}>
-                                <Text style={[styles.formLabel, { color: colors.textMuted }]}>VALID TO (YYYY-MM-DD)</Text>
-                                <TextInput
-                                    style={[styles.formInput, { color: colors.text, borderColor: colors.primaryBorder }]}
-                                    placeholder="e.g. 2026-04-01"
-                                    placeholderTextColor={colors.textMuted}
-                                    value={couponForm.validTo}
-                                    onChangeText={(text) => setCouponForm({ ...couponForm, validTo: text })}
-                                />
+                                <Text style={[styles.formLabel, { color: colors.textMuted }]}>VALID TO</Text>
+                                <TouchableOpacity
+                                    style={[styles.formInput, { justifyContent: 'center', borderColor: colors.primaryBorder }]}
+                                    onPress={() => {
+                                        setDatePickingFor('validTo');
+                                        setShowDatePicker(true);
+                                    }}
+                                >
+                                    <Text style={{ color: couponForm.validTo ? colors.text : colors.textMuted }}>
+                                        {couponForm.validTo ? formatDate(couponForm.validTo) : 'Select End Date (Optional)'}
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
                         </ScrollView>
 
@@ -736,6 +779,76 @@ export default function AdminScreen({ navigation }) {
                                 <Text style={styles.modalSubmitText}>Create Coupon</Text>
                             </TouchableOpacity>
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            <DatePickerModal
+                visible={showDatePicker}
+                onClose={() => setShowDatePicker(false)}
+                title={datePickingFor === 'validFrom' ? 'Select Start Date' : 'Select End Date'}
+                selectedDate={couponForm[datePickingFor]}
+                onSelect={(date) => {
+                    setCouponForm({ ...couponForm, [datePickingFor]: date });
+                    setShowDatePicker(false);
+                }}
+            />
+
+            {/* Usage Details Modal */}
+            <Modal
+                visible={!!selectedCouponForDetails}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setSelectedCouponForDetails(null)}
+            >
+                <View style={styles.fullScreenOverlay}>
+                    <View style={[styles.dialogContainer, { width: '90%', maxHeight: '80%' }]}>
+                        <View style={styles.modalHeader}>
+                            <View>
+                                <Text style={[styles.modalTitle, { color: isDark ? '#FFF' : '#000' }]}>Usage Details</Text>
+                                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>{selectedCouponForDetails?.code}</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setSelectedCouponForDetails(null)}>
+                                <Icon name="close" size={24} color={isDark ? '#FFF' : '#000'} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {loadingUsage ? (
+                            <ActivityIndicator size="large" color={colors.primary} style={{ margin: 40 }} />
+                        ) : usageDetails.length === 0 ? (
+                            <View style={{ padding: 40, alignItems: 'center' }}>
+                                <Icon name="friends" size={48} color={colors.textLight} />
+                                <Text style={{ color: colors.textMuted, marginTop: 10 }}>No one has joined using this coupon yet.</Text>
+                            </View>
+                        ) : (
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                {usageDetails.map((user, idx) => (
+                                    <View key={idx} style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingVertical: 12,
+                                        borderBottomWidth: 1,
+                                        borderBottomColor: 'rgba(255,255,255,0.05)'
+                                    }}>
+                                        <View style={[styles.avatar, { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primary + '10' }]}>
+                                            <Text style={{ color: colors.primary, fontWeight: 'bold' }}>{user.name ? user.name[0] : 'U'}</Text>
+                                        </View>
+                                        <View style={{ flex: 1, marginLeft: 12 }}>
+                                            <Text style={{ color: isDark ? '#FFF' : '#000', fontWeight: 'bold' }}>{user.name || 'Unknown User'}</Text>
+                                            <Text style={{ color: colors.textMuted, fontSize: 12 }}>{user.email || 'No email'}</Text>
+                                        </View>
+                                        <Text style={{ color: colors.textLight, fontSize: 11 }}>{formatDate(user.timestamp)}</Text>
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        )}
+
+                        <TouchableOpacity
+                            style={[styles.modalSubmitBtn, { backgroundColor: colors.primary, marginTop: 20, alignItems: 'center' }]}
+                            onPress={() => setSelectedCouponForDetails(null)}
+                        >
+                            <Text style={styles.modalSubmitText}>Close</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
@@ -1025,11 +1138,11 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     diagButton: {
-        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 12,
+        paddingHorizontal: 20,
         borderRadius: 12,
         gap: 8,
     },
@@ -1081,6 +1194,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         fontSize: 16,
         backgroundColor: 'rgba(0,0,0,0.2)',
+        ...Platform.select({
+            web: {
+                outlineStyle: 'none',
+            }
+        })
     },
     modalFooter: {
         flexDirection: 'row',

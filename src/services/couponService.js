@@ -103,3 +103,51 @@ export const validateCoupon = async (code) => {
 
     return { success: true, coupon };
 };
+
+/**
+ * Record a coupon usage with user details
+ * @param {string} couponId - The ID of the coupon used
+ * @param {Object} userData - User details (uid, name, email)
+ */
+export const recordCouponUsage = async (couponId, userData) => {
+    if (!couponId || !userData?.uid) return;
+
+    const couponRef = ref(database, `coupons/${couponId}`);
+    const usedByRef = ref(database, `coupons/${couponId}/usedBy/${userData.uid}`);
+
+    // Check if user already used it (optional, depends on policy)
+    const snapshot = await get(usedByRef);
+    if (snapshot.exists()) return;
+
+    // Increment usage count and add user to usedBy list
+    const couponSnapshot = await get(couponRef);
+    if (couponSnapshot.exists()) {
+        const currentCount = couponSnapshot.val().usageCount || 0;
+        await update(couponRef, {
+            usageCount: currentCount + 1,
+            updatedAt: Date.now(),
+        });
+
+        await set(usedByRef, {
+            ...userData,
+            timestamp: Date.now()
+        });
+    }
+};
+
+/**
+ * Get details of users who used a specific coupon
+ * @param {string} couponId - The ID of the coupon
+ * @returns {Array} List of users
+ */
+export const getCouponUsageDetails = async (couponId) => {
+    if (!couponId) return [];
+
+    const usedByRef = ref(database, `coupons/${couponId}/usedBy`);
+    const snapshot = await get(usedByRef);
+
+    if (snapshot.exists()) {
+        return Object.values(snapshot.val()).sort((a, b) => b.timestamp - a.timestamp);
+    }
+    return [];
+};

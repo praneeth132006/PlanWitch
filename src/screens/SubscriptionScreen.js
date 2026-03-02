@@ -4,31 +4,40 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
 import { usePremium } from '../context/PremiumContext';
+import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icon';
 import PremiumButton from '../components/PremiumButton';
+import { validateCoupon, recordCouponUsage } from '../services/couponService';
 
 const SubscriptionScreen = ({ navigation, isPopover = false }) => {
     const { colors, isDark } = useTheme();
     const { userPlan } = useTravelContext();
     const { isPremium, offerings, purchasePackage, restorePurchases, loading: premiumLoading } = usePremium();
+    const { user } = useAuth();
     const [billingCycle, setBillingCycle] = useState('yearly'); // 'monthly' or 'yearly'
     const [isPurchasing, setIsPurchasing] = useState(false);
     const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [discount, setDiscount] = useState(0); // 0 to 1 (e.g., 0.5 for 50%)
     const [isCouponApplied, setIsCouponApplied] = useState(false);
 
-    const handleApplyCoupon = () => {
+    const handleApplyCoupon = async () => {
         const code = couponCode.trim().toUpperCase();
-        if (code === 'PLANWITCH50') {
-            setDiscount(0.5);
-            setIsCouponApplied(true);
-            Alert.alert('Success', '50% discount applied!');
-        } else if (code === 'WELCOME10') {
-            setDiscount(0.1);
-            setIsCouponApplied(true);
-            Alert.alert('Success', '10% discount applied!');
-        } else {
-            Alert.alert('Invalid Code', 'The coupon code you entered is not valid.');
+        if (!code) return;
+
+        try {
+            const result = await validateCoupon(code);
+            if (result.success) {
+                setAppliedCoupon(result.coupon);
+                setDiscount(result.coupon.discount / 100); // Convert percentage to decimal
+                setIsCouponApplied(true);
+                Alert.alert('Success', `${result.coupon.discount}% discount applied!`);
+            } else {
+                Alert.alert('Invalid Coupon', result.error || 'This coupon code is not valid.');
+            }
+        } catch (error) {
+            console.error('Coupon validation error:', error);
+            Alert.alert('Error', 'Failed to validate coupon. Please try again.');
         }
     };
 
@@ -60,6 +69,18 @@ const SubscriptionScreen = ({ navigation, isPopover = false }) => {
         setIsPurchasing(false);
 
         if (result.success) {
+            // Record coupon usage if applied
+            if (isCouponApplied && appliedCoupon && user) {
+                try {
+                    await recordCouponUsage(appliedCoupon.id, {
+                        uid: user.uid,
+                        name: user.displayName || 'User',
+                        email: user.email
+                    });
+                } catch (err) {
+                    console.error('Failed to record coupon usage:', err);
+                }
+            }
             Alert.alert('Success', 'Welcome to Pro!');
             navigation.goBack();
         } else if (result.error && !result.error.userCancelled) {
@@ -218,7 +239,7 @@ const SubscriptionScreen = ({ navigation, isPopover = false }) => {
                             </Pressable>
                         </View>
                         {isCouponApplied && (
-                            <Pressable onPress={() => { setIsCouponApplied(false); setDiscount(0); setCouponCode(''); }}>
+                            <Pressable onPress={() => { setIsCouponApplied(false); setDiscount(0); setCouponCode(''); setAppliedCoupon(null); }}>
                                 <Text style={styles.removeCouponText}>Remove coupon</Text>
                             </Pressable>
                         )}
