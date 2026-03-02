@@ -16,6 +16,8 @@ import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import PremiumBackButton from '../components/PremiumBackButton';
 import { subscribeToFeedback, deleteFeedback, updateFeedbackReadStatus } from '../services/databaseService';
+import crashlytics from '@react-native-firebase/crashlytics';
+import perf from '@react-native-firebase/perf';
 
 const { width } = Dimensions.get('window');
 
@@ -322,6 +324,48 @@ export default function AdminScreen({ navigation }) {
                         </GlassCard>
                     ))
                 )}
+
+                {/* System Diagnostics / Firebase Setup */}
+                <View style={[styles.sectionHeader, { marginTop: 30 }]}>
+                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#111' }]}>System Diagnostics</Text>
+                </View>
+
+                <GlassCard style={styles.diagnosticsCard}>
+                    <Text style={[styles.diagnosticsTitle, { color: colors.primary }]}>Firebase Analytics Setup</Text>
+                    <Text style={[styles.diagnosticsText, { color: isDark ? '#CCC' : '#666' }]}>
+                        Analytics data (Crashlytics & Performance) only appears in the console when the app is running as a <Text style={{ fontWeight: 'bold' }}>Development Client</Text> or <Text style={{ fontWeight: 'bold' }}>Build</Text>. It does not work in Expo Go.
+                    </Text>
+
+                    <View style={styles.diagnosticsActions}>
+                        <TouchableOpacity
+                            style={[styles.diagButton, { backgroundColor: '#EF4444' }]}
+                            onPress={() => {
+                                Alert.alert('Test Crash', 'This will force the app to crash to test Crashlytics.', [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    { text: 'Crash Now', onPress: () => crashlytics().crash() }
+                                ]);
+                            }}
+                        >
+                            <Icon name="close" size={16} color="#FFF" />
+                            <Text style={styles.diagButtonText}>Test Crash</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.diagButton, { backgroundColor: colors.primary }]}
+                            onPress={async () => {
+                                const trace = await perf().newTrace('test_trace');
+                                await trace.start();
+                                setTimeout(async () => {
+                                    await trace.stop();
+                                    Alert.alert('Success', 'Performance trace "test_trace" has been sent to Firebase.');
+                                }, 2000);
+                            }}
+                        >
+                            <Icon name="clock" size={16} color="#000" />
+                            <Text style={[styles.diagButtonText, { color: '#000' }]}>Test Trace</Text>
+                        </TouchableOpacity>
+                    </View>
+                </GlassCard>
             </ScrollView>
         </SafeAreaView>
     );
@@ -571,5 +615,37 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: 'bold',
         textDecorationLine: 'underline',
+    },
+    diagnosticsCard: {
+        marginTop: 10,
+        backgroundColor: 'rgba(255,255,255,0.03)',
+    },
+    diagnosticsTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 8,
+    },
+    diagnosticsText: {
+        fontSize: 13,
+        lineHeight: 18,
+        marginBottom: 20,
+    },
+    diagnosticsActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    diagButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: 12,
+        gap: 8,
+    },
+    diagButtonText: {
+        color: '#FFF',
+        fontWeight: 'bold',
+        fontSize: 14,
     }
 });

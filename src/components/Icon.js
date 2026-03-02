@@ -44,8 +44,8 @@ const ICON_PATHS = {
     map: require('../../assets/icons/mycollection/png/121-map.png'),
     task: require('../../assets/icons/mycollection/png/107-schedule.png'),
     check: require('../../assets/icons/mycollection/png/051-check.png'),
-    flag: require('../../assets/icons/mycollection/png/012-leaning-tower-of-pisa.png'), // Placeholder for end trip
-    checkered_flag: require('../../assets/icons/mycollection/png/051-check.png'), // Using check for now
+    flag: 'emoji_🏁', // REMOVED PISA ICON
+    checkered_flag: 'emoji_🏁',
     like: require('../../assets/icons/mycollection/png/020-stars.png'),
     heart: require('../../assets/icons/mycollection/png/020-stars.png'),
     star: require('../../assets/icons/mycollection/png/020-stars.png'), // Added alias
@@ -133,21 +133,17 @@ const ICON_PATHS = {
     man_2: require('../../assets/icons/mycollection/png/043-man-2.png'),
     woman_2: require('../../assets/icons/mycollection/png/044-woman-2.png'),
 
+    // System/UI
+    sort: require('../../assets/icons/mycollection/png/102-calendar.png'),
+    eye: require('../../assets/icons/mycollection/png/155-binoculars.png'),
+    eye_off: require('../../assets/icons/mycollection/png/155-binoculars.png'),
+    eye_hide: require('../../assets/icons/mycollection/png/155-binoculars.png'),
+
     // Fallbacks
-    other: require('../../assets/icons/mycollection/png/012-leaning-tower-of-pisa.png'),
+    other: null,
     user: require('../../assets/icons/mycollection/png/057-user.png'),
     group: require('../../assets/icons/mycollection/png/048-boy.png'),
     money: require('../../assets/icons/mycollection/png/061-dollar.png'),
-
-    // Welcome Screen Animation Icons
-    v012: require('../../assets/icons/mycollection/png/012-leaning-tower-of-pisa.png'),
-    v182: require('../../assets/icons/mycollection/png/182-burj-arab.png'),
-    v183: require('../../assets/icons/mycollection/png/183-statue-of-liberty.png'),
-    v184: require('../../assets/icons/mycollection/png/184-paris.png'),
-    v187: require('../../assets/icons/mycollection/png/187-taj-mahal.png'),
-    v189: require('../../assets/icons/mycollection/png/189-washington.png'),
-    v190: require('../../assets/icons/mycollection/png/190-romanian-athenaeum.png'),
-    tour_guide: require('../../assets/icons/mycollection/png/tour-guide.png'),
     flag: 'emoji_🏁',
     finish: 'emoji_🏁',
 };
@@ -168,8 +164,13 @@ const Icon = ({ name, size = 24, color, style }) => {
         );
     }
 
-    // Default to 'other' if key not found
-    const iconSource = ICON_PATHS[name] || ICON_PATHS.other;
+    // Resolve source
+    const iconSource = ICON_PATHS[name];
+
+    // If no icon found, don't render anything or render a small placeholder
+    if (!iconSource) {
+        return <View style={{ width: size, height: size }} />;
+    }
 
     return (
         <Image

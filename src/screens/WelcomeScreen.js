@@ -55,7 +55,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
   const [tripCode, setTripCode] = useState('');
   const [showAllTrips, setShowAllTrips] = useState(false); // Default to closed as requested
   const [centerIconIndex, setCenterIconIndex] = useState(0);
-  const rotationIcons = ['v012', 'compass', 'v183', 'v184', 'v187', 'v189', 'v190'];
+  const rotationIcons = ['logo', 'compass', 'nature', 'beach', 'packing', 'airplane', 'map'];
 
   const fadeAnim = useState(new Animated.Value(0))[0];
   const scaleAnim1 = useState(new Animated.Value(0.8))[0];
