@@ -736,6 +736,17 @@ export const updateFeedbackReadStatus = async (id, isRead) => {
   await update(ref(database, `feedback/${id}`), { isRead });
 };
 
+export const markAllFeedbackAsRead = async (unreadItems) => {
+  if (!unreadItems || unreadItems.length === 0) return;
+
+  const updates = {};
+  unreadItems.forEach(item => {
+    updates[`feedback/${item.id}/isRead`] = true;
+  });
+
+  return update(ref(database), updates);
+};
+
 // ============ REAL-TIME SUBSCRIPTIONS ============
 // These functions set up listeners that automatically sync data across all users
 

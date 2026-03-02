@@ -18,11 +18,14 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import PremiumBackButton from '../components/PremiumBackButton';
-import { subscribeToFeedback, deleteFeedback, updateFeedbackReadStatus } from '../services/databaseService';
+import { subscribeToFeedback, deleteFeedback, updateFeedbackReadStatus, markAllFeedbackAsRead } from '../services/databaseService';
 import { createCoupon, subscribeToCoupons, updateCoupon, deleteCoupon, getCouponUsageDetails } from '../services/couponService';
+import { subscribeToLogs, getSystemStats, LogLevel, LogType } from '../services/loggingService';
 import crashlytics from '@react-native-firebase/crashlytics';
 import perf from '@react-native-firebase/perf';
 import DatePickerModal from '../components/DatePickerModal';
+import GlassCard from '../components/GlassCard';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -40,12 +43,15 @@ const formatDate = (timestamp) => {
 
 export default function AdminScreen({ navigation }) {
     const { colors, isDark } = useTheme();
-    const [activeTab, setActiveTab] = useState('feedback'); // feedback, coupons
+    const { user: currentUser } = useAuth();
+    const [activeTab, setActiveTab] = useState('feedback'); // feedback, coupons, logs, stats, diagnostics
     const [feedbackList, setFeedbackList] = useState([]);
     const [couponList, setCouponList] = useState([]);
+    const [systemLogs, setSystemLogs] = useState([]);
+    const [systemStats, setSystemStats] = useState({ totalUsers: 0, totalTrips: 0, totalCoupons: 0 });
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [filter, setFilter] = useState('all'); // feedback: all, read, unread | coupons: all, active, expired
+    const [filter, setFilter] = useState('unread'); // feedback: all, read, unread | coupons: all, active, expired | logs: all, info, warn, error, security
     const [sortBy, setSortBy] = useState('newest'); // newest, oldest
 
     // Coupon Form State
@@ -76,11 +82,28 @@ export default function AdminScreen({ navigation }) {
             if (activeTab === 'coupons') setLoading(false);
         });
 
+        const unsubscribeLogs = subscribeToLogs((data) => {
+            setSystemLogs(data);
+            if (activeTab === 'logs') setLoading(false);
+        });
+
+        if (activeTab === 'stats') {
+            fetchStats();
+        }
+
         return () => {
             unsubscribeFeedback();
             unsubscribeCoupons();
+            unsubscribeLogs();
         };
     }, [activeTab]);
+
+    const fetchStats = async () => {
+        setLoading(true);
+        const stats = await getSystemStats();
+        setSystemStats(stats);
+        setLoading(false);
+    };
 
     // Calculate Feedback Stats
     const feedbackStats = useMemo(() => {
@@ -137,6 +160,26 @@ export default function AdminScreen({ navigation }) {
         return result;
     }, [couponList, searchQuery, filter, sortBy]);
 
+    const filteredLogs = useMemo(() => {
+        let result = [...systemLogs];
+
+        if (filter !== 'all') {
+            result = result.filter(l => l.level.toLowerCase() === filter.toLowerCase());
+        }
+
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(l =>
+                (l.message || '').toLowerCase().includes(query) ||
+                (l.email || '').toLowerCase().includes(query) ||
+                (l.type || '').toLowerCase().includes(query)
+            );
+        }
+
+        // Logs are already pre-sorted by timestamp in service
+        return result;
+    }, [systemLogs, searchQuery, filter]);
+
     const handleMarkAsRead = async (id, currentStatus) => {
         try {
             await updateFeedbackReadStatus(id, !currentStatus);
@@ -161,10 +204,9 @@ export default function AdminScreen({ navigation }) {
                     text: 'Confirm',
                     onPress: async () => {
                         try {
-                            const promises = unreadItems.map(item => updateFeedbackReadStatus(item.id, true));
-                            await Promise.all(promises);
+                            await markAllFeedbackAsRead(unreadItems);
                         } catch (error) {
-                            Alert.alert('Error', 'Failed to update some items');
+                            Alert.alert('Error', 'Failed to update items');
                         }
                     }
                 }
@@ -313,7 +355,7 @@ export default function AdminScreen({ navigation }) {
                     style={[styles.tab, activeTab === 'feedback' && styles.activeTab]}
                     onPress={() => {
                         setActiveTab('feedback');
-                        setFilter('all');
+                        setFilter('unread');
                     }}
                 >
                     <Icon name="message" size={18} color={activeTab === 'feedback' ? colors.primary : colors.textMuted} />
@@ -328,6 +370,36 @@ export default function AdminScreen({ navigation }) {
                 >
                     <Icon name="link" size={18} color={activeTab === 'coupons' ? colors.primary : colors.textMuted} />
                     <Text style={[styles.tabText, { color: activeTab === 'coupons' ? colors.primary : colors.textMuted }]}>Coupons</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'logs' && styles.activeTab]}
+                    onPress={() => {
+                        setActiveTab('logs');
+                        setFilter('all');
+                    }}
+                >
+                    <Icon name="notification" size={18} color={activeTab === 'logs' ? colors.primary : colors.textMuted} />
+                    <Text style={[styles.tabText, { color: activeTab === 'logs' ? colors.primary : colors.textMuted }]}>Logs</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'stats' && styles.activeTab]}
+                    onPress={() => {
+                        setActiveTab('stats');
+                        setFilter('all');
+                    }}
+                >
+                    <Icon name="sort" size={18} color={activeTab === 'stats' ? colors.primary : colors.textMuted} />
+                    <Text style={[styles.tabText, { color: activeTab === 'stats' ? colors.primary : colors.textMuted }]}>Stats</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'diagnostics' && styles.activeTab]}
+                    onPress={() => {
+                        setActiveTab('diagnostics');
+                        setFilter('all');
+                    }}
+                >
+                    <Icon name="settings" size={18} color={activeTab === 'diagnostics' ? colors.primary : colors.textMuted} />
+                    <Text style={[styles.tabText, { color: activeTab === 'diagnostics' ? colors.primary : colors.textMuted }]}>Diag</Text>
                 </TouchableOpacity>
             </View>
 
@@ -475,9 +547,11 @@ export default function AdminScreen({ navigation }) {
                                 </GlassCard>
                             ))
                         )}
-
+                    </>
+                ) : activeTab === 'diagnostics' ? (
+                    <>
                         {/* System Diagnostics */}
-                        <View style={[styles.sectionHeader, { marginTop: 30 }]}>
+                        <View style={[styles.sectionHeader, { marginTop: 10 }]}>
                             <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#111' }]}>System Diagnostics</Text>
                         </View>
 
@@ -520,162 +594,275 @@ export default function AdminScreen({ navigation }) {
                     </>
                 ) : (
                     <>
-                        {/* Statistics Row - Coupons */}
-                        <View style={styles.statsRow}>
-                            <GlassCard style={styles.statItem}>
-                                <Icon name="link" size={20} color={colors.primary} />
-                                <Text style={styles.statValue}>{couponStats.total}</Text>
-                                <Text style={styles.statLabel}>Total</Text>
-                            </GlassCard>
-                            <GlassCard style={styles.statItem}>
-                                <Icon name="location" size={20} color={colors.success} />
-                                <Text style={styles.statValue}>{couponStats.active}</Text>
-                                <Text style={styles.statLabel}>Active</Text>
-                            </GlassCard>
-                            <GlassCard style={styles.statItem}>
-                                <Icon name="friends" size={20} color="#F59E0B" />
-                                <Text style={styles.statValue}>{couponStats.used}</Text>
-                                <Text style={styles.statLabel}>Redeemed</Text>
-                            </GlassCard>
-                        </View>
+                        {activeTab === 'coupons' ? (
+                            <>
+                                {/* Statistics Row - Coupons */}
+                                <View style={styles.statsRow}>
+                                    <GlassCard style={styles.statItem}>
+                                        <Icon name="link" size={20} color={colors.primary} />
+                                        <Text style={styles.statValue}>{couponStats.total}</Text>
+                                        <Text style={styles.statLabel}>Total</Text>
+                                    </GlassCard>
+                                    <GlassCard style={styles.statItem}>
+                                        <Icon name="location" size={20} color={colors.success} />
+                                        <Text style={styles.statValue}>{couponStats.active}</Text>
+                                        <Text style={styles.statLabel}>Active</Text>
+                                    </GlassCard>
+                                    <GlassCard style={styles.statItem}>
+                                        <Icon name="friends" size={20} color="#F59E0B" />
+                                        <Text style={styles.statValue}>{couponStats.used}</Text>
+                                        <Text style={styles.statLabel}>Redeemed</Text>
+                                    </GlassCard>
+                                </View>
 
-                        {/* Filters & Actions - Coupons */}
-                        <View style={[styles.filterSection, { paddingHorizontal: 4 }]}>
-                            <View style={{ flex: 1 }}>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
-                                    {['all', 'active', 'expired'].map((f) => (
-                                        <TouchableOpacity
-                                            key={f}
-                                            style={[
-                                                styles.filterChip,
-                                                filter === f && { backgroundColor: colors.primary, borderColor: colors.primary }
-                                            ]}
-                                            onPress={() => setFilter(f)}
-                                        >
-                                            <Text style={[
-                                                styles.filterChipText,
-                                                { color: isDark ? '#FFF' : '#000' },
-                                                filter === f && { color: isDark ? '#000' : '#FFF' }
-                                            ]}>
-                                                {f.charAt(0).toUpperCase() + f.slice(1)}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            </View>
-
-                            <TouchableOpacity
-                                style={[styles.diagButton, {
-                                    backgroundColor: colors.primary,
-                                    flex: 0,
-                                    paddingHorizontal: 12,
-                                    height: 38,
-                                    minWidth: 90,
-                                    marginLeft: 8
-                                }]}
-                                onPress={() => setShowCreateModal(true)}
-                            >
-                                <Icon name="add" size={16} color="#000" />
-                                <Text style={[styles.diagButtonText, { color: '#000', fontSize: 13 }]} numberOfLines={1}>Create</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Section Header */}
-                        <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#111' }]}>
-                                {filter === 'active' ? 'Active Coupons' : filter === 'expired' ? 'Expired Coupons' : 'All Coupons'}
-                            </Text>
-                        </View>
-
-                        {filteredCoupons.length === 0 ? (
-                            <View style={styles.emptyState}>
-                                <Icon name="link" size={64} color={isDark ? '#333' : '#CCC'} />
-                                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                                    {searchQuery ? 'No matching coupons' : `No ${filter} coupons found`}
-                                </Text>
-                            </View>
-                        ) : (
-                            filteredCoupons.map((coupon) => {
-                                const isActuallyExpired = coupon.validTo && coupon.validTo < Date.now();
-                                return (
-                                    <GlassCard
-                                        key={coupon.id}
-                                        style={[
-                                            styles.feedbackCard,
-                                            (!coupon.isActive || isActuallyExpired) && { opacity: 0.6 }
-                                        ]}
-                                    >
-                                        <View style={styles.cardHeader}>
-                                            <View style={styles.userInfo}>
+                                {/* Filters & Actions - Coupons */}
+                                <View style={[styles.filterSection, { paddingHorizontal: 4 }]}>
+                                    <View style={{ flex: 1 }}>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+                                            {['all', 'active', 'expired'].map((f) => (
                                                 <TouchableOpacity
-                                                    style={[styles.avatar, { backgroundColor: colors.primary + '20', borderColor: colors.primary + '40', borderRadius: 10 }]}
-                                                    onPress={() => handleShowUsageDetails(coupon)}
+                                                    key={f}
+                                                    style={[
+                                                        styles.filterChip,
+                                                        filter === f && { backgroundColor: colors.primary, borderColor: colors.primary }
+                                                    ]}
+                                                    onPress={() => setFilter(f)}
                                                 >
-                                                    <Icon name="link" size={24} color={colors.primary} />
-                                                </TouchableOpacity>
-                                                <View>
-                                                    <TouchableOpacity onPress={() => handleShowUsageDetails(coupon)}>
-                                                        <Text style={[styles.userName, { color: isDark ? '#FFF' : '#111', fontSize: 18, letterSpacing: 1 }]}>
-                                                            {coupon.code}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                        <View style={[styles.statusDot, { backgroundColor: coupon.isActive && !isActuallyExpired ? colors.success : '#EF4444', height: 8, width: 8 }]} />
-                                                        <Text style={[styles.userEmail, { color: colors.textMuted, marginLeft: 6 }]}>
-                                                            {coupon.isActive && !isActuallyExpired ? 'Active' : (isActuallyExpired ? 'Expired' : 'Disabled')}
-                                                        </Text>
-                                                    </View>
-                                                </View>
-                                            </View>
-                                            <View style={[styles.ratingContainer, { backgroundColor: colors.primary + '20' }]}>
-                                                <Text style={[styles.ratingText, { color: colors.primary }]}>{coupon.discount}{coupon.discount <= 100 ? '%' : ''} OFF</Text>
-                                            </View>
-                                        </View>
-
-                                        <TouchableOpacity style={styles.couponStatsGrid} onPress={() => handleShowUsageDetails(coupon)}>
-                                            <View style={styles.couponStatBox}>
-                                                <Text style={[styles.couponStatLabel, { color: colors.textMuted }]}>Usage</Text>
-                                                <Text style={[styles.couponStatValue, { color: isDark ? '#FFF' : '#000' }]}>
-                                                    {coupon.usageCount || 0} / {coupon.maxJoiners || '∞'}
-                                                </Text>
-                                            </View>
-                                            <View style={styles.couponStatBox}>
-                                                <Text style={[styles.couponStatLabel, { color: colors.textMuted }]}>Valid From</Text>
-                                                <Text style={[styles.couponStatValue, { color: isDark ? '#FFF' : '#000' }]}>{formatDate(coupon.validFrom)}</Text>
-                                            </View>
-                                            <View style={styles.couponStatBox}>
-                                                <Text style={[styles.couponStatLabel, { color: colors.textMuted }]}>Valid To</Text>
-                                                <Text style={[styles.couponStatValue, { color: isDark ? '#FFF' : '#000' }]}>
-                                                    {coupon.validTo ? formatDate(coupon.validTo) : 'Forever'}
-                                                </Text>
-                                            </View>
-                                        </TouchableOpacity>
-
-                                        <View style={styles.cardFooter}>
-                                            <Text style={[styles.date, { color: colors.textLight }]}>
-                                                Created: {formatDate(coupon.createdAt)}
-                                            </Text>
-                                            <View style={styles.cardActions}>
-                                                <TouchableOpacity
-                                                    style={[styles.miniAction, { backgroundColor: colors.primary + '15' }]}
-                                                    onPress={() => handleToggleCoupon(coupon.id, coupon.isActive)}
-                                                >
-                                                    <Icon name={coupon.isActive ? 'eye_off' : 'eye'} size={16} color={colors.primary} />
-                                                    <Text style={[styles.miniActionText, { color: colors.primary }]}>
-                                                        {coupon.isActive ? 'Disable' : 'Enable'}
+                                                    <Text style={[
+                                                        styles.filterChipText,
+                                                        { color: isDark ? '#FFF' : '#000' },
+                                                        filter === f && { color: isDark ? '#000' : '#FFF' }
+                                                    ]}>
+                                                        {f.charAt(0).toUpperCase() + f.slice(1)}
                                                     </Text>
                                                 </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    style={[styles.miniAction, { backgroundColor: '#EF444415' }]}
-                                                    onPress={() => handleDeleteCoupon(coupon.id)}
-                                                >
-                                                    <Icon name="delete" size={16} color="#EF4444" />
+                                            ))}
+                                        </ScrollView>
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={[styles.diagButton, {
+                                            backgroundColor: colors.primary,
+                                            flex: 0,
+                                            paddingHorizontal: 12,
+                                            height: 38,
+                                            minWidth: 90,
+                                            marginLeft: 8
+                                        }]}
+                                        onPress={() => setShowCreateModal(true)}
+                                    >
+                                        <Icon name="add" size={16} color="#000" />
+                                        <Text style={[styles.diagButtonText, { color: '#000', fontSize: 13 }]} numberOfLines={1}>Create</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* Section Header */}
+                                <View style={styles.sectionHeader}>
+                                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#111' }]}>
+                                        {filter === 'active' ? 'Active Coupons' : filter === 'expired' ? 'Expired Coupons' : 'All Coupons'}
+                                    </Text>
+                                </View>
+
+                                {filteredCoupons.length === 0 ? (
+                                    <View style={styles.emptyState}>
+                                        <Icon name="link" size={64} color={isDark ? '#333' : '#CCC'} />
+                                        <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                                            {searchQuery ? 'No matching coupons' : `No ${filter} coupons found`}
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    filteredCoupons.map((coupon) => {
+                                        const isActuallyExpired = coupon.validTo && coupon.validTo < Date.now();
+                                        return (
+                                            <GlassCard
+                                                key={coupon.id}
+                                                style={[
+                                                    styles.feedbackCard,
+                                                    (!coupon.isActive || isActuallyExpired) && { opacity: 0.6 }
+                                                ]}
+                                            >
+                                                <View style={styles.cardHeader}>
+                                                    <View style={styles.userInfo}>
+                                                        <TouchableOpacity
+                                                            style={[styles.avatar, { backgroundColor: colors.primary + '20', borderColor: colors.primary + '40', borderRadius: 10 }]}
+                                                            onPress={() => handleShowUsageDetails(coupon)}
+                                                        >
+                                                            <Icon name="link" size={24} color={colors.primary} />
+                                                        </TouchableOpacity>
+                                                        <View>
+                                                            <TouchableOpacity onPress={() => handleShowUsageDetails(coupon)}>
+                                                                <Text style={[styles.userName, { color: isDark ? '#FFF' : '#111', fontSize: 18, letterSpacing: 1 }]}>
+                                                                    {coupon.code}
+                                                                </Text>
+                                                            </TouchableOpacity>
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                                <View style={[styles.statusDot, { backgroundColor: coupon.isActive && !isActuallyExpired ? colors.success : '#EF4444', height: 8, width: 8 }]} />
+                                                                <Text style={[styles.userEmail, { color: colors.textMuted, marginLeft: 6 }]}>
+                                                                    {coupon.isActive && !isActuallyExpired ? 'Active' : (isActuallyExpired ? 'Expired' : 'Disabled')}
+                                                                </Text>
+                                                            </View>
+                                                        </View>
+                                                    </View>
+                                                    <View style={[styles.ratingContainer, { backgroundColor: colors.primary + '20' }]}>
+                                                        <Text style={[styles.ratingText, { color: colors.primary }]}>{coupon.discount}{coupon.discount <= 100 ? '%' : ''} OFF</Text>
+                                                    </View>
+                                                </View>
+
+                                                <TouchableOpacity style={styles.couponStatsGrid} onPress={() => handleShowUsageDetails(coupon)}>
+                                                    <View style={styles.couponStatBox}>
+                                                        <Text style={[styles.couponStatLabel, { color: colors.textMuted }]}>Usage</Text>
+                                                        <Text style={[styles.couponStatValue, { color: isDark ? '#FFF' : '#000' }]}>
+                                                            {coupon.usageCount || 0} / {coupon.maxJoiners || '∞'}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.couponStatBox}>
+                                                        <Text style={[styles.couponStatLabel, { color: colors.textMuted }]}>Valid From</Text>
+                                                        <Text style={[styles.couponStatValue, { color: isDark ? '#FFF' : '#000' }]}>{formatDate(coupon.validFrom)}</Text>
+                                                    </View>
+                                                    <View style={styles.couponStatBox}>
+                                                        <Text style={[styles.couponStatLabel, { color: colors.textMuted }]}>Valid To</Text>
+                                                        <Text style={[styles.couponStatValue, { color: isDark ? '#FFF' : '#000' }]}>
+                                                            {coupon.validTo ? formatDate(coupon.validTo) : 'Forever'}
+                                                        </Text>
+                                                    </View>
                                                 </TouchableOpacity>
-                                            </View>
-                                        </View>
+
+                                                <View style={styles.cardFooter}>
+                                                    <Text style={[styles.date, { color: colors.textLight }]}>
+                                                        Created: {formatDate(coupon.createdAt)}
+                                                    </Text>
+                                                    <View style={styles.cardActions}>
+                                                        <TouchableOpacity
+                                                            style={[styles.miniAction, { backgroundColor: colors.primary + '15' }]}
+                                                            onPress={() => handleToggleCoupon(coupon.id, coupon.isActive)}
+                                                        >
+                                                            <Icon name={coupon.isActive ? 'eye_off' : 'eye'} size={16} color={colors.primary} />
+                                                            <Text style={[styles.miniActionText, { color: colors.primary }]}>
+                                                                {coupon.isActive ? 'Disable' : 'Enable'}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={[styles.miniAction, { backgroundColor: '#EF444415' }]}
+                                                            onPress={() => handleDeleteCoupon(coupon.id)}
+                                                        >
+                                                            <Icon name="delete" size={16} color="#EF4444" />
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </View>
+                                            </GlassCard>
+                                        );
+                                    })
+                                )}
+                            </>
+                        ) : activeTab === 'logs' ? (
+                            <>
+                                {/* Log Filters */}
+                                <View style={styles.filterSection}>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+                                        {['all', 'info', 'warn', 'error', 'security'].map((f) => (
+                                            <TouchableOpacity
+                                                key={f}
+                                                style={[
+                                                    styles.filterChip,
+                                                    filter === f && { backgroundColor: colors.primary, borderColor: colors.primary }
+                                                ]}
+                                                onPress={() => setFilter(f)}
+                                            >
+                                                <Text style={[
+                                                    styles.filterChipText,
+                                                    { color: isDark ? '#FFF' : '#000' },
+                                                    filter === f && { color: isDark ? '#000' : '#FFF' }
+                                                ]}>
+                                                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+
+                                {filteredLogs.length === 0 ? (
+                                    <View style={styles.emptyState}>
+                                        <Icon name="notification" size={64} color={isDark ? '#333' : '#CCC'} />
+                                        <Text style={[styles.emptyText, { color: colors.textMuted }]}>No logs found</Text>
+                                    </View>
+                                ) : (
+                                    filteredLogs.map((log) => {
+                                        const getLevelColor = () => {
+                                            switch (log.level) {
+                                                case 'ERROR': return '#EF4444';
+                                                case 'SECURITY': return '#F59E0B';
+                                                case 'WARN': return '#F59E0B';
+                                                default: return colors.primary;
+                                            }
+                                        };
+                                        return (
+                                            <GlassCard key={log.id} style={{ marginBottom: 10, padding: 12 }}>
+                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                        <View style={{
+                                                            paddingHorizontal: 6,
+                                                            paddingVertical: 2,
+                                                            borderRadius: 4,
+                                                            backgroundColor: getLevelColor() + '20'
+                                                        }}>
+                                                            <Text style={{ fontSize: 10, fontWeight: 'bold', color: getLevelColor() }}>{log.level}</Text>
+                                                        </View>
+                                                        <Text style={{ fontSize: 10, color: colors.textMuted }}>{log.type}</Text>
+                                                    </View>
+                                                    <Text style={{ fontSize: 10, color: colors.textMuted }}>
+                                                        {new Date(log.timestamp).toLocaleTimeString()}
+                                                    </Text>
+                                                </View>
+                                                <Text style={{ color: isDark ? '#FFF' : '#111', fontSize: 14, fontWeight: '500' }}>{log.message}</Text>
+                                                <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 4 }}>{log.email || 'system'}</Text>
+                                            </GlassCard>
+                                        );
+                                    })
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                {/* System Statistics */}
+                                <View style={styles.statsRow}>
+                                    <GlassCard style={styles.statItem}>
+                                        <Icon name="friends" size={24} color={colors.primary} />
+                                        <Text style={styles.statValue}>{systemStats.totalUsers}</Text>
+                                        <Text style={styles.statLabel}>Users</Text>
                                     </GlassCard>
-                                );
-                            })
+                                    <GlassCard style={styles.statItem}>
+                                        <Icon name="location" size={24} color={colors.success} />
+                                        <Text style={styles.statValue}>{systemStats.totalTrips}</Text>
+                                        <Text style={styles.statLabel}>Trips</Text>
+                                    </GlassCard>
+                                    <GlassCard style={styles.statItem}>
+                                        <Icon name="link" size={24} color="#F59E0B" />
+                                        <Text style={styles.statValue}>{systemStats.totalCoupons}</Text>
+                                        <Text style={styles.statLabel}>Coupons</Text>
+                                    </GlassCard>
+                                </View>
+
+                                <View style={[styles.sectionHeader, { marginTop: 20 }]}>
+                                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#111' }]}>Deployment Info</Text>
+                                    <TouchableOpacity onPress={fetchStats}>
+                                        <Icon name="clock" size={16} color={colors.primary} />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <GlassCard style={{ padding: 20 }}>
+                                    <View style={{ gap: 12 }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                            <Text style={{ color: colors.textMuted }}>Environment</Text>
+                                            <Text style={{ color: isDark ? '#FFF' : '#000', fontWeight: 'bold' }}>Production</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                            <Text style={{ color: colors.textMuted }}>Last Check</Text>
+                                            <Text style={{ color: isDark ? '#FFF' : '#000', fontWeight: 'bold' }}>
+                                                {new Date(systemStats.timestamp).toLocaleTimeString()}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </GlassCard>
+                            </>
                         )}
                     </>
                 )}
@@ -781,7 +968,7 @@ export default function AdminScreen({ navigation }) {
                         </View>
                     </View>
                 </View>
-            </Modal>
+            </Modal >
 
             <DatePickerModal
                 visible={showDatePicker}
@@ -852,7 +1039,7 @@ export default function AdminScreen({ navigation }) {
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
 

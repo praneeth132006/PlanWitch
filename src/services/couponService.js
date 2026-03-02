@@ -9,6 +9,8 @@ import {
     onValue,
     off,
 } from '../config/firebase';
+import { logEvent, LogType, LogLevel } from './loggingService';
+import { auth } from '../config/firebase'; // To get current user info for logs
 
 /**
  * Create a new coupon in the database
@@ -29,6 +31,15 @@ export const createCoupon = async (couponData) => {
     };
 
     await set(newCouponRef, fullCouponData);
+
+    logEvent({
+        type: LogType.COUPON,
+        message: `Coupon created: ${fullCouponData.code}`,
+        userId: auth.currentUser?.uid,
+        email: auth.currentUser?.email,
+        metadata: { code: fullCouponData.code, discount: fullCouponData.discount }
+    });
+
     return fullCouponData;
 };
 
@@ -60,6 +71,14 @@ export const updateCoupon = async (couponId, updates) => {
         ...updates,
         updatedAt: Date.now(),
     });
+
+    logEvent({
+        type: LogType.COUPON,
+        message: `Coupon updated: ${couponId}`,
+        userId: auth.currentUser?.uid,
+        email: auth.currentUser?.email,
+        metadata: { couponId, updates }
+    });
 };
 
 /**
@@ -69,6 +88,15 @@ export const updateCoupon = async (couponId, updates) => {
 export const deleteCoupon = async (couponId) => {
     if (!couponId) return;
     await remove(ref(database, `coupons/${couponId}`));
+
+    logEvent({
+        type: LogType.COUPON,
+        level: LogLevel.WARN,
+        message: `Coupon deleted: ${couponId}`,
+        userId: auth.currentUser?.uid,
+        email: auth.currentUser?.email,
+        metadata: { couponId }
+    });
 };
 
 /**
@@ -98,6 +126,13 @@ export const validateCoupon = async (code) => {
         return { success: false, error: 'This coupon has expired' };
     }
     if (coupon.maxJoiners && coupon.usageCount >= coupon.maxJoiners) {
+        logEvent({
+            type: LogType.COUPON,
+            level: LogLevel.WARN,
+            message: `Coupon limit reached: ${code}`,
+            userId: auth.currentUser?.uid,
+            email: auth.currentUser?.email
+        });
         return { success: false, error: 'This coupon has reached its usage limit' };
     }
 
@@ -131,6 +166,14 @@ export const recordCouponUsage = async (couponId, userData) => {
         await set(usedByRef, {
             ...userData,
             timestamp: Date.now()
+        });
+
+        logEvent({
+            type: LogType.COUPON,
+            message: `Coupon applied: ${couponSnapshot.val().code}`,
+            userId: userData.uid,
+            email: userData.email,
+            metadata: { couponId, code: couponSnapshot.val().code }
         });
     }
 };

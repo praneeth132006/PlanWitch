@@ -22,6 +22,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import nativeAuth from '@react-native-firebase/auth';
 import { auth, getFunctions, httpsCallable } from '../config/firebase';
 import * as DB from '../services/databaseService';
+import { logEvent, LogType, LogLevel } from '../services/loggingService';
 
 const AuthContext = createContext(null);
 
@@ -118,9 +119,21 @@ export function AuthProvider({ children }) {
       });
 
       // console.log('signIn success:', result.user.email);
+      logEvent({
+        type: LogType.AUTH,
+        message: 'User signed in',
+        userId: result.user.uid,
+        email: result.user.email
+      });
       return { success: true, user: result.user };
     } catch (error) {
       console.error('signIn error:', error.code);
+      logEvent({
+        type: LogType.AUTH,
+        level: LogLevel.WARN,
+        message: `Sign in failed: ${error.code}`,
+        email: email
+      });
       let msg = 'Failed to sign in';
       if (error.code === 'auth/invalid-credential') msg = 'Invalid email or password';
       if (error.code === 'auth/user-not-found') msg = 'No account found. Please sign up first.';
@@ -180,9 +193,21 @@ export function AuthProvider({ children }) {
       setIsNewUser(true);
 
       // console.log('signUp success:', result.user.email);
+      logEvent({
+        type: LogType.AUTH,
+        message: 'New user registered',
+        userId: result.user.uid,
+        email: result.user.email
+      });
       return { success: true, user: result.user, isNewUser: true };
     } catch (error) {
       console.error('signUp error:', error.code);
+      logEvent({
+        type: LogType.AUTH,
+        level: LogLevel.WARN,
+        message: `Sign up failed: ${error.code}`,
+        email: email
+      });
       let msg = 'Failed to create account';
       let emailExists = false;
       if (error.code === 'auth/email-already-in-use') {
@@ -287,6 +312,12 @@ export function AuthProvider({ children }) {
 
       // console.log('AuthContext.signOut: Firebase signOut complete');
       // onAuthStateChanged will set user to null
+      logEvent({
+        type: LogType.AUTH,
+        message: 'User signed out',
+        userId: user?.uid,
+        email: user?.email
+      });
 
       return { success: true };
     } catch (error) {
@@ -315,9 +346,20 @@ export function AuthProvider({ children }) {
   const resetPassword = async (email) => {
     try {
       await sendPasswordResetEmail(auth, email);
+      logEvent({
+        type: LogType.AUTH,
+        message: 'Password reset email sent',
+        email: email
+      });
       return { success: true };
     } catch (error) {
       console.error('resetPassword error:', error.code, error.message);
+      logEvent({
+        type: LogType.AUTH,
+        level: LogLevel.WARN,
+        message: `Password reset failed: ${error.code}`,
+        email: email
+      });
       return { success: false, error: error.message };
     }
   };
