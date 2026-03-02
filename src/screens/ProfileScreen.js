@@ -1053,7 +1053,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
         {/* Admin Section - Only for Admins */}
         {user?.isAdmin && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.primary }]}>Admin</Text>
+            <Text style={[styles.sectionTitle, { color: colors.primary }]}>Admin Controls</Text>
             <AnimatedCard delay={380} onPress={() => onNavigate && onNavigate('Admin')}>
               <View style={styles.settingItem}>
                 <View style={styles.settingLeft}>
@@ -1063,6 +1063,21 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
                   <View style={styles.settingInfo}>
                     <Text style={styles.settingLabel}>Admin Dashboard</Text>
                     <Text style={styles.settingValue}>Manage feedback and system settings</Text>
+                  </View>
+                </View>
+                <Text style={styles.settingArrow}>›</Text>
+              </View>
+            </AnimatedCard>
+
+            <AnimatedCard delay={390} onPress={() => onNavigate && onNavigate('Admin')}>
+              <View style={styles.settingItem}>
+                <View style={styles.settingLeft}>
+                  <View style={[styles.settingIconBg, { backgroundColor: colors.primary + '20' }]}>
+                    <Icon name="link" size={20} color={colors.primary} />
+                  </View>
+                  <View style={styles.settingInfo}>
+                    <Text style={styles.settingLabel}>Coupon Management</Text>
+                    <Text style={styles.settingValue}>Create and track discount coupons</Text>
                   </View>
                 </View>
                 <Text style={styles.settingArrow}>›</Text>

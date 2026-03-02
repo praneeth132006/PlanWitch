@@ -11,34 +11,71 @@ import {
     SafeAreaView,
     StatusBar,
     Dimensions,
+    TextInput,
+    Modal,
+    ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import PremiumBackButton from '../components/PremiumBackButton';
 import { subscribeToFeedback, deleteFeedback, updateFeedbackReadStatus } from '../services/databaseService';
+import { createCoupon, subscribeToCoupons, updateCoupon, deleteCoupon } from '../services/couponService';
 import crashlytics from '@react-native-firebase/crashlytics';
 import perf from '@react-native-firebase/perf';
 
 const { width } = Dimensions.get('window');
 
+/**
+ * Helper to format date for display
+ */
+const formatDate = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    return new Date(timestamp).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
+};
+
 export default function AdminScreen({ navigation }) {
     const { colors, isDark } = useTheme();
+    const [activeTab, setActiveTab] = useState('feedback'); // feedback, coupons
     const [feedbackList, setFeedbackList] = useState([]);
+    const [couponList, setCouponList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [filter, setFilter] = useState('all'); // all, read, unread
+    const [filter, setFilter] = useState('all'); // feedback: all, read, unread | coupons: all, active, expired
     const [sortBy, setSortBy] = useState('newest'); // newest, oldest
 
-    useEffect(() => {
-        const unsubscribe = subscribeToFeedback((data) => {
-            setFeedbackList(data);
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    }, []);
+    // Coupon Form State
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [couponForm, setCouponForm] = useState({
+        code: '',
+        discount: '',
+        maxJoiners: '',
+        validFrom: '',
+        validTo: '',
+    });
 
-    // Calculate Stats
-    const stats = useMemo(() => {
+    useEffect(() => {
+        const unsubscribeFeedback = subscribeToFeedback((data) => {
+            setFeedbackList(data);
+            if (activeTab === 'feedback') setLoading(false);
+        });
+
+        const unsubscribeCoupons = subscribeToCoupons((data) => {
+            setCouponList(data);
+            if (activeTab === 'coupons') setLoading(false);
+        });
+
+        return () => {
+            unsubscribeFeedback();
+            unsubscribeCoupons();
+        };
+    }, [activeTab]);
+
+    // Calculate Feedback Stats
+    const feedbackStats = useMemo(() => {
         if (!feedbackList.length) return { total: 0, avg: 0, fiveStar: 0, unread: 0 };
         const total = feedbackList.length;
         const sum = feedbackList.reduce((acc, curr) => acc + (curr.rating || 0), 0);
@@ -48,17 +85,21 @@ export default function AdminScreen({ navigation }) {
         return { total, avg, fiveStar, unread };
     }, [feedbackList]);
 
+    // Calculate Coupon Stats
+    const couponStats = useMemo(() => {
+        if (!couponList.length) return { total: 0, active: 0, used: 0 };
+        const total = couponList.length;
+        const now = Date.now();
+        const active = couponList.filter(c => c.isActive && (!c.validTo || c.validTo > now)).length;
+        const used = couponList.reduce((acc, curr) => acc + (curr.usageCount || 0), 0);
+        return { total, active, used };
+    }, [couponList]);
+
     const filteredFeedback = useMemo(() => {
         let result = [...feedbackList];
+        if (filter === 'read') result = result.filter(f => f.isRead);
+        else if (filter === 'unread') result = result.filter(f => !f.isRead);
 
-        // 1. Filter by Read/Unread
-        if (filter === 'read') {
-            result = result.filter(f => f.isRead);
-        } else if (filter === 'unread') {
-            result = result.filter(f => !f.isRead);
-        }
-
-        // 2. Search query
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
             result = result.filter(f =>
@@ -68,17 +109,25 @@ export default function AdminScreen({ navigation }) {
             );
         }
 
-        // 3. Sort
-        result.sort((a, b) => {
-            if (sortBy === 'newest') {
-                return (b.createdAt || 0) - (a.createdAt || 0);
-            } else {
-                return (a.createdAt || 0) - (b.createdAt || 0);
-            }
-        });
-
+        result.sort((a, b) => sortBy === 'newest' ? (b.createdAt || 0) - (a.createdAt || 0) : (a.createdAt || 0) - (b.createdAt || 0));
         return result;
     }, [feedbackList, searchQuery, filter, sortBy]);
+
+    const filteredCoupons = useMemo(() => {
+        let result = [...couponList];
+        const now = Date.now();
+
+        if (filter === 'active') result = result.filter(c => c.isActive && (!c.validTo || c.validTo > now));
+        else if (filter === 'expired') result = result.filter(c => !c.isActive || (c.validTo && c.validTo < now));
+
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(c => (c.code || '').toLowerCase().includes(query));
+        }
+
+        result.sort((a, b) => sortBy === 'newest' ? (b.createdAt || 0) - (a.createdAt || 0) : (a.createdAt || 0) - (b.createdAt || 0));
+        return result;
+    }, [couponList, searchQuery, filter, sortBy]);
 
     const handleMarkAsRead = async (id, currentStatus) => {
         try {
@@ -132,7 +181,7 @@ export default function AdminScreen({ navigation }) {
         }
     };
 
-    const handleDelete = (id) => {
+    const handleDeleteFeedback = (id) => {
         Alert.alert(
             'Delete Feedback',
             'This action is permanent.',
@@ -151,6 +200,61 @@ export default function AdminScreen({ navigation }) {
                 }
             ]
         );
+    };
+
+    const handleToggleCoupon = async (id, currentStatus) => {
+        try {
+            await updateCoupon(id, { isActive: !currentStatus });
+        } catch (error) {
+            Alert.alert('Error', 'Failed to update coupon');
+        }
+    };
+
+    const handleDeleteCoupon = (id) => {
+        Alert.alert(
+            'Delete Coupon',
+            'This will permanently remove the coupon.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await deleteCoupon(id);
+                        } catch (error) {
+                            Alert.alert('Error', 'Failed to delete coupon');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleCreateCoupon = async () => {
+        const { code, discount, maxJoiners, validFrom, validTo } = couponForm;
+
+        if (!code || !discount) {
+            Alert.alert('Error', 'Please enter at least code and discount amount.');
+            return;
+        }
+
+        try {
+            const data = {
+                code: code.toUpperCase().trim(),
+                discount: parseFloat(discount),
+                maxJoiners: maxJoiners ? parseInt(maxJoiners) : null,
+                validFrom: validFrom ? new Date(validFrom).getTime() : null,
+                validTo: validTo ? new Date(validTo).getTime() : null,
+            };
+
+            await createCoupon(data);
+            setShowCreateModal(false);
+            setCouponForm({ code: '', discount: '', maxJoiners: '', validFrom: '', validTo: '' });
+            Alert.alert('Success', 'Coupon created successfully!');
+        } catch (error) {
+            Alert.alert('Error', 'Failed to create coupon: ' + error.message);
+        }
     };
 
     const GlassCard = ({ children, style }) => {
@@ -182,191 +286,459 @@ export default function AdminScreen({ navigation }) {
                 </View>
             </View>
 
+            {/* Tab Selector */}
+            <View style={styles.tabContainer}>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'feedback' && styles.activeTab]}
+                    onPress={() => {
+                        setActiveTab('feedback');
+                        setFilter('all');
+                    }}
+                >
+                    <Icon name="message" size={18} color={activeTab === 'feedback' ? colors.primary : colors.textMuted} />
+                    <Text style={[styles.tabText, { color: activeTab === 'feedback' ? colors.primary : colors.textMuted }]}>Feedback</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'coupons' && styles.activeTab]}
+                    onPress={() => {
+                        setActiveTab('coupons');
+                        setFilter('all');
+                    }}
+                >
+                    <Icon name="link" size={18} color={activeTab === 'coupons' ? colors.primary : colors.textMuted} />
+                    <Text style={[styles.tabText, { color: activeTab === 'coupons' ? colors.primary : colors.textMuted }]}>Coupons</Text>
+                </TouchableOpacity>
+            </View>
+
             <ScrollView
                 style={styles.content}
                 contentContainerStyle={{ paddingBottom: 60 }}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Statistics Row */}
-                <View style={styles.statsRow}>
-                    <GlassCard style={styles.statItem}>
-                        <Icon name="message" size={20} color={colors.primary} />
-                        <Text style={styles.statValue}>{stats.total}</Text>
-                        <Text style={styles.statLabel}>Total</Text>
-                    </GlassCard>
-                    <GlassCard style={styles.statItem}>
-                        <Icon name="notification" size={20} color={stats.unread > 0 ? colors.warning : colors.success} />
-                        <Text style={styles.statValue}>{stats.unread}</Text>
-                        <Text style={styles.statLabel}>Unread</Text>
-                    </GlassCard>
-                    <GlassCard style={styles.statItem}>
-                        <Icon name="star" size={20} color="#F59E0B" />
-                        <Text style={styles.statValue}>{stats.avg}</Text>
-                        <Text style={styles.statLabel}>Rating</Text>
-                    </GlassCard>
-                </View>
+                {activeTab === 'feedback' ? (
+                    <>
+                        {/* Statistics Row - Feedback */}
+                        <View style={styles.statsRow}>
+                            <GlassCard style={styles.statItem}>
+                                <Icon name="message" size={20} color={colors.primary} />
+                                <Text style={styles.statValue}>{feedbackStats.total}</Text>
+                                <Text style={styles.statLabel}>Total</Text>
+                            </GlassCard>
+                            <GlassCard style={styles.statItem}>
+                                <Icon name="notification" size={20} color={feedbackStats.unread > 0 ? colors.warning : colors.success} />
+                                <Text style={styles.statValue}>{feedbackStats.unread}</Text>
+                                <Text style={styles.statLabel}>Unread</Text>
+                            </GlassCard>
+                            <GlassCard style={styles.statItem}>
+                                <Icon name="star" size={20} color="#F59E0B" />
+                                <Text style={styles.statValue}>{feedbackStats.avg}</Text>
+                                <Text style={styles.statLabel}>Rating</Text>
+                            </GlassCard>
+                        </View>
 
-                {/* Filters & Actions */}
-                <View style={styles.filterSection}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
-                        {['all', 'unread', 'read'].map((f) => (
+                        {/* Filters & Actions */}
+                        <View style={styles.filterSection}>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+                                {['all', 'unread', 'read'].map((f) => (
+                                    <TouchableOpacity
+                                        key={f}
+                                        style={[
+                                            styles.filterChip,
+                                            filter === f && { backgroundColor: colors.primary, borderColor: colors.primary }
+                                        ]}
+                                        onPress={() => setFilter(f)}
+                                    >
+                                        <Text style={[
+                                            styles.filterChipText,
+                                            { color: isDark ? '#FFF' : '#000' },
+                                            filter === f && { color: isDark ? '#000' : '#FFF' }
+                                        ]}>
+                                            {f.charAt(0).toUpperCase() + f.slice(1)}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+
                             <TouchableOpacity
-                                key={f}
-                                style={[
-                                    styles.filterChip,
-                                    filter === f && { backgroundColor: colors.primary, borderColor: colors.primary }
-                                ]}
-                                onPress={() => setFilter(f)}
+                                style={styles.sortToggle}
+                                onPress={() => setSortBy(sortBy === 'newest' ? 'oldest' : 'newest')}
                             >
-                                <Text style={[
-                                    styles.filterChipText,
-                                    { color: isDark ? '#FFF' : '#000' },
-                                    filter === f && { color: isDark ? '#000' : '#FFF' }
-                                ]}>
-                                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                                <Icon name="sort" size={16} color={colors.primary} />
+                                <Text style={[styles.sortText, { color: colors.primary }]}>
+                                    {sortBy === 'newest' ? 'Newest' : 'Oldest'}
                                 </Text>
                             </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+                        </View>
 
-                    <TouchableOpacity
-                        style={styles.sortToggle}
-                        onPress={() => setSortBy(sortBy === 'newest' ? 'oldest' : 'newest')}
-                    >
-                        <Icon name="sort" size={16} color={colors.primary} />
-                        <Text style={[styles.sortText, { color: colors.primary }]}>
-                            {sortBy === 'newest' ? 'Newest' : 'Oldest'}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
+                        {/* Section Header */}
+                        <View style={styles.sectionHeader}>
+                            <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#111' }]}>
+                                {filter === 'unread' ? 'Unread Feedback' : filter === 'read' ? 'Read Feedback' : 'All Feedback'}
+                            </Text>
+                            {filter !== 'read' && feedbackStats.unread > 0 && (
+                                <TouchableOpacity onPress={handleMarkAllAsRead}>
+                                    <Text style={[styles.markAllText, { color: colors.primary }]}>Mark all as read</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
 
-                {/* Section Header */}
-                <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#111' }]}>
-                        {filter === 'unread' ? 'Unread Feedback' : filter === 'read' ? 'Read Feedback' : 'All Feedback'}
-                    </Text>
-                    {filter !== 'read' && stats.unread > 0 && (
-                        <TouchableOpacity onPress={handleMarkAllAsRead}>
-                            <Text style={[styles.markAllText, { color: colors.primary }]}>Mark all as read</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
-
-                {filteredFeedback.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <Icon name="chat" size={64} color={isDark ? '#333' : '#CCC'} />
-                        <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                            {searchQuery ? 'No matching feedback' : `No ${filter} feedback found`}
-                        </Text>
-                    </View>
-                ) : (
-                    filteredFeedback.map((item, index) => (
-                        <GlassCard
-                            key={item.id}
-                            style={[
-                                styles.feedbackCard,
-                                !item.isRead && { borderColor: colors.primary + '40', borderWidth: 1.5 }
-                            ]}
-                        >
-                            <View style={styles.cardHeader}>
-                                <View style={styles.userInfo}>
-                                    <View style={[styles.avatar, { backgroundColor: colors.primary + '20', borderColor: colors.primary + '40' }]}>
-                                        <Text style={[styles.avatarText, { color: colors.primary }]}>
-                                            {(item.userName || 'A')[0].toUpperCase()}
-                                        </Text>
-                                    </View>
-                                    <View>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                            <Text style={[styles.userName, { color: isDark ? '#FFF' : '#111' }]}>{item.userName || 'Anonymous'}</Text>
-                                            {!item.isRead && (
-                                                <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]} />
-                                            )}
-                                        </View>
-                                        <Text style={[styles.userEmail, { color: colors.textMuted }]}>{item.userEmail || 'no-email@anonymous.com'}</Text>
-                                    </View>
-                                </View>
-                                <View style={[styles.ratingContainer, { backgroundColor: '#F59E0B15' }]}>
-                                    <Icon name="star" size={12} color="#F59E0B" />
-                                    <Text style={styles.ratingText}>{item.rating}</Text>
-                                </View>
-                            </View>
-
-                            <Text style={[styles.message, { color: isDark ? '#E5E7EB' : '#374151' }]}>{item.message}</Text>
-
-                            <View style={styles.cardFooter}>
-                                <Text style={[styles.date, { color: colors.textLight }]}>
-                                    {new Date(item.createdAt).toLocaleDateString()} • {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {filteredFeedback.length === 0 ? (
+                            <View style={styles.emptyState}>
+                                <Icon name="chat" size={64} color={isDark ? '#333' : '#CCC'} />
+                                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                                    {searchQuery ? 'No matching feedback' : `No ${filter} feedback found`}
                                 </Text>
-                                <View style={styles.cardActions}>
-                                    <TouchableOpacity
-                                        style={[styles.miniAction, { backgroundColor: colors.primary + '15' }]}
-                                        onPress={() => handleMarkAsRead(item.id, item.isRead)}
-                                    >
-                                        <Icon name={item.isRead ? 'eye_off' : 'eye'} size={16} color={colors.primary} />
-                                        <Text style={[styles.miniActionText, { color: colors.primary }]}>
-                                            {item.isRead ? 'Unread' : 'Read'}
+                            </View>
+                        ) : (
+                            filteredFeedback.map((item) => (
+                                <GlassCard
+                                    key={item.id}
+                                    style={[
+                                        styles.feedbackCard,
+                                        !item.isRead && { borderColor: colors.primary + '40', borderWidth: 1.5 }
+                                    ]}
+                                >
+                                    <View style={styles.cardHeader}>
+                                        <View style={styles.userInfo}>
+                                            <View style={[styles.avatar, { backgroundColor: colors.primary + '20', borderColor: colors.primary + '40' }]}>
+                                                <Text style={[styles.avatarText, { color: colors.primary }]}>
+                                                    {(item.userName || 'A')[0].toUpperCase()}
+                                                </Text>
+                                            </View>
+                                            <View>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                    <Text style={[styles.userName, { color: isDark ? '#FFF' : '#111' }]}>{item.userName || 'Anonymous'}</Text>
+                                                    {!item.isRead && (
+                                                        <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]} />
+                                                    )}
+                                                </View>
+                                                <Text style={[styles.userEmail, { color: colors.textMuted }]}>{item.userEmail || 'no-email@anonymous.com'}</Text>
+                                            </View>
+                                        </View>
+                                        <View style={[styles.ratingContainer, { backgroundColor: '#F59E0B15' }]}>
+                                            <Icon name="star" size={12} color="#F59E0B" />
+                                            <Text style={styles.ratingText}>{item.rating}</Text>
+                                        </View>
+                                    </View>
+
+                                    <Text style={[styles.message, { color: isDark ? '#E5E7EB' : '#374151' }]}>{item.message}</Text>
+
+                                    <View style={styles.cardFooter}>
+                                        <Text style={[styles.date, { color: colors.textLight }]}>
+                                            {formatDate(item.createdAt)} • {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.miniAction, { backgroundColor: colors.primary + '15' }]}
-                                        onPress={() => handleReply(item)}
-                                    >
-                                        <Icon name="email" size={16} color={colors.primary} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.miniAction, { backgroundColor: '#EF444415' }]}
-                                        onPress={() => handleDelete(item.id)}
-                                    >
-                                        <Icon name="delete" size={16} color="#EF4444" />
-                                    </TouchableOpacity>
-                                </View>
+                                        <View style={styles.cardActions}>
+                                            <TouchableOpacity
+                                                style={[styles.miniAction, { backgroundColor: colors.primary + '15' }]}
+                                                onPress={() => handleMarkAsRead(item.id, item.isRead)}
+                                            >
+                                                <Icon name={item.isRead ? 'eye_off' : 'eye'} size={16} color={colors.primary} />
+                                                <Text style={[styles.miniActionText, { color: colors.primary }]}>
+                                                    {item.isRead ? 'Unread' : 'Read'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.miniAction, { backgroundColor: colors.primary + '15' }]}
+                                                onPress={() => handleReply(item)}
+                                            >
+                                                <Icon name="email" size={16} color={colors.primary} />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.miniAction, { backgroundColor: '#EF444415' }]}
+                                                onPress={() => handleDeleteFeedback(item.id)}
+                                            >
+                                                <Icon name="delete" size={16} color="#EF4444" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </GlassCard>
+                            ))
+                        )}
+
+                        {/* System Diagnostics */}
+                        <View style={[styles.sectionHeader, { marginTop: 30 }]}>
+                            <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#111' }]}>System Diagnostics</Text>
+                        </View>
+
+                        <GlassCard style={styles.diagnosticsCard}>
+                            <Text style={[styles.diagnosticsTitle, { color: colors.primary }]}>Firebase Analytics Setup</Text>
+                            <Text style={[styles.diagnosticsText, { color: isDark ? '#CCC' : '#666' }]}>
+                                Analytics data (Crashlytics & Performance) only appears in the console when the app is running as a <Text style={{ fontWeight: 'bold' }}>Development Client</Text> or <Text style={{ fontWeight: 'bold' }}>Build</Text>.
+                            </Text>
+
+                            <View style={styles.diagnosticsActions}>
+                                <TouchableOpacity
+                                    style={[styles.diagButton, { backgroundColor: '#EF4444' }]}
+                                    onPress={() => {
+                                        Alert.alert('Test Crash', 'This will force the app to crash.', [
+                                            { text: 'Cancel', style: 'cancel' },
+                                            { text: 'Crash Now', onPress: () => crashlytics().crash() }
+                                        ]);
+                                    }}
+                                >
+                                    <Icon name="close" size={16} color="#FFF" />
+                                    <Text style={styles.diagButtonText}>Test Crash</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.diagButton, { backgroundColor: colors.primary }]}
+                                    onPress={async () => {
+                                        const trace = await perf().newTrace('test_trace');
+                                        await trace.start();
+                                        setTimeout(async () => {
+                                            await trace.stop();
+                                            Alert.alert('Success', 'Performance trace "test_trace" sent.');
+                                        }, 2000);
+                                    }}
+                                >
+                                    <Icon name="clock" size={16} color="#000" />
+                                    <Text style={[styles.diagButtonText, { color: '#000' }]}>Test Trace</Text>
+                                </TouchableOpacity>
                             </View>
                         </GlassCard>
-                    ))
+                    </>
+                ) : (
+                    <>
+                        {/* Statistics Row - Coupons */}
+                        <View style={styles.statsRow}>
+                            <GlassCard style={styles.statItem}>
+                                <Icon name="link" size={20} color={colors.primary} />
+                                <Text style={styles.statValue}>{couponStats.total}</Text>
+                                <Text style={styles.statLabel}>Total</Text>
+                            </GlassCard>
+                            <GlassCard style={styles.statItem}>
+                                <Icon name="location" size={20} color={colors.success} />
+                                <Text style={styles.statValue}>{couponStats.active}</Text>
+                                <Text style={styles.statLabel}>Active</Text>
+                            </GlassCard>
+                            <GlassCard style={styles.statItem}>
+                                <Icon name="friends" size={20} color="#F59E0B" />
+                                <Text style={styles.statValue}>{couponStats.used}</Text>
+                                <Text style={styles.statLabel}>Redeemed</Text>
+                            </GlassCard>
+                        </View>
+
+                        {/* Filters & Actions - Coupons */}
+                        <View style={styles.filterSection}>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+                                {['all', 'active', 'expired'].map((f) => (
+                                    <TouchableOpacity
+                                        key={f}
+                                        style={[
+                                            styles.filterChip,
+                                            filter === f && { backgroundColor: colors.primary, borderColor: colors.primary }
+                                        ]}
+                                        onPress={() => setFilter(f)}
+                                    >
+                                        <Text style={[
+                                            styles.filterChipText,
+                                            { color: isDark ? '#FFF' : '#000' },
+                                            filter === f && { color: isDark ? '#000' : '#FFF' }
+                                        ]}>
+                                            {f.charAt(0).toUpperCase() + f.slice(1)}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+
+                            <TouchableOpacity
+                                style={[styles.diagButton, { backgroundColor: colors.primary, flex: 0, paddingHorizontal: 15 }]}
+                                onPress={() => setShowCreateModal(true)}
+                            >
+                                <Icon name="add" size={18} color="#000" />
+                                <Text style={[styles.diagButtonText, { color: '#000' }]}>Create</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Section Header */}
+                        <View style={styles.sectionHeader}>
+                            <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#111' }]}>
+                                {filter === 'active' ? 'Active Coupons' : filter === 'expired' ? 'Expired Coupons' : 'All Coupons'}
+                            </Text>
+                        </View>
+
+                        {filteredCoupons.length === 0 ? (
+                            <View style={styles.emptyState}>
+                                <Icon name="link" size={64} color={isDark ? '#333' : '#CCC'} />
+                                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                                    {searchQuery ? 'No matching coupons' : `No ${filter} coupons found`}
+                                </Text>
+                            </View>
+                        ) : (
+                            filteredCoupons.map((coupon) => {
+                                const isActuallyExpired = coupon.validTo && coupon.validTo < Date.now();
+                                return (
+                                    <GlassCard
+                                        key={coupon.id}
+                                        style={[
+                                            styles.feedbackCard,
+                                            (!coupon.isActive || isActuallyExpired) && { opacity: 0.6 }
+                                        ]}
+                                    >
+                                        <View style={styles.cardHeader}>
+                                            <View style={styles.userInfo}>
+                                                <View style={[styles.avatar, { backgroundColor: colors.primary + '20', borderColor: colors.primary + '40', borderRadius: 10 }]}>
+                                                    <Icon name="link" size={24} color={colors.primary} />
+                                                </View>
+                                                <View>
+                                                    <Text style={[styles.userName, { color: isDark ? '#FFF' : '#111', fontSize: 18, letterSpacing: 1 }]}>
+                                                        {coupon.code}
+                                                    </Text>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                        <View style={[styles.statusDot, { backgroundColor: coupon.isActive && !isActuallyExpired ? colors.success : '#EF4444', height: 8, width: 8 }]} />
+                                                        <Text style={[styles.userEmail, { color: colors.textMuted, marginLeft: 6 }]}>
+                                                            {coupon.isActive && !isActuallyExpired ? 'Active' : (isActuallyExpired ? 'Expired' : 'Disabled')}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            </View>
+                                            <View style={[styles.ratingContainer, { backgroundColor: colors.primary + '20' }]}>
+                                                <Text style={[styles.ratingText, { color: colors.primary }]}>{coupon.discount}{coupon.discount <= 100 ? '%' : ''} OFF</Text>
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.couponStatsGrid}>
+                                            <View style={styles.couponStatBox}>
+                                                <Text style={[styles.couponStatLabel, { color: colors.textMuted }]}>Usage</Text>
+                                                <Text style={[styles.couponStatValue, { color: isDark ? '#FFF' : '#000' }]}>
+                                                    {coupon.usageCount || 0} / {coupon.maxJoiners || '∞'}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.couponStatBox}>
+                                                <Text style={[styles.couponStatLabel, { color: colors.textMuted }]}>Valid From</Text>
+                                                <Text style={[styles.couponStatValue, { color: isDark ? '#FFF' : '#000' }]}>{formatDate(coupon.validFrom)}</Text>
+                                            </View>
+                                            <View style={styles.couponStatBox}>
+                                                <Text style={[styles.couponStatLabel, { color: colors.textMuted }]}>Valid To</Text>
+                                                <Text style={[styles.couponStatValue, { color: isDark ? '#FFF' : '#000' }]}>
+                                                    {coupon.validTo ? formatDate(coupon.validTo) : 'Forever'}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.cardFooter}>
+                                            <Text style={[styles.date, { color: colors.textLight }]}>
+                                                Created: {formatDate(coupon.createdAt)}
+                                            </Text>
+                                            <View style={styles.cardActions}>
+                                                <TouchableOpacity
+                                                    style={[styles.miniAction, { backgroundColor: colors.primary + '15' }]}
+                                                    onPress={() => handleToggleCoupon(coupon.id, coupon.isActive)}
+                                                >
+                                                    <Icon name={coupon.isActive ? 'eye_off' : 'eye'} size={16} color={colors.primary} />
+                                                    <Text style={[styles.miniActionText, { color: colors.primary }]}>
+                                                        {coupon.isActive ? 'Disable' : 'Enable'}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.miniAction, { backgroundColor: '#EF444415' }]}
+                                                    onPress={() => handleDeleteCoupon(coupon.id)}
+                                                >
+                                                    <Icon name="delete" size={16} color="#EF4444" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    </GlassCard>
+                                );
+                            })
+                        )}
+                    </>
                 )}
-
-                {/* System Diagnostics / Firebase Setup */}
-                <View style={[styles.sectionHeader, { marginTop: 30 }]}>
-                    <Text style={[styles.sectionTitle, { color: isDark ? '#FFF' : '#111' }]}>System Diagnostics</Text>
-                </View>
-
-                <GlassCard style={styles.diagnosticsCard}>
-                    <Text style={[styles.diagnosticsTitle, { color: colors.primary }]}>Firebase Analytics Setup</Text>
-                    <Text style={[styles.diagnosticsText, { color: isDark ? '#CCC' : '#666' }]}>
-                        Analytics data (Crashlytics & Performance) only appears in the console when the app is running as a <Text style={{ fontWeight: 'bold' }}>Development Client</Text> or <Text style={{ fontWeight: 'bold' }}>Build</Text>. It does not work in Expo Go.
-                    </Text>
-
-                    <View style={styles.diagnosticsActions}>
-                        <TouchableOpacity
-                            style={[styles.diagButton, { backgroundColor: '#EF4444' }]}
-                            onPress={() => {
-                                Alert.alert('Test Crash', 'This will force the app to crash to test Crashlytics.', [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Crash Now', onPress: () => crashlytics().crash() }
-                                ]);
-                            }}
-                        >
-                            <Icon name="close" size={16} color="#FFF" />
-                            <Text style={styles.diagButtonText}>Test Crash</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.diagButton, { backgroundColor: colors.primary }]}
-                            onPress={async () => {
-                                const trace = await perf().newTrace('test_trace');
-                                await trace.start();
-                                setTimeout(async () => {
-                                    await trace.stop();
-                                    Alert.alert('Success', 'Performance trace "test_trace" has been sent to Firebase.');
-                                }, 2000);
-                            }}
-                        >
-                            <Icon name="clock" size={16} color="#000" />
-                            <Text style={[styles.diagButtonText, { color: '#000' }]}>Test Trace</Text>
-                        </TouchableOpacity>
-                    </View>
-                </GlassCard>
             </ScrollView>
+
+            {/* Create Coupon Modal */}
+            <Modal
+                visible={showCreateModal}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowCreateModal(false)}
+            >
+                <View style={styles.fullScreenOverlay}>
+                    <View style={[styles.dialogContainer, { width: '90%', maxWidth: 450 }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: isDark ? '#FFF' : '#000' }]}>Create New Coupon</Text>
+                            <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+                                <Icon name="close" size={24} color={isDark ? '#FFF' : '#000'} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
+                            <View style={styles.formGroup}>
+                                <Text style={[styles.formLabel, { color: colors.textMuted }]}>COUPON CODE</Text>
+                                <TextInput
+                                    style={[styles.formInput, { color: colors.text, borderColor: colors.primaryBorder }]}
+                                    placeholder="e.g. WELCOME50"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={couponForm.code}
+                                    onChangeText={(text) => setCouponForm({ ...couponForm, code: text })}
+                                    autoCapitalize="characters"
+                                />
+                            </View>
+
+                            <View style={styles.formGroup}>
+                                <Text style={[styles.formLabel, { color: colors.textMuted }]}>DISCOUNT (% or Fixed)</Text>
+                                <TextInput
+                                    style={[styles.formInput, { color: colors.text, borderColor: colors.primaryBorder }]}
+                                    placeholder="e.g. 50"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={couponForm.discount}
+                                    onChangeText={(text) => setCouponForm({ ...couponForm, discount: text })}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+
+                            <View style={styles.formGroup}>
+                                <Text style={[styles.formLabel, { color: colors.textMuted }]}>MAX USAGES (Joiners)</Text>
+                                <TextInput
+                                    style={[styles.formInput, { color: colors.text, borderColor: colors.primaryBorder }]}
+                                    placeholder="e.g. 10 (Leave blank for unlimited)"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={couponForm.maxJoiners}
+                                    onChangeText={(text) => setCouponForm({ ...couponForm, maxJoiners: text })}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+
+                            <View style={styles.formGroup}>
+                                <Text style={[styles.formLabel, { color: colors.textMuted }]}>VALID FROM (YYYY-MM-DD)</Text>
+                                <TextInput
+                                    style={[styles.formInput, { color: colors.text, borderColor: colors.primaryBorder }]}
+                                    placeholder="e.g. 2026-03-01"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={couponForm.validFrom}
+                                    onChangeText={(text) => setCouponForm({ ...couponForm, validFrom: text })}
+                                />
+                            </View>
+
+                            <View style={styles.formGroup}>
+                                <Text style={[styles.formLabel, { color: colors.textMuted }]}>VALID TO (YYYY-MM-DD)</Text>
+                                <TextInput
+                                    style={[styles.formInput, { color: colors.text, borderColor: colors.primaryBorder }]}
+                                    placeholder="e.g. 2026-04-01"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={couponForm.validTo}
+                                    onChangeText={(text) => setCouponForm({ ...couponForm, validTo: text })}
+                                />
+                            </View>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <TouchableOpacity
+                                style={styles.modalCancelBtn}
+                                onPress={() => setShowCreateModal(false)}
+                            >
+                                <Text style={styles.modalCancelText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalSubmitBtn, { backgroundColor: colors.primary }]}
+                                onPress={handleCreateCoupon}
+                            >
+                                <Text style={styles.modalSubmitText}>Create Coupon</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -418,6 +790,30 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingHorizontal: 20,
     },
+    tabContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 20,
+        marginBottom: 10,
+        gap: 10,
+    },
+    tab: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 15,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+        gap: 8,
+    },
+    activeTab: {
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        borderColor: 'rgba(255,255,255,0.2)',
+    },
+    tabText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
     statsRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -434,9 +830,7 @@ const styles = StyleSheet.create({
         ...Platform.select({
             web: {
                 backgroundColor: 'rgba(255,255,255,0.03)',
-                backdropFilter: 'blur(10px)',
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.05)',
+                padding: 12,
             }
         })
     },
@@ -463,10 +857,6 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-    },
-    sectionCount: {
-        fontSize: 13,
-        fontWeight: '600',
     },
     glassCard: {
         borderRadius: 24,
@@ -647,5 +1037,95 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontWeight: 'bold',
         fontSize: 14,
+    },
+    fullScreenOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    dialogContainer: {
+        backgroundColor: '#111',
+        borderRadius: 24,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.5,
+        shadowRadius: 20,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+    },
+    formGroup: {
+        marginBottom: 16,
+    },
+    formLabel: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        letterSpacing: 1,
+        marginBottom: 8,
+    },
+    formInput: {
+        height: 50,
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        fontSize: 16,
+        backgroundColor: 'rgba(0,0,0,0.2)',
+    },
+    modalFooter: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginTop: 20,
+        gap: 12,
+    },
+    modalCancelBtn: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+    },
+    modalCancelText: {
+        color: '#888',
+        fontWeight: 'bold',
+    },
+    modalSubmitBtn: {
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 12,
+    },
+    modalSubmitText: {
+        color: '#000',
+        fontWeight: 'bold',
+    },
+    couponStatsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        marginBottom: 15,
+    },
+    couponStatBox: {
+        flex: 1,
+        minWidth: '45%',
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        padding: 12,
+        borderRadius: 12,
+    },
+    couponStatLabel: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        marginBottom: 4,
+    },
+    couponStatValue: {
+        fontSize: 13,
+        fontWeight: 'bold',
     }
 });
