@@ -33,7 +33,7 @@ if (fs.existsSync(indexPath)) {
   // Replace old favicon references with icon.png
   html = html.replace(/<link rel="shortcut icon" href="\/favicon\.ico"[^>]*>/g, '<link rel="shortcut icon" href="/icon.png" type="image/png" />');
 
-  // Add PWA Meta Tags
+  // Add PWA Meta Tags + AdSense
   const pwaTags = `
     <title>PlanWitch</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover" />
@@ -41,8 +41,11 @@ if (fs.existsSync(indexPath)) {
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="PlanWitch">
     <meta name="theme-color" content="#000000">
+    <meta name="description" content="Premium Travel Companion & Budget Tracker">
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/icon.png">`;
+    <link rel="apple-touch-icon" href="/icon.png">
+    <link rel="shortcut icon" href="/icon.png" type="image/png" />
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_PUBLISHER_ID" crossorigin="anonymous"></script>`;
 
   // Insert tags at the beginning of head
   html = html.replace('<head>', '<head>' + pwaTags);
