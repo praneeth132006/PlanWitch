@@ -45,7 +45,7 @@ if (fs.existsSync(indexPath)) {
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/icon.png">
     <link rel="shortcut icon" href="/icon.png" type="image/png" />
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_PUBLISHER_ID" crossorigin="anonymous"></script>`;
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1266748452983907" crossorigin="anonymous"></script>`;
 
   // Insert tags at the beginning of head
   html = html.replace('<head>', '<head>' + pwaTags);
