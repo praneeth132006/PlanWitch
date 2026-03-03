@@ -30,6 +30,8 @@ if (fs.existsSync(indexPath)) {
   html = html.replace(/<link rel="apple-touch-icon"[^>]*>/g, '');
   html = html.replace(/<link rel="manifest"[^>]*>/g, '');
   html = html.replace(/<title>[^<]*<\/title>/g, '');
+  // Replace old favicon references with icon.png
+  html = html.replace(/<link rel="shortcut icon" href="\/favicon\.ico"[^>]*>/g, '<link rel="shortcut icon" href="/icon.png" type="image/png" />');
 
   // Add PWA Meta Tags
   const pwaTags = `

@@ -7,7 +7,7 @@ on:
         # The branches below must be a subset of the branches above
         branches: ["main"]
     schedule:
-        - cron: "24 15 * * 3" # Run weakly on Wednesdays
+        - cron: "24 15 * * 3" # Run weekly on Wednesdays
 
 jobs:
     analyze:
@@ -22,11 +22,19 @@ jobs:
             fail-fast: false
             matrix:
                 language: ["javascript"]
-                # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python', 'ruby', 'swift' ]
 
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci --ignore-scripts
 
             - name: Initialize CodeQL
               uses: github/codeql-action/init@v3
@@ -34,22 +42,6 @@ jobs:
                   languages: ${{ matrix.language }}
                   queries: security-extended
                   config-file: ./.github/codeql-config.yml
-                  # If you wish to specify custom queries, you can do so here or in a config file.
-                  # By default, queries listed here will override any specified in a config file.
-                  # Prefix the list here with "+" to use these queries and those in the config file.
-                  # queries: ./path/to/local/query, your-org/your-repo/queries@main
-
-            # Skip Autobuild as it's not required for JavaScript/TypeScript and often fails in RN
-
-            # ℹ️ Command-line programs to run using the OS shell.
-            # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
-
-            #   If the Autobuild fails above, remove it and uncomment the following three lines.
-            #   modify them (or add more) to build your code if your project, please refer to the EXAMPLE below for guidance.
-
-            # - run: |
-            #     echo "Run, Build Application using script"
-            #     ./location_of_script_within_repo/buildscript.sh
 
             - name: Perform CodeQL Analysis
               uses: github/codeql-action/analyze@v3
