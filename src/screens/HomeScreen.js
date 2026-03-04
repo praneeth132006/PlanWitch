@@ -792,33 +792,6 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               </View>
             </View>
             <View style={styles.headerActions}>
-              {!tripInfo.isCompleted && (
-                <PremiumButton
-                  title={isAiGenerating ? 'Generating...' : 'AI Suggestions'}
-                  onPress={() => {
-                    const access = checkFeatureAccess('ai_planning');
-                    if (!access.allowed) {
-                      showAlert(
-                        'Premium Feature',
-                        access.reason,
-                        'premium',
-                        () => navigation.navigate('Subscription'),
-                        () => hideAlert(),
-                        null,
-                        'Go Pro',
-                        'Later'
-                      );
-                      return;
-                    }
-                    setAiModalVisible(true);
-                  }}
-                  variant="gradient"
-                  size="small"
-                  loading={isAiGenerating}
-                  disabled={isAiGenerating}
-                  style={{ marginRight: 8 }}
-                />
-              )}
               <PremiumBackButton
                 onPress={() => setShowSettingsModal(true)}
                 style={{ backgroundColor: colors.card, borderColor: colors.primaryBorder }}
@@ -919,6 +892,55 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                 Locations count does not include the starting and ending points.
               </Text>
             </View>
+
+            {/* AI Action Button - Repositioned */}
+            {!tripInfo.isCompleted && (
+              <TouchableOpacity
+                style={{
+                  marginTop: 20,
+                  backgroundColor: colors.primary,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: colors.primary,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 5
+                }}
+                onPress={() => {
+                  const access = checkFeatureAccess('ai_planning');
+                  if (!access.allowed) {
+                    showAlert(
+                      'Premium Feature',
+                      access.reason,
+                      'premium',
+                      () => navigation.navigate('Subscription'),
+                      () => hideAlert(),
+                      null,
+                      'Go Pro',
+                      'Later'
+                    );
+                    return;
+                  }
+                  setAiModalVisible(true);
+                }}
+                disabled={isAiGenerating}
+              >
+                {isAiGenerating ? (
+                  <ActivityIndicator color={colors.bg} size="small" />
+                ) : (
+                  <>
+                    <Icon name="sparkles" size={18} color={colors.bg} style={{ marginRight: 8 }} />
+                    <Text style={{ color: colors.bg, fontSize: 15, fontWeight: '800', letterSpacing: 0.5 }}>
+                      Let AI plan your trip
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
 
           </View>
         </Animated.View>
