@@ -96,7 +96,7 @@ const generateDays = (startDate, endDate) => {
 };
 
 export default function MapScreen({ onBackToHome, onSetScreen }) {
-  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess, addFoodItem, foodItems, addPackingItem, packingItems } = useTravelContext();
+  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess, addFoodItem, foodItems, setFoodItems, addPackingItem, packingItems, setPackingItems } = useTravelContext();
   const { colors } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
@@ -282,7 +282,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     }
   };
 
-  const generatePackingAfterFood = async (itineraryCount, foodCount) => {
+  const generatePackingAfterFood = async (itineraryCount, foodCount, isReplace) => {
     setAlertConfig({
       visible: true,
       title: 'Generating Packing List',
@@ -295,6 +295,10 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     });
 
     try {
+      if (isReplace) {
+        setPackingItems([]);
+      }
+
       const duration = tripDays.length || 3;
       const res = await generatePackingList(
         tripInfo.destination || 'Selected Destination',
@@ -304,18 +308,37 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
       );
 
       let packingAddedCount = 0;
+      const addedPackingSignatures = new Set();
+
       if (res.success && res.recommendations) {
         for (const categoryData of res.recommendations) {
           const category = categoryData.category || 'Other';
+          const lowerCat = category.toLowerCase();
+
+          // Visibility Fix: Normalize category to match PackingScreen's lowercase keys
+          let normalizedCategory = 'other';
+          if (lowerCat.includes('essential')) normalizedCategory = 'essentials';
+          else if (lowerCat.includes('cloth')) normalizedCategory = 'clothing';
+          else if (lowerCat.includes('toilet')) normalizedCategory = 'toiletries';
+          else if (lowerCat.includes('elect')) normalizedCategory = 'electronics';
+          else if (lowerCat.includes('document')) normalizedCategory = 'documents';
+          else if (lowerCat.includes('health')) normalizedCategory = 'health';
+          else if (lowerCat.includes('accessor')) normalizedCategory = 'accessories';
+
           const items = categoryData.items || [];
 
           for (const itemName of items) {
-            const exists = packingItems.some(existing =>
-              existing.name.toLowerCase() === itemName.toLowerCase()
+            const cleanName = itemName.trim().toLowerCase();
+            if (addedPackingSignatures.has(cleanName)) continue;
+
+            // Duplicate Fix: Check against current snapshot and local batch
+            const exists = !isReplace && packingItems.some(existing =>
+              existing.name.toLowerCase() === cleanName
             );
 
             if (!exists) {
-              await addPackingItem({ name: itemName, category });
+              addedPackingSignatures.add(cleanName);
+              await addPackingItem({ name: itemName, category: normalizedCategory });
               packingAddedCount++;
             }
           }
@@ -434,6 +457,10 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
         });
 
         try {
+          if (isReplace) {
+            setFoodItems([]);
+          }
+
           const stops = tripInfo.stops || [];
           const stopNames = stops.map(s => typeof s === 'object' ? (s.name || s.formatted_address || 'Stop') : s);
           const uniqueLocations = [...new Set([tripInfo.destination, ...stopNames])].filter(Boolean);
@@ -442,6 +469,8 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
           const recommendations = foodResult.recommendations || foodResult.suggestions || [];
 
           let foodAddedCount = 0;
+          const addedFoodSignatures = new Set();
+
           if (foodResult.success && recommendations.length > 0) {
             // Build places list same as FoodChecklistScreen
             const places = uniqueLocations;
@@ -454,13 +483,19 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
               const items = placeData.items || [];
               for (const item of items) {
-                // Skip duplicates already in food checklist
-                const exists = foodItems.some(existing =>
+                const cleanName = item.name.trim().toLowerCase();
+                const signature = `${targetPlace}:${cleanName}`;
+
+                if (addedFoodSignatures.has(signature)) continue;
+
+                // Duplicate Fix: Check against current snapshot and local batch
+                const exists = !isReplace && foodItems.some(existing =>
                   existing.place === targetPlace &&
-                  existing.name.toLowerCase() === item.name.toLowerCase()
+                  existing.name.toLowerCase() === cleanName
                 );
 
                 if (!exists) {
+                  addedFoodSignatures.add(signature);
                   let normalizedType = item.type;
                   if (typeof item.type === 'string') {
                     normalizedType = item.type.toLowerCase().includes('non') ? 'Non-Veg' : 'Veg';
@@ -473,10 +508,10 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
           }
 
           // Food done, now generate packing list
-          await generatePackingAfterFood(addedCount, foodAddedCount);
+          await generatePackingAfterFood(addedCount, foodAddedCount, isReplace);
         } catch (foodError) {
           // Food generation failed, but itinerary succeeded - still try packing
-          await generatePackingAfterFood(addedCount, 0);
+          await generatePackingAfterFood(addedCount, 0, isReplace);
         }
       } else {
         setTimeout(() => {
