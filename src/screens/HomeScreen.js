@@ -11,8 +11,41 @@ import Calendar from '../components/Calendar';
 import TripMap from '../components/TripMap';
 import PremiumBackButton from '../components/PremiumBackButton';
 import PlacesAutocomplete from '../components/PlacesAutocomplete';
-import { generateDestinationInfo } from '../services/aiService';
+import { generateDestinationInfo, generateTripItinerary, generateFoodRecommendations, generatePackingList, generateBudgetPlan } from '../services/aiService';
 import BannerAd from '../components/BannerAd';
+import { CustomAlert } from '../components/CustomAlert';
+import DatePicker12 from '../components/ui/DatePicker12';
+import PremiumButton from '../components/PremiumButton';
+
+const INTEREST_TAGS = ['Nature', 'History', 'Food', 'Adventure', 'Shopping', 'Culture', 'Relaxation', 'Nightlife'];
+const PACE_OPTIONS = ['Relaxed', 'Moderate', 'Packed'];
+const BUDGET_PREFERENCES = ['Low', 'Mid', 'Luxury', 'Mixed'];
+const BUDGET_PRIORITIES = ['Stay', 'Food', 'Experiences', 'Shopping'];
+const ACCOMMODATION_TYPES = ['Hotel', 'Hostel', 'Homestay', 'Airbnb'];
+const HOTEL_PRICE_RANGES = ['< 2000', '2000 - 5000', '5000 - 10000', '10000+'];
+const TRANSPORT_MODES = ['Flight', 'Train', 'Bus', 'Car', 'Bike'];
+const LOCAL_TRANSPORT_OPTIONS = ['Public transport', 'Cab', 'Rental bike'];
+
+const STOP_TYPES = [
+  { key: 'flight', label: 'Flight', icon: 'flight', color: '#87CEEB', category: 'transport' },
+  { key: 'train', label: 'Train', icon: 'train', color: '#4682B4', category: 'transport' },
+  { key: 'bus', label: 'Bus', icon: 'bus', color: '#32CD32', category: 'transport' },
+  { key: 'car', label: 'Car/Taxi', icon: 'car', color: '#FFA500', category: 'transport' },
+  { key: 'hotel', label: 'Hotel', icon: 'hotel', color: '#DDA0DD', category: 'accommodation' },
+  { key: 'checkin', label: 'Check-in', icon: 'checkin', color: '#9370DB', category: 'accommodation' },
+  { key: 'checkout', label: 'Check-out', icon: 'checkout', color: '#8A2BE2', category: 'accommodation' },
+  { key: 'breakfast', label: 'Breakfast', icon: 'breakfast', color: '#FFA07A', category: 'meal' },
+  { key: 'lunch', label: 'Lunch', icon: 'lunch', color: '#98FB98', category: 'meal' },
+  { key: 'dinner', label: 'Dinner', icon: 'dinner', color: '#FF6347', category: 'meal' },
+  { key: 'cafe', label: 'Cafe/Snack', icon: 'cafe', color: '#D2691E', category: 'meal' },
+  { key: 'attraction', label: 'Attraction', icon: 'attraction', color: '#00FF7F', category: 'activity' },
+  { key: 'tour', label: 'Tour', icon: 'tour', color: '#FF6B6B', category: 'activity' },
+  { key: 'shopping', label: 'Shopping', icon: 'shopping', color: '#FF69B4', category: 'activity' },
+  { key: 'nature', label: 'Nature', icon: 'nature', color: '#228B22', category: 'activity' },
+  { key: 'beach', label: 'Beach', icon: 'beach', color: '#00CED1', category: 'activity' },
+  { key: 'museum', label: 'Museum', icon: 'museum', color: '#8B4513', category: 'activity' },
+  { key: 'nightlife', label: 'Nightlife', icon: 'nightlife', color: '#9932CC', category: 'activity' },
+];
 
 export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const {
@@ -52,6 +85,57 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
   // Derived State
   const isAdmin = tripInfo.tripType === 'friends' || tripInfo.tripType === 'family' || true; // Allow all for now or check ownerId
+
+  // AI State
+  const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [aiPreferences, setAiPreferences] = useState({
+    pace: 'Moderate',
+    interests: [],
+    startTime: '09:00 AM',
+    endTime: '09:00 PM',
+    locationDurations: {},
+    budget_min: '',
+    budget_max: '',
+    budget_preference: 'Mid',
+    budget_priority: ['Experiences'],
+    accommodation_type: 'Hotel',
+    hotel_price: '2000 - 5000',
+    transport_modes: ['Flight', 'Car'],
+    local_transport: ['Cab']
+  });
+
+  // Custom Alert State
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false, title: '', message: '', type: 'info',
+    onConfirm: () => { }, onCancel: null, onNeutral: null,
+    confirmText: 'OK', cancelText: 'Cancel', neutralText: ''
+  });
+
+  const showAlert = (title, message, type = 'info', onConfirm = () => hideAlert(), onCancel = null, onNeutral = null, confirmText = 'OK', cancelText = 'Cancel', neutralText = '') => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm, onCancel, onNeutral, confirmText, cancelText, neutralText });
+  };
+
+  const hideAlert = () => {
+    setAlertConfig(prev => ({ ...prev, visible: false }));
+  };
+
+  const handleTogglePriority = (priority) => {
+    setAiPreferences(prev => ({
+      ...prev,
+      budget_priority: prev.budget_priority.includes(priority)
+        ? prev.budget_priority.filter(p => p !== priority)
+        : [...prev.budget_priority, priority]
+    }));
+  };
+
+  const handleToggleInterest = (interest) => {
+    setAiPreferences(prev => {
+      const exists = prev.interests.includes(interest);
+      if (exists) return { ...prev, interests: prev.interests.filter(i => i !== interest) };
+      return { ...prev, interests: [...prev.interests, interest] };
+    });
+  };
 
   useEffect(() => {
     // Show all travelers including self
@@ -315,6 +399,252 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   };
 
 
+  const generateDaysForAi = (startDate, endDate) => {
+    const days = [];
+    if (!startDate || !endDate) {
+      for (let i = 1; i <= 5; i++) days.push({ dayNumber: i, dateString: `Day ${i}`, date: null });
+      return days;
+    }
+    const parseDate = (dateStr) => {
+      if (!dateStr) return new Date();
+      if (dateStr instanceof Date) return dateStr;
+      try {
+        const parts = dateStr.split(' ');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return new Date(parseInt(parts[2]), months.indexOf(parts[1]), parseInt(parts[0]));
+      } catch (e) {
+        return new Date(dateStr);
+      }
+    };
+    try {
+      const start = parseDate(startDate);
+      const end = parseDate(endDate);
+      let currentDate = new Date(start);
+      let dayNumber = 1;
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      while (currentDate <= end) {
+        days.push({
+          dayNumber, dateString: `${currentDate.getDate()} ${months[currentDate.getMonth()]}`,
+          dayName: dayNames[currentDate.getDay()], shortDay: dayNames[currentDate.getDay()].slice(0, 3),
+          date: new Date(currentDate), fullDate: `${currentDate.getDate()} ${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`,
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+        dayNumber++;
+      }
+    } catch (e) {
+      for (let i = 1; i <= 5; i++) days.push({ dayNumber: i, dateString: `Day ${i}`, date: null });
+    }
+    return days;
+  };
+
+  const finalizeAiGeneration = async (itineraryCount, foodCount, isReplace) => {
+    showAlert('Generating Packing List', 'Almost there! AI is now suggesting essential items to pack...', 'loading');
+
+    try {
+      if (isReplace) setPackingItems([]);
+
+      const daysArray = generateDaysForAi(tripInfo.startDate, tripInfo.endDate);
+      const duration = daysArray.length || 3;
+      const res = await generatePackingList(
+        tripInfo.destination || 'Selected Destination',
+        tripInfo.startDate || 'Upcoming Trip',
+        duration,
+        tripInfo.tripType || 'solo'
+      );
+
+      let packingAddedCount = 0;
+      if (res.success && res.recommendations) {
+        const addedPackingSignatures = new Set();
+        for (const categoryData of res.recommendations) {
+          const lowerCat = (categoryData.category || 'Other').toLowerCase();
+          let normalizedCategory = 'other';
+          if (lowerCat.includes('essential')) normalizedCategory = 'essentials';
+          else if (lowerCat.includes('cloth')) normalizedCategory = 'clothing';
+          else if (lowerCat.includes('toilet')) normalizedCategory = 'toiletries';
+          else if (lowerCat.includes('elect')) normalizedCategory = 'electronics';
+          else if (lowerCat.includes('document')) normalizedCategory = 'documents';
+          else if (lowerCat.includes('health')) normalizedCategory = 'health';
+          else if (lowerCat.includes('accessor')) normalizedCategory = 'accessories';
+
+          for (const itemName of (categoryData.items || [])) {
+            const cleanName = itemName.trim().toLowerCase();
+            const exists = !isReplace && packingItems.some(existing => existing.name.toLowerCase() === cleanName);
+            if (!exists && !addedPackingSignatures.has(cleanName)) {
+              addedPackingSignatures.add(cleanName);
+              await addPackingItem({ name: itemName, category: normalizedCategory });
+              packingAddedCount++;
+            }
+          }
+        }
+      }
+
+      // Budget
+      showAlert('Generating Budget Plan', 'AI is calculating a realistic budget based on your preferences...', 'loading');
+      try {
+        const travelersCount = tripInfo.participants ? (Array.isArray(tripInfo.participants) ? tripInfo.participants.length : Object.keys(tripInfo.participants).length) : 1;
+        const budgetResult = await generateBudgetPlan({
+          destination: tripInfo.destination,
+          duration: duration,
+          travelers: travelersCount,
+          budget_min: aiPreferences.budget_min,
+          budget_max: aiPreferences.budget_max,
+          preference: aiPreferences.budget_preference,
+          priority: aiPreferences.budget_priority?.join(', '),
+          accommodation: aiPreferences.accommodation_type,
+          hotel_price: aiPreferences.hotel_price,
+          primary_transport: aiPreferences.transport_modes?.join(', '),
+          local_transport: aiPreferences.local_transport?.join(', ')
+        });
+
+        if (budgetResult.success && budgetResult.categories) {
+          setBudget({ total: budgetResult.total, categories: budgetResult.categories });
+        }
+      } catch (e) {
+        console.warn("Budget generation failed", e);
+      }
+
+      hideAlert();
+      setTimeout(() => {
+        let msg = `AI has added ${itineraryCount} stops to your itinerary`;
+        if (foodCount > 0) msg += ` and ${foodCount} food items`;
+        if (packingAddedCount > 0) msg += ` and ${packingAddedCount} packing items`;
+        msg += ' and a complete budget plan!';
+        showAlert('Generation Complete', msg, 'success');
+      }, 500);
+    } catch (error) {
+      hideAlert();
+      setTimeout(() => {
+        showAlert('Partial Success', `AI added ${itineraryCount} stops but failed on packing/budget.`, 'success');
+      }, 500);
+    }
+  };
+
+  const executeAiGeneration = async (isReplace, currentItinerary) => {
+    setAiModalVisible(false);
+    setIsAiGenerating(true);
+    showAlert('Generating Itinerary', 'AI is crafting your perfect trip plan... This may take a moment.', 'loading');
+
+    try {
+      const daysArray = generateDaysForAi(tripInfo.startDate, tripInfo.endDate);
+      const daysCount = daysArray.length || 3;
+      const result = await generateTripItinerary(
+        tripInfo.destination,
+        daysCount,
+        aiPreferences.budget_preference || 'Mid',
+        travelers.length.toString(),
+        aiPreferences.interests.join(', '),
+        aiPreferences
+      );
+
+      hideAlert();
+      if (result.success && result.itinerary) {
+        if (isReplace) setItinerary([]);
+
+        let addedCount = 0;
+        const addedSignatures = new Set();
+
+        for (const day of result.itinerary) {
+          const dayNum = parseInt(day.day);
+          for (const activity of day.activities) {
+            let type = activity.type?.toLowerCase() || 'attraction';
+            if (!STOP_TYPES.some(t => t.key === type)) {
+              if (type.includes('meal')) type = 'lunch';
+              else if (type.includes('visit')) type = 'attraction';
+              else type = 'attraction';
+            }
+
+            const cleanTitle = activity.title.toLowerCase().trim();
+            const signature = `${dayNum}-${cleanTitle}`;
+            if (addedSignatures.has(signature)) continue;
+
+            const isDuplicate = !isReplace && currentItinerary.some(item => {
+              if (parseInt(item.dayNumber) !== dayNum) return false;
+              const existingName = (item.name || '').toLowerCase().trim();
+              return existingName === cleanTitle || existingName.includes(cleanTitle) || cleanTitle.includes(existingName);
+            });
+
+            if (!isDuplicate) {
+              addedSignatures.add(signature);
+              await addItineraryItem({
+                name: activity.title,
+                type: type,
+                dayNumber: dayNum,
+                time: activity.time,
+                notes: activity.description,
+                location: activity.location,
+                duration: activity.duration,
+                cost: activity.cost || '',
+                latitude: 0,
+                longitude: 0
+              });
+              addedCount++;
+            }
+          }
+        }
+
+        // Food
+        showAlert('Generating Food Suggestions', 'Now finding the best local dishes for your trip locations...', 'loading');
+        try {
+          if (isReplace) setFoodItems([]);
+          const stops = tripInfo.stops || [];
+          const stopNames = stops.map(s => typeof s === 'object' ? (s.name || s.formatted_address || 'Stop') : s);
+          const uniqueLocations = [...new Set([tripInfo.destination, ...stopNames])].filter(Boolean);
+
+          const foodResult = await generateFoodRecommendations(uniqueLocations, 'Any');
+          let foodAddedCount = 0;
+          if (foodResult.success && foodResult.recommendations) {
+            const addedFoodSignatures = new Set();
+            for (const placeData of foodResult.recommendations) {
+              const targetPlace = uniqueLocations.find(p => p.toLowerCase().includes((placeData.place || '').toLowerCase())) || uniqueLocations[0];
+              for (const item of (placeData.items || [])) {
+                const signature = `${targetPlace}:${item.name.trim().toLowerCase()}`;
+                const exists = !isReplace && foodItems.some(f => f.place === targetPlace && f.name.toLowerCase() === item.name.trim().toLowerCase());
+                if (!exists && !addedFoodSignatures.has(signature)) {
+                  addedFoodSignatures.add(signature);
+                  await addFoodItem(targetPlace, item.name, item.type?.toLowerCase().includes('non') ? 'Non-Veg' : 'Veg');
+                  foodAddedCount++;
+                }
+              }
+            }
+          }
+          await finalizeAiGeneration(addedCount, foodAddedCount, isReplace);
+        } catch (e) {
+          await finalizeAiGeneration(addedCount, 0, isReplace);
+        }
+      } else {
+        showAlert('AI Error', result.error || 'Could not generate itinerary.', 'error');
+      }
+    } catch (e) {
+      hideAlert();
+      showAlert('Error', e.message, 'error');
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  const handleGenerateAiPlan = async () => {
+    if (!tripInfo.destination) {
+      showAlert('Enter Destination', 'Please select a destination first to generate an itinerary.', 'error');
+      return;
+    }
+
+    if (itinerary.length > 0 || foodItems.length > 0 || packingItems.length > 0) {
+      showAlert(
+        'Existing Items',
+        'You already have items in your trip. Do you want to replace them or cancel?',
+        'warning',
+        () => executeAiGeneration(true, itinerary), // Replace
+        null,
+        'Replace All',
+        'Cancel',
+        ''
+      );
+    } else {
+      executeAiGeneration(true, []);
+    }
+  };
+
   const handlePersonalizedPlan = () => {
     const access = checkFeatureAccess('ai_planning');
     if (!access.allowed) {
@@ -462,6 +792,33 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               </View>
             </View>
             <View style={styles.headerActions}>
+              {!tripInfo.isCompleted && (
+                <PremiumButton
+                  title={isAiGenerating ? 'Generating...' : 'AI Suggestions'}
+                  onPress={() => {
+                    const access = checkFeatureAccess('ai_planning');
+                    if (!access.allowed) {
+                      showAlert(
+                        'Premium Feature',
+                        access.reason,
+                        'premium',
+                        () => navigation.navigate('Subscription'),
+                        () => hideAlert(),
+                        null,
+                        'Go Pro',
+                        'Later'
+                      );
+                      return;
+                    }
+                    setAiModalVisible(true);
+                  }}
+                  variant="gradient"
+                  size="small"
+                  loading={isAiGenerating}
+                  disabled={isAiGenerating}
+                  style={{ marginRight: 8 }}
+                />
+              )}
               <PremiumBackButton
                 onPress={() => setShowSettingsModal(true)}
                 style={{ backgroundColor: colors.card, borderColor: colors.primaryBorder }}
@@ -1005,6 +1362,402 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
       {/* Banner Ad at bottom of screen if free */}
 
+      <Modal visible={aiModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { height: '90%', maxHeight: '90%' }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>✨ AI Trip Planner</Text>
+              <TouchableOpacity onPress={() => setAiModalVisible(false)} style={{ padding: 4 }}>
+                <Icon name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+              {/* 1. Trip Timings */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Trip Timings</Text>
+              <View style={{ marginBottom: 20, backgroundColor: colors.cardLight, padding: 16, borderRadius: 16 }}>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.text, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>Starts At</Text>
+                    <DatePicker12
+                      mode="time"
+                      value={(() => {
+                        const d = new Date();
+                        const [time, period] = (aiPreferences.startTime || '09:00 AM').split(' ');
+                        const [hours, minutes] = time.split(':');
+                        let h = parseInt(hours);
+                        if (period === 'PM' && h !== 12) h += 12;
+                        if (period === 'AM' && h === 12) h = 0;
+                        d.setHours(h, parseInt(minutes), 0, 0);
+                        return d;
+                      })()}
+                      onChange={(date) => setAiPreferences(prev => ({
+                        ...prev,
+                        startTime: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      }))}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.text, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>Ends At</Text>
+                    <DatePicker12
+                      mode="time"
+                      value={(() => {
+                        const d = new Date();
+                        const [time, period] = (aiPreferences.endTime || '09:00 PM').split(' ');
+                        const [hours, minutes] = time.split(':');
+                        let h = parseInt(hours);
+                        if (period === 'PM' && h !== 12) h += 12;
+                        if (period === 'AM' && h === 12) h = 0;
+                        d.setHours(h, parseInt(minutes), 0, 0);
+                        return d;
+                      })()}
+                      onChange={(date) => setAiPreferences(prev => ({
+                        ...prev,
+                        endTime: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      }))}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* 2. Detailed Places Duration */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Places & Duration</Text>
+              <View style={{ marginBottom: 24, gap: 10 }}>
+                {tripInfo.stops && tripInfo.stops.length > 0 ? (
+                  tripInfo.stops.map((stop, index) => {
+                    const stopName = typeof stop === 'object' ? (stop.name || `Stop ${index + 1}`) : stop;
+                    const durationKey = `stop_${index}`;
+                    return (
+                      <View key={index} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, padding: 12, borderRadius: 12 }}>
+                        <Text style={{ flex: 1, color: colors.text, fontSize: 14, fontWeight: '500' }}>{stopName}</Text>
+                        <TextInput
+                          style={{
+                            backgroundColor: colors.bg,
+                            color: colors.text,
+                            padding: 8,
+                            borderRadius: 8,
+                            width: 80,
+                            textAlign: 'center',
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            outlineStyle: 'none'
+                          }}
+                          placeholder="Days"
+                          placeholderTextColor={colors.textMuted}
+                          keyboardType="numeric"
+                          value={aiPreferences.locationDurations?.[durationKey] || ''}
+                          onChangeText={(t) => setAiPreferences(prev => ({
+                            ...prev,
+                            locationDurations: { ...prev.locationDurations, [durationKey]: t }
+                          }))}
+                        />
+                      </View>
+                    );
+                  })
+                ) : (
+                  <Text style={{ color: colors.textMuted, fontSize: 14 }}>No main stops added yet. Add stops in settings to plan per location.</Text>
+                )}
+              </View>
+
+              {/* 3. Pace */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Trip Pace</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
+                {PACE_OPTIONS.map(pace => (
+                  <TouchableOpacity
+                    key={pace}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 12,
+                      backgroundColor: aiPreferences.pace === pace ? colors.primary : colors.bg,
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: aiPreferences.pace === pace ? colors.primary : colors.border
+                    }}
+                    onPress={() => setAiPreferences(prev => ({ ...prev, pace }))}
+                  >
+                    <Text style={{
+                      fontWeight: '800',
+                      color: aiPreferences.pace === pace ? '#000000' : colors.textMuted
+                    }}>{pace}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* 4. Interests */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Interests</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 30 }}>
+                {INTEREST_TAGS.map(tag => {
+                  const selected = aiPreferences.interests.includes(tag);
+                  return (
+                    <TouchableOpacity
+                      key={tag}
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 10,
+                        borderRadius: 20,
+                        backgroundColor: selected ? colors.primary + '20' : colors.bg,
+                        borderWidth: 1,
+                        borderColor: selected ? colors.primary : colors.border
+                      }}
+                      onPress={() => handleToggleInterest(tag)}
+                    >
+                      <Text style={{
+                        color: selected ? colors.primary : colors.textMuted,
+                        fontWeight: selected ? '700' : '500'
+                      }}>{tag}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* 5. Budget Range */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Budget Range</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 4 }}>Minimum Budget</Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: colors.cardLight,
+                      color: colors.text,
+                      padding: 12,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      outlineStyle: 'none'
+                    }}
+                    placeholder="e.g. 10000"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    value={aiPreferences.budget_min}
+                    onChangeText={(t) => setAiPreferences(prev => ({ ...prev, budget_min: t }))}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 4 }}>Maximum Budget</Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: colors.cardLight,
+                      color: colors.text,
+                      padding: 12,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      outlineStyle: 'none'
+                    }}
+                    placeholder="e.g. 50000"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    value={aiPreferences.budget_max}
+                    onChangeText={(t) => setAiPreferences(prev => ({ ...prev, budget_max: t }))}
+                  />
+                </View>
+              </View>
+
+              {/* 6. Budget Preference */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Budget Preference</Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
+                {BUDGET_PREFERENCES.map(pref => (
+                  <TouchableOpacity
+                    key={pref}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 20,
+                      backgroundColor: aiPreferences.budget_preference === pref ? colors.primary + '20' : colors.bg,
+                      borderWidth: 1,
+                      borderColor: aiPreferences.budget_preference === pref ? colors.primary : colors.border
+                    }}
+                    onPress={() => setAiPreferences(prev => ({ ...prev, budget_preference: pref }))}
+                  >
+                    <Text style={{
+                      color: aiPreferences.budget_preference === pref ? colors.primary : colors.textMuted,
+                      fontWeight: aiPreferences.budget_preference === pref ? '700' : '500'
+                    }}>{pref}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Major Expense Priority</Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
+                {BUDGET_PRIORITIES.map(priority => {
+                  const selected = aiPreferences.budget_priority.includes(priority);
+                  return (
+                    <TouchableOpacity
+                      key={priority}
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 10,
+                        borderRadius: 20,
+                        backgroundColor: selected ? colors.primary + '20' : colors.bg,
+                        borderWidth: 1,
+                        borderColor: selected ? colors.primary : colors.border
+                      }}
+                      onPress={() => handleTogglePriority(priority)}
+                    >
+                      <Text style={{
+                        color: selected ? colors.primary : colors.textMuted,
+                        fontWeight: selected ? '700' : '500'
+                      }}>{priority}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Accommodation</Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                {ACCOMMODATION_TYPES.map(type => (
+                  <TouchableOpacity
+                    key={type}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 20,
+                      backgroundColor: aiPreferences.accommodation_type === type ? colors.primary + '20' : colors.bg,
+                      borderWidth: 1,
+                      borderColor: aiPreferences.accommodation_type === type ? colors.primary : colors.border
+                    }}
+                    onPress={() => setAiPreferences(prev => ({ ...prev, accommodation_type: type }))}
+                  >
+                    <Text style={{
+                      color: aiPreferences.accommodation_type === type ? colors.primary : colors.textMuted,
+                      fontWeight: aiPreferences.accommodation_type === type ? '700' : '500'
+                    }}>{type}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 8 }}>Price Range per Night</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {HOTEL_PRICE_RANGES.map(range => (
+                    <TouchableOpacity
+                      key={range}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 16,
+                        backgroundColor: aiPreferences.hotel_price === range ? colors.primary + '20' : colors.bg,
+                        borderWidth: 1,
+                        borderColor: aiPreferences.hotel_price === range ? colors.primary : colors.border
+                      }}
+                      onPress={() => setAiPreferences(prev => ({ ...prev, hotel_price: range }))}
+                    >
+                      <Text style={{
+                        color: aiPreferences.hotel_price === range ? colors.primary : colors.textMuted,
+                        fontWeight: aiPreferences.hotel_price === range ? '700' : '500',
+                        fontSize: 12
+                      }}>{range}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Transport</Text>
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 8 }}>Primary Transport (Long distance)</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {TRANSPORT_MODES.map(mode => {
+                    const selected = aiPreferences.transport_modes.includes(mode);
+                    return (
+                      <TouchableOpacity
+                        key={mode}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 16,
+                          backgroundColor: selected ? colors.primary + '20' : colors.bg,
+                          borderWidth: 1,
+                          borderColor: selected ? colors.primary : colors.border
+                        }}
+                        onPress={() => setAiPreferences(prev => ({
+                          ...prev,
+                          transport_modes: selected ? prev.transport_modes.filter(m => m !== mode) : [...prev.transport_modes, mode]
+                        }))}
+                      >
+                        <Text style={{
+                          color: selected ? colors.primary : colors.textMuted,
+                          fontWeight: selected ? '700' : '500',
+                          fontSize: 12
+                        }}>{mode}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={{ marginBottom: 30 }}>
+                <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 8 }}>Local Transport Preference</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {LOCAL_TRANSPORT_OPTIONS.map(opt => {
+                    const selected = aiPreferences.local_transport.includes(opt);
+                    return (
+                      <TouchableOpacity
+                        key={opt}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 16,
+                          backgroundColor: selected ? colors.primary + '20' : colors.bg,
+                          borderWidth: 1,
+                          borderColor: selected ? colors.primary : colors.border
+                        }}
+                        onPress={() => setAiPreferences(prev => ({
+                          ...prev,
+                          local_transport: selected ? prev.local_transport.filter(o => o !== opt) : [...prev.local_transport, opt]
+                        }))}
+                      >
+                        <Text style={{
+                          color: selected ? colors.primary : colors.textMuted,
+                          fontWeight: selected ? '700' : '500',
+                          fontSize: 12
+                        }}>{opt}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: colors.primary,
+                  padding: 16,
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  marginBottom: 30
+                }}
+                onPress={handleGenerateAiPlan}
+                disabled={isAiGenerating}
+              >
+                {isAiGenerating ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <>
+                    <Icon name="sparkles" size={20} color="#000000" />
+                    <Text style={{ color: '#000000', fontSize: 16, fontWeight: '900', marginLeft: 8 }}>Generate Timed Itinerary</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        onNeutral={alertConfig.onNeutral}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+        neutralText={alertConfig.neutralText}
+      />
     </SafeAreaView >
   );
 }
