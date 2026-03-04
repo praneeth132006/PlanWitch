@@ -10,7 +10,7 @@ import { useTheme } from '../context/ThemeContext';
 import TimePickerModal from '../components/TimePickerModal';
 import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
-import { generateTripItinerary, generateFoodRecommendations } from '../services/aiService';
+import { generateTripItinerary, generateFoodRecommendations, generatePackingList } from '../services/aiService';
 import DatePicker12 from '../components/ui/DatePicker12';
 import PremiumButton from '../components/PremiumButton';
 
@@ -96,7 +96,7 @@ const generateDays = (startDate, endDate) => {
 };
 
 export default function MapScreen({ onBackToHome, onSetScreen }) {
-  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess, addFoodItem, foodItems } = useTravelContext();
+  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess, addFoodItem, foodItems, addPackingItem, packingItems } = useTravelContext();
   const { colors } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
@@ -282,6 +282,67 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     }
   };
 
+  const generatePackingAfterFood = async (itineraryCount, foodCount) => {
+    setAlertConfig({
+      visible: true,
+      title: 'Generating Packing List',
+      message: 'Almost there! AI is now suggesting essential items to pack...',
+      type: 'loading',
+      onConfirm: null,
+      onCancel: null,
+      confirmText: '',
+      cancelText: ''
+    });
+
+    try {
+      const duration = tripDays.length || 3;
+      const res = await generatePackingList(
+        tripInfo.destination || 'Selected Destination',
+        tripInfo.startDate || 'Upcoming Trip',
+        duration,
+        tripInfo.tripType || 'solo'
+      );
+
+      let packingAddedCount = 0;
+      if (res.success && res.recommendations) {
+        for (const categoryData of res.recommendations) {
+          const category = categoryData.category || 'Other';
+          const items = categoryData.items || [];
+
+          for (const itemName of items) {
+            const exists = packingItems.some(existing =>
+              existing.name.toLowerCase() === itemName.toLowerCase()
+            );
+
+            if (!exists) {
+              await addPackingItem({ name: itemName, category });
+              packingAddedCount++;
+            }
+          }
+        }
+      }
+
+      hideAlert();
+      setTimeout(() => {
+        let message = `AI has added ${itineraryCount} stops to your itinerary`;
+        if (foodCount > 0) message += ` and ${foodCount} food items`;
+        if (packingAddedCount > 0) message += ` and ${packingAddedCount} packing items`;
+        message += '!';
+
+        showAlert('Generation Complete', message, 'success');
+      }, 500);
+    } catch (error) {
+      hideAlert();
+      setTimeout(() => {
+        let message = `AI has added ${itineraryCount} stops to your itinerary`;
+        if (foodCount > 0) message += ` and ${foodCount} food items`;
+        message += '! (Packing list could not be generated)';
+
+        showAlert('Partial Success', message, 'success');
+      }, 500);
+    }
+  };
+
   const executeAiGeneration = async (isReplace, currentItems) => {
     setAiModalVisible(false);
     setIsAiGenerating(true);
@@ -411,20 +472,11 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
             }
           }
 
-          hideAlert();
-          setTimeout(() => {
-            showAlert(
-              'Success',
-              `AI has added ${addedCount} stops to your itinerary${foodAddedCount > 0 ? ` and ${foodAddedCount} food items to your food checklist` : ''}!`,
-              'success'
-            );
-          }, 500);
+          // Food done, now generate packing list
+          await generatePackingAfterFood(addedCount, foodAddedCount);
         } catch (foodError) {
-          // Food generation failed, but itinerary succeeded - still show partial success
-          hideAlert();
-          setTimeout(() => {
-            showAlert('Partial Success', `AI has added ${addedCount} stops to your itinerary! (Food suggestions could not be generated)`, 'success');
-          }, 500);
+          // Food generation failed, but itinerary succeeded - still try packing
+          await generatePackingAfterFood(addedCount, 0);
         }
       } else {
         setTimeout(() => {

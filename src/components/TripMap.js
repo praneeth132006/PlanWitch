@@ -247,9 +247,19 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                 const routeDestination = allPoints[allPoints.length - 1].position;
 
                 // Waypoints are everything in between
-                const waypoints = allPoints.length > 2
-                    ? allPoints.slice(1, -1).map(p => ({ location: p.position, stopover: true }))
-                    : [];
+                // Limit to 23 waypoints (Google limit is 25 total including origin and destination)
+                let intermediatePoints = allPoints.slice(1, -1);
+                if (intermediatePoints.length > 23) {
+                    console.warn(`Too many waypoints (${intermediatePoints.length}). Sampling to 23 to avoid MAX_WAYPOINTS_EXCEEDED.`);
+                    const sampled = [];
+                    const step = intermediatePoints.length / 23;
+                    for (let i = 0; i < 23; i++) {
+                        sampled.push(intermediatePoints[Math.floor(i * step)]);
+                    }
+                    intermediatePoints = sampled;
+                }
+
+                const waypoints = intermediatePoints.map(p => ({ location: p.position, stopover: true }));
 
                 directionsService.current.route({
                     origin: routeOrigin,
