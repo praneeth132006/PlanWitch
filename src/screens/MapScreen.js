@@ -10,7 +10,7 @@ import { useTheme } from '../context/ThemeContext';
 import TimePickerModal from '../components/TimePickerModal';
 import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
-import { generateTripItinerary } from '../services/aiService';
+import { generateTripItinerary, generateFoodRecommendations } from '../services/aiService';
 import DatePicker12 from '../components/ui/DatePicker12';
 import PremiumButton from '../components/PremiumButton';
 
@@ -96,7 +96,7 @@ const generateDays = (startDate, endDate) => {
 };
 
 export default function MapScreen({ onBackToHome, onSetScreen }) {
-  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess } = useTravelContext();
+  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess, addFoodItem, foodItems } = useTravelContext();
   const { colors } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
@@ -360,9 +360,72 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
           });
         });
 
-        setTimeout(() => {
-          showAlert('Success', `AI has added ${addedCount} stops to your itinerary!`, 'success');
-        }, 500);
+        // Now auto-generate food recommendations for trip locations
+        setAlertConfig({
+          visible: true,
+          title: 'Generating Food Suggestions',
+          message: 'Now finding the best local dishes for your trip locations...',
+          type: 'loading',
+          onConfirm: null,
+          onCancel: null,
+          confirmText: '',
+          cancelText: ''
+        });
+
+        try {
+          const stops = tripInfo.stops || [];
+          const stopNames = stops.map(s => typeof s === 'object' ? (s.name || s.formatted_address || 'Stop') : s);
+          const uniqueLocations = [...new Set([tripInfo.destination, ...stopNames])].filter(Boolean);
+
+          const foodResult = await generateFoodRecommendations(uniqueLocations, 'Any');
+          const recommendations = foodResult.recommendations || foodResult.suggestions || [];
+
+          let foodAddedCount = 0;
+          if (foodResult.success && recommendations.length > 0) {
+            // Build places list same as FoodChecklistScreen
+            const places = uniqueLocations;
+
+            for (const placeData of recommendations) {
+              const targetPlace = places.find(p =>
+                p.toLowerCase().includes((placeData.place || '').toLowerCase()) ||
+                (placeData.place || '').toLowerCase().includes(p.toLowerCase())
+              ) || places[0];
+
+              const items = placeData.items || [];
+              for (const item of items) {
+                // Skip duplicates already in food checklist
+                const exists = foodItems.some(existing =>
+                  existing.place === targetPlace &&
+                  existing.name.toLowerCase() === item.name.toLowerCase()
+                );
+
+                if (!exists) {
+                  let normalizedType = item.type;
+                  if (typeof item.type === 'string') {
+                    normalizedType = item.type.toLowerCase().includes('non') ? 'Non-Veg' : 'Veg';
+                  }
+                  await addFoodItem(targetPlace, item.name, normalizedType);
+                  foodAddedCount++;
+                }
+              }
+            }
+          }
+
+          hideAlert();
+          setTimeout(() => {
+            showAlert(
+              'Success',
+              `AI has added ${addedCount} stops to your itinerary${foodAddedCount > 0 ? ` and ${foodAddedCount} food items to your food checklist` : ''}!`,
+              'success'
+            );
+          }, 500);
+        } catch (foodError) {
+          // Food generation failed, but itinerary succeeded - still show partial success
+          hideAlert();
+          setTimeout(() => {
+            showAlert('Partial Success', `AI has added ${addedCount} stops to your itinerary! (Food suggestions could not be generated)`, 'success');
+          }, 500);
+        }
       } else {
         setTimeout(() => {
           showAlert('AI Error', result.error || 'Could not generate itinerary.', 'error');
