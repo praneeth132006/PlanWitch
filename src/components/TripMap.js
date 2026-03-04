@@ -8,7 +8,7 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from './MapLib';
  * TripMap Component
  * Visualizes the trip Start, Visit, and End points on a read-only map.
  */
-const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, borderRadius = 0 }) => {
+const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, borderRadius = 0, showDetailedMarkers = true }) => {
     const { colors, isDark } = useTheme();
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
@@ -232,10 +232,24 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
 
         // 3. Create Markers from groups
         Object.values(uniqueParams).forEach(group => {
+            let label = '';
+            if (showDetailedMarkers) {
+                if (group.labels.length > 3) {
+                    label = `${group.labels[0]}-${group.labels[group.labels.length - 1]}`;
+                } else {
+                    label = group.labels.join(', ');
+                }
+            } else {
+                // For overview map, only show the first label of the group or none if it's too crowded?
+                // Actually, if it's the home map, we just want to see the stop.
+                // Let's show the first label if it's a primary stop, but keep it clean.
+                label = group.labels[0];
+            }
+
             markers.current.push(new window.google.maps.Marker({
                 position: group.position,
                 map: mapInstance.current,
-                label: group.labels.join(', '), // "1, 3"
+                label: label,
                 title: group.title,
             }));
         });

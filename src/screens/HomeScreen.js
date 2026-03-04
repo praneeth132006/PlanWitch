@@ -483,10 +483,11 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
           {/* Top: Interactive Map (Read-Only visualization) */}
           <TripMap
             origin={tripInfo.origin || (tripInfo.latitude ? { latitude: Math.fround(tripInfo.latitude), longitude: Math.fround(tripInfo.longitude), name: tripInfo.destination } : null)}
-            stops={Array.isArray(tripInfo.stops) ? [...tripInfo.stops, ...itinerary] : itinerary}
+            stops={tripInfo.stops || []}
             destination={tripInfo.endLocation}
             style={styles.mapContainer}
             borderRadius={24}
+            showDetailedMarkers={false}
           />
 
           {/* Nike-style Boxed Info Card */}

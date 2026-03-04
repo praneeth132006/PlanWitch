@@ -143,6 +143,40 @@ export default function BudgetScreen({ onSetScreen }) {
     setRangeMin('');
     setRangeMax('');
     setMultiSelection([]);
+
+    // Logic: If we have destination and duration, offer "Magic Suggest"
+    const hasTripInfo = tripInfo.destination && (tripInfo.startDate && tripInfo.endDate);
+
+    if (hasTripInfo) {
+      showAlert(
+        'AI Budget Suggestion',
+        `We can automatically suggest a budget based on your trip to ${tripInfo.destination}.\n\nWould you like to use our automated suggestion or answer a few questions for a more personalized plan?`,
+        'info',
+        () => {
+          // Yes, Magic Suggest
+          executeAiBudget({
+            destination: tripInfo.destination,
+            preference: 'Mid',
+            priority: 'Experiences',
+            accommodation: 'Hotel',
+            hotel_price: '2000 - 5000',
+            primary_transport: 'Flight, Car',
+            local_transport: 'Cab'
+          }, true);
+          hideAlert();
+        },
+        () => {
+          // No, Answer Questions
+          setAiModalVisible(true);
+          hideAlert();
+        },
+        null,
+        '✨ Magic Suggest',
+        '📝 Answer Questions'
+      );
+      return;
+    }
+
     setAiModalVisible(true);
   };
 

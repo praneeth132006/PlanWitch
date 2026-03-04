@@ -10,7 +10,7 @@ import { useTheme } from '../context/ThemeContext';
 import TimePickerModal from '../components/TimePickerModal';
 import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
-import { generateTripItinerary, generateFoodRecommendations, generatePackingList } from '../services/aiService';
+import { generateTripItinerary, generateFoodRecommendations, generatePackingList, generateBudgetPlan } from '../services/aiService';
 import DatePicker12 from '../components/ui/DatePicker12';
 import PremiumButton from '../components/PremiumButton';
 
@@ -18,6 +18,13 @@ const { width } = Dimensions.get('window');
 
 const INTEREST_TAGS = ['Nature', 'History', 'Food', 'Adventure', 'Shopping', 'Culture', 'Relaxation', 'Nightlife'];
 const PACE_OPTIONS = ['Relaxed', 'Moderate', 'Packed'];
+
+const BUDGET_PREFERENCES = ['Low', 'Mid', 'Luxury', 'Mixed'];
+const BUDGET_PRIORITIES = ['Stay', 'Food', 'Experiences', 'Shopping'];
+const ACCOMMODATION_TYPES = ['Hotel', 'Hostel', 'Homestay', 'Airbnb'];
+const HOTEL_PRICE_RANGES = ['< 2000', '2000 - 5000', '5000 - 10000', '10000+'];
+const TRANSPORT_MODES = ['Flight', 'Train', 'Bus', 'Car', 'Bike'];
+const LOCAL_TRANSPORT_OPTIONS = ['Public transport', 'Cab', 'Rental bike'];
 
 // Simplified and organized stop types
 // Simplified and organized stop types
@@ -96,7 +103,7 @@ const generateDays = (startDate, endDate) => {
 };
 
 export default function MapScreen({ onBackToHome, onSetScreen }) {
-  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess, addFoodItem, foodItems, setFoodItems, addPackingItem, packingItems, setPackingItems } = useTravelContext();
+  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess, addFoodItem, foodItems, setFoodItems, addPackingItem, packingItems, setPackingItems, setBudget } = useTravelContext();
   const { colors } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
@@ -120,7 +127,16 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     interests: [],
     startTime: '09:00 AM',
     endTime: '09:00 PM',
-    locationDurations: {}
+    locationDurations: {},
+    // Budget preferences
+    budget_min: '',
+    budget_max: '',
+    budget_preference: 'Mid',
+    budget_priority: ['Experiences'],
+    accommodation_type: 'Hotel',
+    hotel_price: '2000 - 5000',
+    transport_modes: ['Flight', 'Car'],
+    local_transport: ['Cab']
   });
 
   // Custom Alert State
@@ -136,6 +152,15 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
   const hideAlert = () => {
     setAlertConfig(prev => ({ ...prev, visible: false }));
+  };
+
+  const handleTogglePriority = (priority) => {
+    setAiPreferences(prev => ({
+      ...prev,
+      budget_priority: prev.budget_priority.includes(priority)
+        ? prev.budget_priority.filter(p => p !== priority)
+        : [...prev.budget_priority, priority]
+    }));
   };
 
   const scrollViewRef = useRef(null);
@@ -282,7 +307,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     }
   };
 
-  const generatePackingAfterFood = async (itineraryCount, foodCount, isReplace) => {
+  const finalizeAiGeneration = async (itineraryCount, foodCount, isReplace) => {
     setAlertConfig({
       visible: true,
       title: 'Generating Packing List',
@@ -345,12 +370,50 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
         }
       }
 
+      // 4. Generate AI Budget Plan
+      setAlertConfig({
+        visible: true,
+        title: 'Generating Budget Plan',
+        message: 'AI is calculating a realistic budget based on your preferences...',
+        type: 'loading',
+        onConfirm: null,
+        onCancel: null,
+        confirmText: '',
+        cancelText: ''
+      });
+
+      try {
+        const travelers = tripInfo.participants ? (Array.isArray(tripInfo.participants) ? tripInfo.participants.length : Object.keys(tripInfo.participants).length) : 1;
+        const budgetResult = await generateBudgetPlan({
+          destination: tripInfo.destination,
+          duration: duration,
+          travelers: travelers,
+          budget_min: aiPreferences.budget_min,
+          budget_max: aiPreferences.budget_max,
+          preference: aiPreferences.budget_preference,
+          priority: aiPreferences.budget_priority?.join(', '),
+          accommodation: aiPreferences.accommodation_type,
+          hotel_price: aiPreferences.hotel_price,
+          primary_transport: aiPreferences.transport_modes?.join(', '),
+          local_transport: aiPreferences.local_transport?.join(', ')
+        });
+
+        if (budgetResult.success && budgetResult.categories) {
+          setBudget({
+            total: budgetResult.total,
+            categories: budgetResult.categories
+          });
+        }
+      } catch (e) {
+        console.warn("Budget generation failed, skipping...");
+      }
+
       hideAlert();
       setTimeout(() => {
         let message = `AI has added ${itineraryCount} stops to your itinerary`;
         if (foodCount > 0) message += ` and ${foodCount} food items`;
         if (packingAddedCount > 0) message += ` and ${packingAddedCount} packing items`;
-        message += '!';
+        message += ' and a complete budget plan!';
 
         showAlert('Generation Complete', message, 'success');
       }, 500);
@@ -388,7 +451,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
       const result = await generateTripItinerary(
         tripInfo.destination,
         days,
-        'Mid', // User budget preference could be passed here if available
+        aiPreferences.budget_preference || 'Mid',
         tripInfo.travelers || '2',
         aiPreferences.interests.join(', '),
         aiPreferences
@@ -507,11 +570,11 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
             }
           }
 
-          // Food done, now generate packing list
-          await generatePackingAfterFood(addedCount, foodAddedCount, isReplace);
+          // Food done, now generate packing and budget list
+          await finalizeAiGeneration(addedCount, foodAddedCount, isReplace);
         } catch (foodError) {
-          // Food generation failed, but itinerary succeeded - still try packing
-          await generatePackingAfterFood(addedCount, 0, isReplace);
+          // Food generation failed, but itinerary succeeded - still try packing/budget
+          await finalizeAiGeneration(addedCount, 0, isReplace);
         }
       } else {
         setTimeout(() => {
@@ -1034,6 +1097,216 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                     </TouchableOpacity>
                   );
                 })}
+              </View>
+
+              {/* 5. Budget Range */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Budget Range</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 4 }}>Minimum Budget</Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: colors.cardLight,
+                      color: colors.text,
+                      padding: 12,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      outlineStyle: 'none'
+                    }}
+                    placeholder="e.g. 10000"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    value={aiPreferences.budget_min}
+                    onChangeText={(t) => setAiPreferences(prev => ({ ...prev, budget_min: t }))}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 4 }}>Maximum Budget</Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: colors.cardLight,
+                      color: colors.text,
+                      padding: 12,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      outlineStyle: 'none'
+                    }}
+                    placeholder="e.g. 50000"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    value={aiPreferences.budget_max}
+                    onChangeText={(t) => setAiPreferences(prev => ({ ...prev, budget_max: t }))}
+                  />
+                </View>
+              </View>
+
+              {/* 6. Budget Preference */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Budget Preference</Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
+                {BUDGET_PREFERENCES.map(pref => (
+                  <TouchableOpacity
+                    key={pref}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 20,
+                      backgroundColor: aiPreferences.budget_preference === pref ? colors.primary + '20' : colors.bg,
+                      borderWidth: 1,
+                      borderColor: aiPreferences.budget_preference === pref ? colors.primary : colors.border
+                    }}
+                    onPress={() => setAiPreferences(prev => ({ ...prev, budget_preference: pref }))}
+                  >
+                    <Text style={{
+                      color: aiPreferences.budget_preference === pref ? colors.primary : colors.textMuted,
+                      fontWeight: aiPreferences.budget_preference === pref ? '700' : '500'
+                    }}>{pref}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Added Budget Priorities */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Major Expense Priority</Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
+                {BUDGET_PRIORITIES.map(priority => {
+                  const selected = aiPreferences.budget_priority.includes(priority);
+                  return (
+                    <TouchableOpacity
+                      key={priority}
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 10,
+                        borderRadius: 20,
+                        backgroundColor: selected ? colors.primary + '20' : colors.bg,
+                        borderWidth: 1,
+                        borderColor: selected ? colors.primary : colors.border
+                      }}
+                      onPress={() => handleTogglePriority(priority)}
+                    >
+                      <Text style={{
+                        color: selected ? colors.primary : colors.textMuted,
+                        fontWeight: selected ? '700' : '500'
+                      }}>{priority}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* 7. Accommodation */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Accommodation</Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                {ACCOMMODATION_TYPES.map(type => (
+                  <TouchableOpacity
+                    key={type}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 20,
+                      backgroundColor: aiPreferences.accommodation_type === type ? colors.primary + '20' : colors.bg,
+                      borderWidth: 1,
+                      borderColor: aiPreferences.accommodation_type === type ? colors.primary : colors.border
+                    }}
+                    onPress={() => setAiPreferences(prev => ({ ...prev, accommodation_type: type }))}
+                  >
+                    <Text style={{
+                      color: aiPreferences.accommodation_type === type ? colors.primary : colors.textMuted,
+                      fontWeight: aiPreferences.accommodation_type === type ? '700' : '500'
+                    }}>{type}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 8 }}>Price Range per Night</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {HOTEL_PRICE_RANGES.map(range => (
+                    <TouchableOpacity
+                      key={range}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 16,
+                        backgroundColor: aiPreferences.hotel_price === range ? colors.primary + '20' : colors.bg,
+                        borderWidth: 1,
+                        borderColor: aiPreferences.hotel_price === range ? colors.primary : colors.border
+                      }}
+                      onPress={() => setAiPreferences(prev => ({ ...prev, hotel_price: range }))}
+                    >
+                      <Text style={{
+                        color: aiPreferences.hotel_price === range ? colors.primary : colors.textMuted,
+                        fontWeight: aiPreferences.hotel_price === range ? '700' : '500',
+                        fontSize: 12
+                      }}>{range}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* 8. Transport */}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Transport</Text>
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 8 }}>Primary Transport (Long distance)</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {TRANSPORT_MODES.map(mode => {
+                    const selected = aiPreferences.transport_modes.includes(mode);
+                    return (
+                      <TouchableOpacity
+                        key={mode}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 16,
+                          backgroundColor: selected ? colors.primary + '20' : colors.bg,
+                          borderWidth: 1,
+                          borderColor: selected ? colors.primary : colors.border
+                        }}
+                        onPress={() => setAiPreferences(prev => ({
+                          ...prev,
+                          transport_modes: selected ? prev.transport_modes.filter(m => m !== mode) : [...prev.transport_modes, mode]
+                        }))}
+                      >
+                        <Text style={{
+                          color: selected ? colors.primary : colors.textMuted,
+                          fontWeight: selected ? '700' : '500',
+                          fontSize: 12
+                        }}>{mode}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={{ marginBottom: 30 }}>
+                <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 8 }}>Local Transport Preference</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {LOCAL_TRANSPORT_OPTIONS.map(opt => {
+                    const selected = aiPreferences.local_transport.includes(opt);
+                    return (
+                      <TouchableOpacity
+                        key={opt}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 16,
+                          backgroundColor: selected ? colors.primary + '20' : colors.bg,
+                          borderWidth: 1,
+                          borderColor: selected ? colors.primary : colors.border
+                        }}
+                        onPress={() => setAiPreferences(prev => ({
+                          ...prev,
+                          local_transport: selected ? prev.local_transport.filter(o => o !== opt) : [...prev.local_transport, opt]
+                        }))}
+                      >
+                        <Text style={{
+                          color: selected ? colors.primary : colors.textMuted,
+                          fontWeight: selected ? '700' : '500',
+                          fontSize: 12
+                        }}>{opt}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
 
               <TouchableOpacity
