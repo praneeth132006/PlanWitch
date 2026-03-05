@@ -8,8 +8,6 @@ import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
 import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
-import { generateFoodRecommendations } from '../services/aiService';
-import PremiumButton from '../components/PremiumButton';
 
 export default function FoodChecklistScreen({ onSetScreen }) {
     const { colors } = useTheme();
@@ -67,11 +65,6 @@ export default function FoodChecklistScreen({ onSetScreen }) {
     const [newItemName, setNewItemName] = useState('');
     const [newItemType, setNewItemType] = useState(null); // 'Veg' | 'Non-Veg' | null
 
-    // AI State
-    const [aiModalVisible, setAiModalVisible] = useState(false);
-    const [isAiGenerating, setIsAiGenerating] = useState(false);
-    const [aiSuggestions, setAiSuggestions] = useState([]);
-
     const openAddModal = (place) => {
         setSelectedPlace(place);
         setNewItemName('');
@@ -87,96 +80,7 @@ export default function FoodChecklistScreen({ onSetScreen }) {
         setModalVisible(false);
     };
 
-    // Derived helpers for UI, filtering the global persisted list by place
-    const handleGenerateSuggestions = async () => {
-        // Premium Check
-        const access = checkFeatureAccess('ai_planning');
-        if (!access.allowed) {
-            showAlert(
-                'Premium Feature',
-                access.reason,
-                'premium',
-                () => onSetScreen('Subscription'),
-                () => hideAlert(),
-                null,
-                'Go Pro',
-                'Later'
-            );
-            return;
-        }
 
-        if (places.length === 0) {
-            showAlert('No Places', 'Add destinations to your trip first.', 'warning');
-            return;
-        }
-
-        // Automatically merge/append to existing list - Silent Update
-        executeAiFoodGeneration(false);
-    };
-
-    const executeAiFoodGeneration = async (isReplace) => {
-        setAiModalVisible(false);
-        setIsAiGenerating(true);
-
-        try {
-            const stops = tripInfo.stops || [];
-            const stopNames = stops.map(s => typeof s === 'object' ? (s.name || s.formatted_address || 'Stop') : s);
-            const uniqueLocations = [...new Set([tripInfo.destination, ...stopNames])].filter(Boolean);
-
-            const result = await generateFoodRecommendations(
-                uniqueLocations,
-                'Any'
-            );
-
-            // Check for both possible field names from the AI response
-            const recommendations = result.recommendations || result.suggestions || [];
-
-            if (result.success && recommendations.length > 0) {
-                let addedCount = 0;
-
-                // If replacing, first delete all existing items
-                if (isReplace) {
-                    const currentFoodItemIds = foodItems.map(item => item.id);
-                    for (const id of currentFoodItemIds) {
-                        await deleteFoodItem(id);
-                    }
-                }
-
-                // The AI returns recommendations grouped by place with items array
-                for (const placeData of recommendations) {
-                    const targetPlace = places.find(p =>
-                        p.toLowerCase().includes((placeData.place || '').toLowerCase()) ||
-                        (placeData.place || '').toLowerCase().includes(p.toLowerCase())
-                    ) || places[0];
-
-                    // Iterate over items in this place
-                    const items = placeData.items || [];
-                    for (const item of items) {
-                        const exists = !isReplace && foodItems.some(existing =>
-                            existing.place === targetPlace &&
-                            existing.name.toLowerCase() === item.name.toLowerCase()
-                        );
-
-                        if (!exists) {
-                            let normalizedType = item.type;
-                            if (typeof item.type === 'string') {
-                                normalizedType = item.type.toLowerCase().includes('non') ? 'Non-Veg' : 'Veg';
-                            }
-                            await addFoodItem(targetPlace, item.name, normalizedType);
-                            addedCount++;
-                        }
-                    }
-                }
-                showAlert('Success', `${addedCount} items added to your checklist!`, 'success');
-            } else {
-                showAlert('AI Error', 'Could not generate recommendations properly.', 'error');
-            }
-        } catch (error) {
-            showAlert('AI Error', error.message || 'Failed to connect to AI.', 'error');
-        } finally {
-            setIsAiGenerating(false);
-        }
-    };
 
     // Derived helpers for UI, filtering the global persisted list by place
     const getPlaceItems = (place) => {
@@ -191,53 +95,7 @@ export default function FoodChecklistScreen({ onSetScreen }) {
         };
     };
 
-    // handleAiSuggest is replaced by handleGenerateSuggestions
-    // The previous handleAiSuggest logic is now part of executeAiFoodGeneration
 
-    const handleAddAiItem = async (placeName, itemName, itemType) => {
-        // Find matching place in our list (relaxed match)
-        const targetPlace = places.find(p => p.toLowerCase().includes(placeName.toLowerCase()) || placeName.toLowerCase().includes(p.toLowerCase())) || places[0];
-
-        // Check availability in Global State
-        const exists = foodItems.some(i => i.place === targetPlace && i.name.toLowerCase() === itemName.toLowerCase());
-        if (exists) return;
-
-        await addFoodItem(targetPlace, itemName, itemType);
-    };
-
-    const handleAddAllAiItems = async () => {
-        let addedCount = 0;
-
-        for (const rec of aiSuggestions) {
-            // More robust place matching: check if AI place name matches any part of user's place
-            const targetPlace = places.find(p => {
-                const pLower = p.toLowerCase();
-                const recLower = rec.place.toLowerCase();
-                return pLower.includes(recLower) || recLower.includes(pLower) ||
-                    pLower.split(' ').some(word => recLower.includes(word)) ||
-                    recLower.split(' ').some(word => pLower.includes(word));
-            }) || places[0];
-
-            for (const item of rec.items) {
-                const exists = foodItems.some(fi =>
-                    fi.place === targetPlace && fi.name.toLowerCase() === item.name.toLowerCase()
-                );
-
-                if (!exists) {
-                    // Normalize type to proper case: 'veg' -> 'Veg', 'non-veg' -> 'Non-Veg'
-                    let normalizedType = item.type;
-                    if (typeof item.type === 'string') {
-                        normalizedType = item.type.toLowerCase().includes('non') ? 'Non-Veg' : 'Veg';
-                    }
-                    await addFoodItem(targetPlace, item.name, normalizedType);
-                    addedCount++;
-                }
-            }
-        }
-
-        showAlert('Success', `${addedCount} items added to your checklist!`, 'success');
-        setAiModalVisible(false);
-    };
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -247,16 +105,6 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                     <Icon name="food" size={24} color={colors.text} style={{ marginRight: 8 }} />
                     <Text style={styles.headerTitle}>Food Checklist</Text>
                 </View>
-                {!tripInfo.isCompleted && (
-                    <PremiumButton
-                        title={isAiGenerating ? 'Generating...' : 'AI Suggestions'}
-                        onPress={handleGenerateSuggestions}
-                        variant="gradient"
-                        size="small"
-                        loading={isAiGenerating}
-                        disabled={isAiGenerating}
-                    />
-                )}
             </View>
 
             <ScrollView
@@ -450,84 +298,7 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                 </View>
             </Modal>
 
-            {/* AI Results Modal */}
-            <Modal
-                transparent
-                visible={aiModalVisible}
-                animationType="slide"
-                onRequestClose={() => setAiModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { maxHeight: '85%' }]}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                            <Text style={styles.modalTitle}>Famous Food ✨</Text>
-                            <TouchableOpacity onPress={() => setAiModalVisible(false)}>
-                                <Icon name="close" size={24} color={colors.text} />
-                            </TouchableOpacity>
-                        </View>
-                        <Text style={styles.modalSubtitle}>Famous dishes to try</Text>
 
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {aiSuggestions.map((rec, idx) => (
-                                <View key={idx} style={{ marginBottom: 20 }}>
-                                    <Text style={{ color: colors.text, fontSize: 16, fontWeight: 'bold', marginBottom: 10, marginTop: 4 }}>📍 {rec.place}</Text>
-                                    {rec.items.map((item, iIdx) => {
-                                        // Check via global list
-                                        const targetPlace = places.find(p => p.toLowerCase().includes(rec.place.toLowerCase()) || rec.place.toLowerCase().includes(p.toLowerCase())) || places[0];
-                                        const added = foodItems.some(fi => fi.place === targetPlace && fi.name.toLowerCase() === item.name.toLowerCase());
-
-                                        return (
-                                            <View key={iIdx} style={{
-                                                flexDirection: 'row', alignItems: 'center', backgroundColor: colors.bg,
-                                                padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.primaryBorder, marginBottom: 8
-                                            }}>
-                                                <View style={{ flex: 1 }}>
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                        <View style={[{
-                                                            width: 16, height: 16, borderWidth: 1, borderColor: 'green',
-                                                            alignItems: 'center', justifyContent: 'center', marginRight: 8
-                                                        }, item.type === 'Non-Veg' && { borderColor: 'red' }]}>
-                                                            <View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'green' }, item.type === 'Non-Veg' && { backgroundColor: 'red' }]} />
-                                                        </View>
-                                                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{item.name}</Text>
-                                                    </View>
-                                                    <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2, marginRight: 8 }}>{item.description}</Text>
-                                                </View>
-                                                <TouchableOpacity
-                                                    style={[{ backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }, added && { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.primaryBorder }]}
-                                                    disabled={added}
-                                                    onPress={() => handleAddAiItem(rec.place, item.name, item.type)}
-                                                >
-                                                    <Text style={[{ color: colors.bg, fontSize: 12, fontWeight: 'bold' }, added && { color: colors.textMuted }]}>
-                                                        {added ? 'Added' : 'Add'}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                        );
-                                    })}
-                                </View>
-                            ))}
-                        </ScrollView>
-
-                        {/* Add All Button */}
-                        <View style={{ paddingTop: 12, paddingBottom: 4, borderTopWidth: 1, borderTopColor: colors.primaryBorder }}>
-                            <TouchableOpacity
-                                style={{
-                                    backgroundColor: colors.primary,
-                                    paddingVertical: 14,
-                                    borderRadius: 12,
-                                    alignItems: 'center'
-                                }}
-                                onPress={handleAddAllAiItems}
-                            >
-                                <Text style={{ color: colors.bg, fontWeight: 'bold', fontSize: 16 }}>
-                                    Add All Suggested Items
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
 
             <CustomAlert
                 visible={alertConfig.visible}

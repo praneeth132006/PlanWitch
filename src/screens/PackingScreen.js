@@ -8,8 +8,6 @@ import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
 import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
-import { generatePackingList } from '../services/aiService';
-import PremiumButton from '../components/PremiumButton';
 
 const PACKING_CATEGORIES = [
   { key: 'essentials', label: 'Essentials', icon: 'passport', color: '#EF4444', emoji: '📋' },
@@ -47,9 +45,6 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
   const [newItem, setNewItem] = useState({ name: '', category: 'essentials', quantity: '1', notes: '' });
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [showAiModal, setShowAiModal] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState([]);
 
   // Custom Alert State
   const [alertConfig, setAlertConfig] = useState({
@@ -99,125 +94,6 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
     deletePackingItem(id);
   };
 
-  const handleAiSuggest = async () => {
-    // Premium Check
-    const access = checkFeatureAccess('ai_planning');
-    if (!access.allowed) {
-      showAlert(
-        'Premium Feature',
-        access.reason,
-        'premium',
-        () => onSetScreen('Subscription'),
-        () => hideAlert(),
-        null,
-        'Go Pro',
-        'Later'
-      );
-      return;
-    }
-
-    // Check if items exist
-    if (packingItems.length > 0) {
-      showAlert(
-        'Existing Items Found',
-        'You already have items in your packing list. Do you want to replace them completely or add new suggestions?',
-        'info',
-        () => {
-          // Replace
-          executeAiPackingGenerate(true);
-        },
-        () => hideAlert(),
-        () => {
-          // Merge
-          executeAiPackingGenerate(false);
-        },
-        'Replace All',
-        'Cancel',
-        'Add / Merge'
-      );
-    } else {
-      executeAiPackingGenerate(true);
-    }
-  };
-
-  const executeAiPackingGenerate = async (isReplace) => {
-    setIsGenerating(true);
-    hideAlert();
-
-    // If Replace, we should clear items directly or after success?
-    // If we clear now and fail, user loses data.
-    // Let's passed "isReplace" down to the next step (Modal handling)
-    // Actually, generating just GETS suggestions. 
-    // The "Replace" action should probably happen when we apply them? 
-    // OR we clear now to indicate "Fresh Start".
-    // Following FoodChecklist pattern: 
-    // We will store "isReplace" intention if we want to auto-add.
-    // BUT PackingScreen shows a modal first.
-    // If I select "Replace", I probably expect the list to be cleared.
-    // Let's clear it IF success, OR clear it now?
-    // Safer to clear AFTER success of generation, but BEFORE showing suggestions?
-    // Or let's pass `shouldReplace` to the modal state?
-    // For simplicity and alignment with request:
-    // "option ... to update ... by completely removing ... or add above"
-    // So if "Replace", we will clear the list when showing the suggestions? 
-    // Or we clear it now?
-    // Let's clear it NOW if user confirmed "Replace All". 
-    // Wait, if I clear now, it's destructive before API success. 
-    // Let's do it after API success.
-
-    try {
-      const dateContext = tripInfo.startDate || 'Upcoming Trip';
-
-      const res = await generatePackingList(
-        tripInfo.destination || 'Selected Destination',
-        dateContext,
-        1,
-        tripInfo.tripType || 'solo'
-      );
-
-      if (res.success) {
-        if (isReplace) {
-          // Clear existing items
-          // We need to delete all. optimizing by deleting IDs.
-          // Note: This relies on state updates processing.
-          const ids = packingItems.map(i => i.id);
-          ids.forEach(id => deletePackingItem(id));
-        }
-
-        setAiSuggestions(res.recommendations);
-        setShowAiModal(true);
-      } else {
-        showAlert('AI Error', 'Could not generate suggestions.', 'error');
-      }
-    } catch (error) {
-      console.error('AI Suggest Error:', error);
-      showAlert('AI Error', 'Failed to get suggestions: ' + (error.message || 'Unknown error'), 'error');
-      setAiSuggestions([]);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const addAllAiSuggestions = () => {
-    aiSuggestions.forEach(cat => {
-      cat.items.forEach(item => {
-        // Only add if not already in list
-        if (!packingItems.some(p => p.name.toLowerCase() === item.toLowerCase())) {
-          addPackingItem({
-            name: item,
-            category: cat.category.toLowerCase().includes('essential') ? 'essentials' :
-              cat.category.toLowerCase().includes('cloth') ? 'clothing' :
-                cat.category.toLowerCase().includes('toilet') ? 'toiletries' :
-                  cat.category.toLowerCase().includes('elect') ? 'electronics' : 'other',
-            quantity: 1,
-            notes: 'Suggested by AI'
-          });
-        }
-      });
-    });
-    setShowAiModal(false);
-  };
-
   const getCategoryInfo = (key) => PACKING_CATEGORIES.find(c => c.key === key) || PACKING_CATEGORIES[7];
 
   // Filter and group items (removed showPacked filter)
@@ -249,16 +125,6 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
           <Icon name="packing" size={24} color={colors.text} style={{ marginRight: 8 }} />
           <Text style={styles.headerTitle}>Packing List</Text>
         </View>
-        {!tripInfo.isCompleted && (
-          <PremiumButton
-            title={isGenerating ? 'Thinking...' : 'AI Suggestions'}
-            onPress={handleAiSuggest}
-            variant="gradient"
-            size="small"
-            loading={isGenerating}
-            disabled={isGenerating}
-          />
-        )}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -563,52 +429,6 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
         </View>
       </Modal>
 
-      {/* AI Suggestions Modal */}
-      <Modal visible={showAiModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
-            <View style={styles.modalHandle} />
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>AI Smart Suggestions ✨</Text>
-                <Text style={styles.modalSubtitle}>Based on {tripInfo.destination || 'your destination'}</Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowAiModal(false)} style={styles.modalClose}>
-                <Icon name="close" size={20} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {aiSuggestions.map((cat, idx) => (
-                <View key={idx} style={styles.aiCatGroup}>
-                  <Text style={styles.aiCatTitle}>{cat.category}</Text>
-                  <View style={styles.aiSuggestGrid}>
-                    {cat.items.map((item, iIdx) => {
-                      const exists = packingItems.some(p => p.name.toLowerCase() === item.toLowerCase());
-                      return (
-                        <TouchableOpacity
-                          key={iIdx}
-                          style={[styles.aiItemPill, exists && styles.aiItemPillDisabled]}
-                          onPress={() => !exists && handleQuickAdd(item, cat.category.toLowerCase().includes('essential') ? 'essentials' : 'other')}
-                        >
-                          <Text style={[styles.aiItemText, exists && styles.aiItemTextDisabled]}>
-                            {exists ? '✅ ' : '+ '}{item}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              ))}
-
-              <TouchableOpacity style={styles.addAllBtn} onPress={addAllAiSuggestions}>
-                <Text style={styles.addAllText}>Add All Suggested Items</Text>
-              </TouchableOpacity>
-              <View style={{ height: 30 }} />
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       <CustomAlert
         visible={alertConfig.visible}
