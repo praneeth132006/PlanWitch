@@ -1414,35 +1414,88 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
               {hasExistingContent && (
-                <View style={{ marginBottom: 20, backgroundColor: colors.bg + '30', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
-                  <Text style={{ color: colors.text, fontSize: 14, fontWeight: '700', marginBottom: 12 }}>What do you want to regenerate?</Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    {Object.keys(regenOptions).map(key => (
-                      <TouchableOpacity
-                        key={key}
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 8,
-                          borderRadius: 20,
-                          backgroundColor: regenOptions[key] ? colors.primary + '20' : colors.card,
-                          borderWidth: 1,
-                          borderColor: regenOptions[key] ? colors.primary : colors.border
-                        }}
-                        onPress={() => {
-                          if (Platform.OS !== 'web') {
-                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                          }
-                          setRegenOptions(prev => ({ ...prev, [key]: !prev[key] }));
-                        }}
-                      >
-                        <Text style={{
-                          color: regenOptions[key] ? colors.primary : colors.textMuted,
-                          fontWeight: regenOptions[key] ? '700' : '500',
-                          fontSize: 12,
-                          textTransform: 'capitalize'
-                        }}>{key}</Text>
-                      </TouchableOpacity>
-                    ))}
+                <View style={{ marginBottom: 24 }}>
+                  <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800', marginBottom: 16 }}>What would you like to update?</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 }}>
+                    {[
+                      { key: 'itinerary', label: 'Itinerary', icon: 'map', color: '#3B82F6' },
+                      { key: 'packing', label: 'Packing List', icon: 'packing', color: '#10B981' },
+                      { key: 'food', label: 'Food Spots', icon: 'food', color: '#F59E0B' },
+                      { key: 'budget', label: 'Money Plan', icon: 'budget', color: '#EF4444' }
+                    ].map((item) => {
+                      const selected = regenOptions[item.key];
+                      return (
+                        <TouchableOpacity
+                          key={item.key}
+                          activeOpacity={0.7}
+                          style={{
+                            width: '48%',
+                            aspectRatio: 1,
+                            backgroundColor: selected ? item.color + '15' : colors.card,
+                            borderRadius: 24,
+                            padding: 20,
+                            borderWidth: 2,
+                            borderColor: selected ? item.color : 'transparent',
+                            justifyContent: 'space-between',
+                            // Glassmorphism effect
+                            shadowColor: item.color,
+                            shadowOffset: { width: 0, height: 8 },
+                            shadowOpacity: selected ? 0.3 : 0,
+                            shadowRadius: 12,
+                            elevation: selected ? 8 : 0,
+                          }}
+                          onPress={() => {
+                            if (Platform.OS !== 'web') {
+                              LayoutAnimation.configureNext({
+                                duration: 400,
+                                create: { type: 'spring', springDamping: 0.7, property: 'scaleXY' },
+                                update: { type: 'spring', springDamping: 0.7 },
+                                delete: { type: 'fade', property: 'opacity' }
+                              });
+                            }
+                            setRegenOptions(prev => ({ ...prev, [item.key]: !prev[item.key] }));
+                          }}
+                        >
+                          <View style={{
+                            width: 52,
+                            height: 52,
+                            borderRadius: 16,
+                            backgroundColor: selected ? item.color : colors.bg,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: 12
+                          }}>
+                            <Icon name={item.icon} size={28} color={selected ? '#FFFFFF' : colors.textMuted} />
+                          </View>
+                          <View>
+                            <Text style={{
+                              color: colors.text,
+                              fontSize: 16,
+                              fontWeight: '800',
+                              marginBottom: 4
+                            }}>{item.label}</Text>
+                            <Text style={{
+                              color: colors.textMuted,
+                              fontSize: 12,
+                              fontWeight: '500'
+                            }}>{selected ? 'Selected' : 'Tap to select'}</Text>
+                          </View>
+
+                          {selected && (
+                            <View style={{
+                              position: 'absolute',
+                              top: 12,
+                              right: 12,
+                              backgroundColor: item.color,
+                              padding: 4,
+                              borderRadius: 10
+                            }}>
+                              <Icon name="check" size={14} color="#FFFFFF" />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
               )}
