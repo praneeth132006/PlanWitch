@@ -50,8 +50,9 @@ const STOP_TYPES = [
 export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const {
     tripInfo, setTripInfo, budget, setBudget, getTotalExpenses, getRemainingBudget,
-    packingItems, itinerary, expenses, clearTrip, endTrip, formatCurrency, currency, isLoading, deleteTrip,
-    getAllTravelers, localParticipantId, tripPreferences, checkFeatureAccess
+    packingItems, itinerary, foodItems, expenses, clearTrip, endTrip, formatCurrency, currency, isLoading, deleteTrip,
+    getAllTravelers, localParticipantId, tripPreferences, checkFeatureAccess,
+    setFoodItems, addFoodItem, addPackingItem, addItineraryItem, setPackingItems, setItinerary
   } = useTravelContext();
   const { colors } = useTheme();
   const navigation = useNavigation();
@@ -104,6 +105,13 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
     transport_modes: ['Flight', 'Car'],
     local_transport: ['Cab']
   });
+  const [regenOptions, setRegenOptions] = useState({
+    itinerary: true,
+    packing: true,
+    food: true,
+    budget: true
+  });
+  const [hasExistingContent, setHasExistingContent] = useState(false);
 
   // Custom Alert State
   const [alertConfig, setAlertConfig] = useState({
@@ -138,9 +146,8 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   };
 
   useEffect(() => {
-    // Show all travelers including self
-    setTravelers(getAllTravelers());
-  }, [tripInfo.participants, localParticipantId]);
+    setHasExistingContent(itinerary.length > 0 || foodItems.length > 0 || packingItems.length > 0);
+  }, [itinerary, foodItems, packingItems]);
 
   const fadeAnim = useState(new Animated.Value(0))[0];
   const scaleAnim = useState(new Animated.Value(0.9))[0];
@@ -439,69 +446,72 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   };
 
   const finalizeAiGeneration = async (itineraryCount, foodCount, isReplace) => {
-    showAlert('Generating Packing List', 'Almost there! AI is now suggesting essential items to pack...', 'loading');
-
     try {
-      if (isReplace) setPackingItems([]);
-
-      const daysArray = generateDaysForAi(tripInfo.startDate, tripInfo.endDate);
-      const duration = daysArray.length || 3;
-      const res = await generatePackingList(
-        tripInfo.destination || 'Selected Destination',
-        tripInfo.startDate || 'Upcoming Trip',
-        duration,
-        tripInfo.tripType || 'solo'
-      );
-
+      if (isReplace && regenOptions.packing) setPackingItems([]);
       let packingAddedCount = 0;
-      if (res.success && res.recommendations) {
-        const addedPackingSignatures = new Set();
-        for (const categoryData of res.recommendations) {
-          const lowerCat = (categoryData.category || 'Other').toLowerCase();
-          let normalizedCategory = 'other';
-          if (lowerCat.includes('essential')) normalizedCategory = 'essentials';
-          else if (lowerCat.includes('cloth')) normalizedCategory = 'clothing';
-          else if (lowerCat.includes('toilet')) normalizedCategory = 'toiletries';
-          else if (lowerCat.includes('elect')) normalizedCategory = 'electronics';
-          else if (lowerCat.includes('document')) normalizedCategory = 'documents';
-          else if (lowerCat.includes('health')) normalizedCategory = 'health';
-          else if (lowerCat.includes('accessor')) normalizedCategory = 'accessories';
+      if (regenOptions.packing) {
+        const daysArray = generateDaysForAi(tripInfo.startDate, tripInfo.endDate);
+        const duration = daysArray.length || 3;
+        const res = await generatePackingList(
+          tripInfo.destination || 'Selected Destination',
+          tripInfo.startDate || 'Upcoming Trip',
+          duration,
+          tripInfo.tripType || 'solo'
+        );
 
-          for (const itemName of (categoryData.items || [])) {
-            const cleanName = itemName.trim().toLowerCase();
-            const exists = !isReplace && packingItems.some(existing => existing.name.toLowerCase() === cleanName);
-            if (!exists && !addedPackingSignatures.has(cleanName)) {
-              addedPackingSignatures.add(cleanName);
-              await addPackingItem({ name: itemName, category: normalizedCategory });
-              packingAddedCount++;
+        if (res.success && res.recommendations) {
+          const addedPackingSignatures = new Set();
+          for (const categoryData of res.recommendations) {
+            const lowerCat = (categoryData.category || 'Other').toLowerCase();
+            let normalizedCategory = 'other';
+            if (lowerCat.includes('essential')) normalizedCategory = 'essentials';
+            else if (lowerCat.includes('cloth')) normalizedCategory = 'clothing';
+            else if (lowerCat.includes('toilet')) normalizedCategory = 'toiletries';
+            else if (lowerCat.includes('elect')) normalizedCategory = 'electronics';
+            else if (lowerCat.includes('document')) normalizedCategory = 'documents';
+            else if (lowerCat.includes('health')) normalizedCategory = 'health';
+            else if (lowerCat.includes('accessor')) normalizedCategory = 'accessories';
+
+            for (const itemName of (categoryData.items || [])) {
+              const cleanName = itemName.trim().toLowerCase();
+              const exists = !isReplace && packingItems.some(existing => existing.name.toLowerCase() === cleanName);
+              if (!exists && !addedPackingSignatures.has(cleanName)) {
+                addedPackingSignatures.add(cleanName);
+                await addPackingItem({ name: itemName, category: normalizedCategory });
+                packingAddedCount++;
+              }
             }
           }
         }
       }
 
       // Budget
-      showAlert('Generating Budget Plan', 'AI is calculating a realistic budget based on your preferences...', 'loading');
-      try {
-        const travelersCount = tripInfo.participants ? (Array.isArray(tripInfo.participants) ? tripInfo.participants.length : Object.keys(tripInfo.participants).length) : 1;
-        const budgetResult = await generateBudgetPlan({
-          destination: tripInfo.destination,
-          duration: duration,
-          travelers: travelersCount,
-          budget_min: aiPreferences.budget_min,
-          budget_max: aiPreferences.budget_max,
-          preference: aiPreferences.budget_preference,
-          priority: aiPreferences.budget_priority?.join(', '),
-          accommodation: aiPreferences.accommodation_type,
-          hotel_price: aiPreferences.hotel_price,
-          primary_transport: aiPreferences.transport_modes?.join(', '),
-          local_transport: aiPreferences.local_transport?.join(', ')
-        });
+      if (regenOptions.budget) {
+        showAlert('Generating Budget Plan', 'AI is calculating a realistic budget based on your preferences...', 'loading');
+        try {
+          const daysArray = generateDaysForAi(tripInfo.startDate, tripInfo.endDate);
+          const duration = daysArray.length || 3;
+          const travelersCount = tripInfo.participants ? (Array.isArray(tripInfo.participants) ? tripInfo.participants.length : Object.keys(tripInfo.participants).length) : 1;
+          const budgetResult = await generateBudgetPlan({
+            destination: tripInfo.destination,
+            duration: duration,
+            travelers: travelersCount,
+            budget_min: aiPreferences.budget_min,
+            budget_max: aiPreferences.budget_max,
+            preference: aiPreferences.budget_preference,
+            priority: aiPreferences.budget_priority?.join(', '),
+            accommodation: aiPreferences.accommodation_type,
+            hotel_price: aiPreferences.hotel_price,
+            primary_transport: aiPreferences.transport_modes?.join(', '),
+            local_transport: aiPreferences.local_transport?.join(', ')
+          });
 
-        if (budgetResult.success && budgetResult.categories) {
-          setBudget({ total: budgetResult.total, categories: budgetResult.categories });
+          if (budgetResult.success && budgetResult.categories) {
+            setBudget({ total: budgetResult.total, categories: budgetResult.categories });
+          }
+        } catch (e) {
+          console.warn("Budget generation failed", e);
         }
-      } catch (e) {
-        console.warn("Budget generation failed", e);
       }
 
       hideAlert();
@@ -523,67 +533,80 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const executeAiGeneration = async (isReplace, currentItinerary) => {
     setAiModalVisible(false);
     setIsAiGenerating(true);
-    showAlert('Generating Itinerary', 'AI is crafting your perfect trip plan... This may take a moment.', 'loading');
+
+    let addedCount = 0;
+    let foodAddedCount = 0;
 
     try {
-      const daysArray = generateDaysForAi(tripInfo.startDate, tripInfo.endDate);
-      const daysCount = daysArray.length || 3;
-      const result = await generateTripItinerary(
-        tripInfo.destination,
-        daysCount,
-        aiPreferences.budget_preference || 'Mid',
-        travelers.length.toString(),
-        aiPreferences.interests.join(', '),
-        aiPreferences
-      );
+      // Only show initial alert if itinerary generation is requested
+      if (regenOptions.itinerary) {
+        showAlert('Generating Itinerary', 'AI is crafting your perfect trip plan... This may take a moment.', 'loading');
+        const daysArray = generateDaysForAi(tripInfo.startDate, tripInfo.endDate);
+        const daysCount = daysArray.length || 3;
+        const result = await generateTripItinerary(
+          tripInfo.destination,
+          daysCount,
+          aiPreferences.budget_preference || 'Mid',
+          travelers.length.toString(),
+          aiPreferences.interests.join(', '),
+          aiPreferences
+        );
 
-      hideAlert();
-      if (result.success && result.itinerary) {
-        if (isReplace) setItinerary([]);
+        if (result.success && result.itinerary) {
+          if (isReplace) setItinerary([]);
+          const addedSignatures = new Set();
+          for (const day of result.itinerary) {
+            const dayNum = parseInt(day.day);
+            for (const activity of day.activities) {
+              let type = activity.type?.toLowerCase() || 'attraction';
+              if (!STOP_TYPES.some(t => t.key === type)) {
+                if (type.includes('meal')) type = 'lunch';
+                else if (type.includes('visit')) type = 'attraction';
+                else type = 'attraction';
+              }
 
-        let addedCount = 0;
-        const addedSignatures = new Set();
+              const cleanTitle = activity.title.toLowerCase().trim();
+              const signature = `${dayNum}-${cleanTitle}`;
+              if (addedSignatures.has(signature)) continue;
 
-        for (const day of result.itinerary) {
-          const dayNum = parseInt(day.day);
-          for (const activity of day.activities) {
-            let type = activity.type?.toLowerCase() || 'attraction';
-            if (!STOP_TYPES.some(t => t.key === type)) {
-              if (type.includes('meal')) type = 'lunch';
-              else if (type.includes('visit')) type = 'attraction';
-              else type = 'attraction';
-            }
-
-            const cleanTitle = activity.title.toLowerCase().trim();
-            const signature = `${dayNum}-${cleanTitle}`;
-            if (addedSignatures.has(signature)) continue;
-
-            const isDuplicate = !isReplace && currentItinerary.some(item => {
-              if (parseInt(item.dayNumber) !== dayNum) return false;
-              const existingName = (item.name || '').toLowerCase().trim();
-              return existingName === cleanTitle || existingName.includes(cleanTitle) || cleanTitle.includes(existingName);
-            });
-
-            if (!isDuplicate) {
-              addedSignatures.add(signature);
-              await addItineraryItem({
-                name: activity.title,
-                type: type,
-                dayNumber: dayNum,
-                time: activity.time,
-                notes: activity.description,
-                location: activity.location,
-                duration: activity.duration,
-                cost: activity.cost || '',
-                latitude: 0,
-                longitude: 0
+              const isDuplicate = !isReplace && currentItinerary.some(item => {
+                if (parseInt(item.dayNumber) !== dayNum) return false;
+                const existingName = (item.name || '').toLowerCase().trim();
+                return existingName === cleanTitle || existingName.includes(cleanTitle) || cleanTitle.includes(existingName);
               });
-              addedCount++;
+
+              if (!isDuplicate) {
+                addedSignatures.add(signature);
+                await addItineraryItem({
+                  name: activity.title,
+                  type: type,
+                  dayNumber: dayNum,
+                  time: activity.time,
+                  notes: activity.description,
+                  location: activity.location,
+                  duration: activity.duration,
+                  cost: activity.cost || '',
+                  latitude: 0,
+                  longitude: 0
+                });
+                addedCount++;
+              }
             }
           }
+        } else {
+          // If itinerary generation failed, show an error specific to itinerary
+          hideAlert();
+          showAlert('AI Error', result.error || 'Could not generate itinerary.', 'error');
+          setIsAiGenerating(false);
+          return; // Stop further generation if itinerary failed
         }
+      }
 
-        // Food
+      // Food
+      if (regenOptions.food) {
+        if (isReplace) setFoodItems([]);
+        // If itinerary was generated, hide its alert before showing food alert
+        if (regenOptions.itinerary) hideAlert();
         showAlert('Generating Food Suggestions', 'Now finding the best local dishes for your trip locations...', 'loading');
         try {
           if (isReplace) setFoodItems([]);
@@ -592,7 +615,6 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
           const uniqueLocations = [...new Set([tripInfo.destination, ...stopNames])].filter(Boolean);
 
           const foodResult = await generateFoodRecommendations(uniqueLocations, 'Any');
-          let foodAddedCount = 0;
           if (foodResult.success && foodResult.recommendations) {
             const addedFoodSignatures = new Set();
             for (const placeData of foodResult.recommendations) {
@@ -608,13 +630,11 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               }
             }
           }
-          await finalizeAiGeneration(addedCount, foodAddedCount, isReplace);
         } catch (e) {
-          await finalizeAiGeneration(addedCount, 0, isReplace);
+          console.warn("Food generation failed", e);
         }
-      } else {
-        showAlert('AI Error', result.error || 'Could not generate itinerary.', 'error');
       }
+      await finalizeAiGeneration(addedCount, foodAddedCount, isReplace);
     } catch (e) {
       hideAlert();
       showAlert('Error', e.message, 'error');
@@ -629,20 +649,8 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
       return;
     }
 
-    if (itinerary.length > 0 || foodItems.length > 0 || packingItems.length > 0) {
-      showAlert(
-        'Existing Items',
-        'You already have items in your trip. Do you want to replace them or cancel?',
-        'warning',
-        () => executeAiGeneration(true, itinerary), // Replace
-        null,
-        'Replace All',
-        'Cancel',
-        ''
-      );
-    } else {
-      executeAiGeneration(true, []);
-    }
+    // Always open modal to let user choose options and what to regenerate
+    setAiModalVisible(true);
   };
 
   const handlePersonalizedPlan = () => {
@@ -1741,6 +1749,35 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                 </View>
               </View>
 
+              {hasExistingContent && (
+                <View style={{ marginBottom: 30, backgroundColor: colors.bg + '30', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
+                  <Text style={{ color: colors.text, fontSize: 14, fontWeight: '700', marginBottom: 12 }}>What to regenerate?</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {Object.keys(regenOptions).map(key => (
+                      <TouchableOpacity
+                        key={key}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 20,
+                          backgroundColor: regenOptions[key] ? colors.primary + '20' : colors.card,
+                          borderWidth: 1,
+                          borderColor: regenOptions[key] ? colors.primary : colors.border
+                        }}
+                        onPress={() => setRegenOptions(prev => ({ ...prev, [key]: !prev[key] }))}
+                      >
+                        <Text style={{
+                          color: regenOptions[key] ? colors.primary : colors.textMuted,
+                          fontWeight: regenOptions[key] ? '700' : '500',
+                          fontSize: 12,
+                          textTransform: 'capitalize'
+                        }}>{key}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
               <TouchableOpacity
                 style={{
                   backgroundColor: colors.primary,
@@ -1751,15 +1788,17 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                   justifyContent: 'center',
                   marginBottom: 30
                 }}
-                onPress={handleGenerateAiPlan}
-                disabled={isAiGenerating}
+                onPress={() => executeAiGeneration(true, itinerary)}
+                disabled={isAiGenerating || (hasExistingContent && !Object.values(regenOptions).some(v => v))}
               >
                 {isAiGenerating ? (
                   <ActivityIndicator color="white" />
                 ) : (
                   <>
                     <Icon name="sparkles" size={20} color="#000000" />
-                    <Text style={{ color: '#000000', fontSize: 16, fontWeight: '900', marginLeft: 8 }}>Generate Timed Itinerary</Text>
+                    <Text style={{ color: '#000000', fontSize: 16, fontWeight: '900', marginLeft: 8 }}>
+                      {hasExistingContent ? 'Regenerate Selected' : 'Generate Timed Itinerary'}
+                    </Text>
                   </>
                 )}
               </TouchableOpacity>
