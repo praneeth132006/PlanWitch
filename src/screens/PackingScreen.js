@@ -148,9 +148,18 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
                 'Clear All Items?',
                 'This will permanently remove all items from your packing list. This cannot be undone.',
                 'warning',
-                () => {
-                  setPackingItems([]);
-                  hideAlert();
+                async () => {
+                  try {
+                    hideAlert(); // Close immediately for better UX
+                    await setPackingItems([]);
+                    // Optional: Show success alert after a small delay
+                    setTimeout(() => {
+                      showAlert('Cleared!', 'All packing items have been removed.', 'success', () => hideAlert());
+                    }, 500);
+                  } catch (error) {
+                    console.error('Error clearing packing items:', error);
+                    showAlert('Error', 'Failed to clear items. Please check your connection or permissions.', 'error', () => hideAlert());
+                  }
                 },
                 () => hideAlert(),
                 null,

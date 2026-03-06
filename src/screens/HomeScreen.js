@@ -111,6 +111,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
     food: true,
     budget: true
   });
+  const [useTimings, setUseTimings] = useState(false); // New state for optional timings
   const [hasExistingContent, setHasExistingContent] = useState(false);
 
   // Custom Alert State
@@ -563,7 +564,11 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
           aiPreferences.budget_preference || 'Mid',
           travelers.length.toString(),
           aiPreferences.interests.join(', '),
-          aiPreferences
+          {
+            ...aiPreferences,
+            startTime: useTimings ? aiPreferences.startTime : undefined,
+            endTime: useTimings ? aiPreferences.endTime : undefined,
+          }
         );
 
         if (result.success && result.itinerary) {
@@ -1573,13 +1578,48 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               {(!hasExistingContent || regenOptions.itinerary) && (
                 <>
                   {/* 1. Trip Timings */}
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Trip Timings</Text>
-                  <View style={{ marginBottom: 20, backgroundColor: colors.cardLight, padding: 16, borderRadius: 16 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>Trip Timings</Text>
+                    <TouchableOpacity
+                      onPress={() => setUseTimings(!useTimings)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: useTimings ? colors.primary + '20' : colors.cardLight,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        borderColor: useTimings ? colors.primary : colors.border
+                      }}
+                    >
+                      <View style={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: 6,
+                        backgroundColor: useTimings ? colors.primary : colors.textMuted,
+                        marginRight: 8
+                      }} />
+                      <Text style={{ color: useTimings ? colors.primary : colors.textMuted, fontSize: 12, fontWeight: '700' }}>
+                        {useTimings ? 'Enabled' : 'Disabled'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={{
+                    marginBottom: 20,
+                    backgroundColor: colors.cardLight,
+                    padding: 16,
+                    borderRadius: 16,
+                    opacity: useTimings ? 1 : 0.5,
+                    pointerEvents: useTimings ? 'auto' : 'none'
+                  }}>
                     <View style={{ flexDirection: 'row', gap: 12 }}>
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: colors.text, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>Starts At</Text>
                         <DatePicker12
                           mode="time"
+                          disabled={!useTimings}
                           value={(() => {
                             const d = new Date();
                             const [time, period] = (aiPreferences.startTime || '09:00 AM').split(' ');
@@ -1600,6 +1640,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                         <Text style={{ color: colors.text, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>Ends At</Text>
                         <DatePicker12
                           mode="time"
+                          disabled={!useTimings}
                           value={(() => {
                             const d = new Date();
                             const [time, period] = (aiPreferences.endTime || '09:00 PM').split(' ');
@@ -1620,12 +1661,39 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                   </View>
 
                   {/* 2. Detailed Places Duration */}
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Places & Duration</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>Places & Duration</Text>
+                    {(() => {
+                      const totalDays = generateDaysForAi(tripInfo.startDate, tripInfo.endDate).length || 1;
+                      const plannedDays = Object.values(aiPreferences.locationDurations || {}).reduce((sum, d) => sum + (parseInt(d) || 0), 0);
+                      const remaining = totalDays - plannedDays;
+                      return (
+                        <View style={{
+                          backgroundColor: remaining < 0 ? '#EF444420' : colors.primary + '20',
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          borderRadius: 12,
+                          borderWidth: 1,
+                          borderColor: remaining < 0 ? '#EF4444' : colors.primary
+                        }}>
+                          <Text style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            color: remaining < 0 ? '#EF4444' : colors.primary
+                          }}>
+                            {plannedDays}/{totalDays} Days {remaining < 0 ? '(Exceeded!)' : `(${remaining} left)`}
+                          </Text>
+                        </View>
+                      );
+                    })()}
+                  </View>
                   <View style={{ marginBottom: 24, gap: 10 }}>
                     {tripInfo.stops && tripInfo.stops.length > 0 ? (
                       tripInfo.stops.map((stop, index) => {
                         const stopName = typeof stop === 'object' ? (stop.name || `Stop ${index + 1}`) : stop;
                         const durationKey = `stop_${index}`;
+                        const totalDays = generateDaysForAi(tripInfo.startDate, tripInfo.endDate).length || 1;
+
                         return (
                           <View key={index} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, padding: 12, borderRadius: 12 }}>
                             <Text style={{ flex: 1, color: colors.text, fontSize: 14, fontWeight: '500' }}>{stopName}</Text>
@@ -1645,10 +1713,19 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                               placeholderTextColor={colors.textMuted}
                               keyboardType="numeric"
                               value={aiPreferences.locationDurations?.[durationKey] || ''}
-                              onChangeText={(t) => setAiPreferences(prev => ({
-                                ...prev,
-                                locationDurations: { ...prev.locationDurations, [durationKey]: t }
-                              }))}
+                              onChangeText={(t) => {
+                                const val = parseInt(t) || 0;
+                                // Basic validation: can't be more than total trip days by itself
+                                if (val > totalDays) {
+                                  showAlert('Invalid Duration', `Duration for one stop cannot exceed total trip days (${totalDays}).`, 'warning', () => hideAlert());
+                                  return;
+                                }
+
+                                setAiPreferences(prev => ({
+                                  ...prev,
+                                  locationDurations: { ...prev.locationDurations, [durationKey]: t }
+                                }));
+                              }}
                             />
                           </View>
                         );
