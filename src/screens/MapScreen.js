@@ -98,6 +98,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [newStop, setNewStop] = useState({
     name: '', type: 'attraction', dayNumber: 1, time: '', notes: '', location: '',
     duration: '', cost: ''
@@ -270,9 +271,44 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
           </View>
         )}
 
+        {/* Day Selector (Horizontal Pill List) */}
+        {tripDays.length > 0 && totalStops > 0 && (
+          <View style={styles.daySelectorContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.daySelectorScroll}
+            >
+              {tripDays.map((day, index) => {
+                const isActive = index === selectedDayIndex;
+                const stopsForDay = getStopsForDay(day.dayNumber);
+                const hasStops = stopsForDay.length > 0;
+                return (
+                  <TouchableOpacity
+                    key={day.dayNumber}
+                    style={[styles.dayPill, isActive && styles.dayPillActive]}
+                    onPress={() => setSelectedDayIndex(index)}
+                  >
+                    <Text style={[styles.dayPillNumber, isActive && styles.dayPillNumberActive]}>{day.dayNumber}</Text>
+                    <Text style={[styles.dayPillLabel, isActive && styles.dayPillLabelActive]}>Day</Text>
+                    {hasStops && (
+                      <View style={[styles.dayPillBadge, isActive && styles.dayPillBadgeActive]}>
+                        <Text style={[styles.dayPillBadgeText, isActive && styles.dayPillBadgeTextActive]}>{stopsForDay.length}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Timeline */}
         <View style={styles.timeline}>
-          {tripDays.map((day, dayIndex) => {
+          {tripDays.length > 0 && totalStops > 0 && (() => {
+            // Render only the currently selected day
+            const day = tripDays[selectedDayIndex] || tripDays[0];
+            const dayIndex = selectedDayIndex;
             const dayStops = getStopsForDay(day.dayNumber);
             const hasStops = dayStops.length > 0;
             const isLastDay = dayIndex === tripDays.length - 1;
@@ -400,7 +436,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                 </View>
               </View>
             );
-          })}
+          })()}
         </View>
 
         <View style={{ height: 120 }} />
