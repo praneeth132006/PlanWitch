@@ -37,6 +37,7 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
     addPackingItem,
     togglePackingItem,
     deletePackingItem,
+    setPackingItems,
     tripInfo = {},
     checkFeatureAccess
   } = useTravelContext();
@@ -103,7 +104,14 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
   });
 
   const groupedItems = PACKING_CATEGORIES.reduce((acc, cat) => {
-    acc[cat.key] = filteredItems.filter(item => item.category === cat.key);
+    acc[cat.key] = filteredItems.filter(item => {
+      const itemCat = (item.category || 'other').toLowerCase();
+      // If it's a direct match or if it's 'other' and we're on the other category
+      if (itemCat === cat.key) return true;
+      // Also put unknown categories into 'other'
+      if (cat.key === 'other' && !PACKING_CATEGORIES.some(pc => pc.key === itemCat)) return true;
+      return false;
+    });
     return acc;
   }, {});
 
@@ -111,11 +119,19 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
   const totalItems = packingItems.length;
   const packedItems = packingItems.filter(item => item.packed).length;
   const packedPercentage = totalItems > 0 ? (packedItems / totalItems) * 100 : 0;
-  const categoryStats = PACKING_CATEGORIES.map(cat => ({
-    ...cat,
-    total: packingItems.filter(i => i.category === cat.key).length,
-    packed: packingItems.filter(i => i.category === cat.key && i.packed).length,
-  }));
+  const categoryStats = PACKING_CATEGORIES.map(cat => {
+    const items = packingItems.filter(item => {
+      const itemCat = (item.category || 'other').toLowerCase();
+      if (itemCat === cat.key) return true;
+      if (cat.key === 'other' && !PACKING_CATEGORIES.some(pc => pc.key === itemCat)) return true;
+      return false;
+    });
+    return {
+      ...cat,
+      total: items.length,
+      packed: items.filter(i => i.packed).length,
+    };
+  });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -125,6 +141,28 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
           <Icon name="packing" size={24} color={colors.text} style={{ marginRight: 8 }} />
           <Text style={styles.headerTitle}>Packing List</Text>
         </View>
+        {packingItems.length > 0 && !tripInfo.isCompleted && (
+          <TouchableOpacity
+            onPress={() => {
+              showAlert(
+                'Clear All Items?',
+                'This will permanently remove all items from your packing list. This cannot be undone.',
+                'warning',
+                () => {
+                  setPackingItems([]);
+                  hideAlert();
+                },
+                () => hideAlert(),
+                null,
+                'Clear All',
+                'Cancel'
+              );
+            }}
+            style={styles.clearAllButton}
+          >
+            <Text style={styles.clearAllText}>Clear All</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -454,6 +492,8 @@ const createStyles = (colors) => StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 },
   headerTitle: { color: colors.text, fontSize: 24, fontWeight: '800' },
   headerSubtitle: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
+  clearAllButton: { backgroundColor: colors.primary + '15', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.primary + '30' },
+  clearAllText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
 
   // Progress Card
   progressCard: { marginHorizontal: 20, backgroundColor: colors.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.primaryBorder },

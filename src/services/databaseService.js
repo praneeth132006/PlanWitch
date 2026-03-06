@@ -429,13 +429,31 @@ export const savePackingItem = async (item, tripId = null, ownerId = null) => {
   if (!userId) throw new Error('User not authenticated');
 
   const isCurrent = !tripId || tripId === 'current';
-  const path = isCurrent
+  const path = (isCurrent && !ownerId)
     ? `users/${userId}/currentTrip/packingItems`
-    : `users/${userId}/trips/${tripId}/packingItems`;
+    : (ownerId ? `packingItems/${tripId}` : `users/${userId}/trips/${tripId}/packingItems`);
 
   const itemId = item.id || push(ref(database, path)).key;
   await set(ref(database, `${path}/${itemId}`), { ...item, id: itemId });
   return { ...item, id: itemId };
+};
+
+export const savePackingItems = async (items, tripId = null, ownerId = null) => {
+  const userId = ownerId || getUserId();
+  if (!userId) throw new Error('User not authenticated');
+
+  const isCurrent = !tripId || tripId === 'current';
+  const path = (isCurrent && !ownerId)
+    ? `users/${userId}/currentTrip/packingItems`
+    : (ownerId ? `packingItems/${tripId}` : `users/${userId}/trips/${tripId}/packingItems`);
+
+  const itemsObj = {};
+  items.forEach(item => {
+    const id = item.id || push(ref(database, path)).key;
+    itemsObj[id] = { ...item, id };
+  });
+
+  await set(ref(database, path), itemsObj);
 };
 
 export const getPackingItems = async (tripId = null, ownerId = null) => {
@@ -443,9 +461,9 @@ export const getPackingItems = async (tripId = null, ownerId = null) => {
   if (!userId) return [];
 
   const isCurrent = !tripId || tripId === 'current';
-  const path = isCurrent
+  const path = (isCurrent && !ownerId)
     ? `users/${userId}/currentTrip/packingItems`
-    : `users/${userId}/trips/${tripId}/packingItems`;
+    : (ownerId ? `packingItems/${tripId}` : `users/${userId}/trips/${tripId}/packingItems`);
 
   const snapshot = await get(ref(database, path));
   return snapshot.exists() ? Object.values(snapshot.val()) : [];
@@ -456,9 +474,9 @@ export const updatePackingItem = async (itemId, updates, tripId = null, ownerId 
   if (!userId) throw new Error('User not authenticated');
 
   const isCurrent = !tripId || tripId === 'current';
-  const path = isCurrent
+  const path = (isCurrent && !ownerId)
     ? `users/${userId}/currentTrip/packingItems/${itemId}`
-    : `users/${userId}/trips/${tripId}/packingItems/${itemId}`;
+    : (ownerId ? `packingItems/${tripId}/${itemId}` : `users/${userId}/trips/${tripId}/packingItems/${itemId}`);
 
   await update(ref(database, path), updates);
 };
@@ -468,11 +486,35 @@ export const deletePackingItemFromDB = async (itemId, tripId = null, ownerId = n
   if (!userId) throw new Error('User not authenticated');
 
   const isCurrent = !tripId || tripId === 'current';
-  const path = isCurrent
+  const path = (isCurrent && !ownerId)
     ? `users/${userId}/currentTrip/packingItems/${itemId}`
-    : `users/${userId}/trips/${tripId}/packingItems/${itemId}`;
+    : (ownerId ? `packingItems/${tripId}/${itemId}` : `users/${userId}/trips/${tripId}/packingItems/${itemId}`);
 
   await remove(ref(database, path));
+};
+
+/**
+ * Subscribe to packing items in real-time
+ */
+export const subscribeToPackingItems = (tripId, ownerId, callback) => {
+  const userId = ownerId || getUserId();
+  if (!userId) return () => { };
+
+  const isCurrent = !tripId || tripId === 'current';
+  const path = (isCurrent && !ownerId)
+    ? `users/${userId}/currentTrip/packingItems`
+    : (ownerId ? `packingItems/${tripId}` : `users/${userId}/trips/${tripId}/packingItems`);
+
+  const dbRef = ref(database, path);
+
+  const unsubscribe = onValue(dbRef, (snapshot) => {
+    const data = snapshot.exists() ? Object.values(snapshot.val()) : [];
+    callback(data);
+  }, (error) => {
+    console.error('[DB] Packing items subscription error:', error);
+  });
+
+  return () => off(dbRef, 'value', unsubscribe);
 };
 
 // ============ FOOD ITEMS ============

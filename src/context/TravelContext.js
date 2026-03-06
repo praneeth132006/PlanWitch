@@ -139,6 +139,11 @@ export const TravelProvider = ({ children }) => {
     unsubscribersRef.current.foodItems = DB.subscribeToFoodItems(id, owner, (data) => {
       setFoodItems(data || []);
     });
+
+    // F. Subscribe to packing items
+    unsubscribersRef.current.packingItems = DB.subscribeToPackingItems(id, owner, (data) => {
+      setPackingItems(data || []);
+    });
   };
 
   // New State for AI Personalization
@@ -586,8 +591,7 @@ export const TravelProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        // Save to my own path (not synced with trip owner)
-        await DB.savePackingItem(newItem, tripInfo.id);
+        await DB.savePackingItem(newItem, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error saving packing item:', error);
       }
@@ -597,12 +601,13 @@ export const TravelProvider = ({ children }) => {
   // Toggle packing item
   const togglePackingItem = async (id) => {
     const item = packingItems.find(i => i.id === id);
+    if (!item) return;
+
     setPackingItems(prev => prev.map(i => i.id === id ? { ...i, packed: !i.packed } : i));
 
-    if (isAuthenticated && item) {
+    if (isAuthenticated) {
       try {
-        // Update in my own path (not synced with trip owner)
-        await DB.updatePackingItem(id, { packed: !item.packed }, tripInfo.id);
+        await DB.updatePackingItem(id, { packed: !item.packed }, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error updating packing item:', error);
       }
@@ -615,8 +620,7 @@ export const TravelProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        // Delete from my own path (not synced with trip owner)
-        await DB.deletePackingItemFromDB(id, tripInfo.id);
+        await DB.deletePackingItemFromDB(id, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error deleting packing item:', error);
       }
@@ -756,8 +760,7 @@ export const TravelProvider = ({ children }) => {
     setPackingItems(newPackingItems);
     if (isAuthenticated) {
       try {
-        // Packing items are usually saved per user, not strictly synced to tripOwnerId
-        await DB.savePackingItems(newPackingItems, tripInfo.id);
+        await DB.savePackingItems(newPackingItems, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error saving packing items list:', error);
       }
