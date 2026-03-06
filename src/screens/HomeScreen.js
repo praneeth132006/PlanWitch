@@ -874,14 +874,38 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
             {/* Stats Grid */}
             <View style={styles.statsGrid}>
-              <View style={styles.gridItem}>
+              <TouchableOpacity
+                style={styles.gridItem}
+                onPress={() => {
+                  const normalizePlace = (place) => {
+                    if (!place) return null;
+                    if (typeof place === 'object' && (place.name || place.fullAddress || place.place_id)) return place;
+                    if (typeof place === 'string') return { name: place, fullAddress: place };
+                    return place;
+                  };
+
+                  const normalizedOrigin = normalizePlace(tripInfo.origin || tripInfo.start);
+                  const normalizedEnd = normalizePlace(tripInfo.endLocation);
+                  const normalizedStops = (tripInfo.stops || []).map(normalizePlace).filter(Boolean);
+
+                  setEditLocations({
+                    origin: normalizedOrigin,
+                    stops: normalizedStops,
+                    endLocation: normalizedEnd
+                  });
+                  setShowLocationEditModal(true);
+                }}
+              >
                 <Text style={styles.gridLabel}>LOCATIONS</Text>
                 <Text style={styles.gridValue}>{mainLocationsCount}</Text>
-              </View>
-              <View style={styles.gridItem}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.gridItem}
+                onPress={() => navigation.navigate('Budget')}
+              >
                 <Text style={styles.gridLabel}>BUDGET</Text>
                 <Text style={styles.gridValue}>{formatCurrency(budget.total)}</Text>
-              </View>
+              </TouchableOpacity>
               <View style={styles.gridItem}>
                 <Text style={styles.gridLabel}>LAST EXPENSE</Text>
                 <Text style={[styles.gridValue, { fontSize: 16 }]}>
@@ -893,6 +917,20 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                 <Text style={styles.gridLabel}>TRAVELERS</Text>
                 <Text style={styles.gridValue}>{travelers.length}</Text>
               </View>
+              <TouchableOpacity
+                style={styles.gridItem}
+                onPress={() => navigation.navigate('Packing')}
+              >
+                <Text style={styles.gridLabel}>PACKING</Text>
+                <Text style={styles.gridValue}>{packingItems?.length || 0}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.gridItem}
+                onPress={() => navigation.navigate('Food')}
+              >
+                <Text style={styles.gridLabel}>FOOD</Text>
+                <Text style={styles.gridValue}>{foodItems?.length || 0}</Text>
+              </TouchableOpacity>
             </View>
 
 
