@@ -342,25 +342,29 @@ export const generatePackingList = async (destination, travelDate, duration, tri
     }
 
     const prompt = `
-                                    Create a packing list for a trip:
-                                    - Destination: ${destination}
-                                    - Travel Date: ${travelDate}
-                                    - Duration: ${duration} days
-                                    - Trip Type: ${tripType}
+    You are an expert travel coordinator. Create a HIGHLY PRECISE and practical packing list for a trip:
+    - Destination: ${destination}
+    - Travel Date: ${travelDate}
+    - Duration: ${duration} days
+    - Trip Type: ${tripType}
 
-                                    Consider the weather, local customs, and essential items needed.
+    CRITICAL RULES FOR PACKING ITEMS:
+    1. CONTEXT IS KING: Base items EXACTLY on the expected climate, temperature, and geography of ${destination} during ${travelDate}. 
+    2. BE SPECIFIC: Don't just say "Jacket", say "Light windbreaker" or "Heavy down coat" depending on the weather.
+    3. NO USELESS ITEMS: Do NOT include items that are irrelevant. For example, DO NOT suggest a "Visa" or "Passport" if the trip is domestic (within the user's home country). Only suggest items actually needed for this specific location and season.
+    4. MUST INCLUDE quantities where it makes sense based on the ${duration} days duration (e.g. "3x Casual Shirts").
 
-                                    Return ONLY this JSON format:
-                                    {
-                                        "success": true,
-                                    "recommendations": [
-                                    {"category": "Essentials", "items": ["item1", "item2", "item3"] },
-                                    {"category": "Clothing", "items": ["item1", "item2", "item3"] },
-                                    {"category": "Toiletries", "items": ["item1", "item2"] },
-                                    {"category": "Electronics", "items": ["item1", "item2"] },
-                                    {"category": "Documents", "items": ["item1", "item2"] },
-                                    {"category": "Health", "items": ["item1", "item2"] }
-                                    ]
+    Return ONLY this JSON format:
+    {
+        "success": true,
+        "recommendations": [
+            {"category": "Essentials", "items": ["item1", "item2"] },
+            {"category": "Clothing", "items": ["item1", "item2"] },
+            {"category": "Toiletries", "items": ["item1", "item2"] },
+            {"category": "Electronics", "items": ["item1", "item2"] },
+            {"category": "Documents", "items": ["item1", "item2"] },
+            {"category": "Health", "items": ["item1", "item2"] }
+        ]
     }`;
 
     try {
