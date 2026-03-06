@@ -751,6 +751,19 @@ export const TravelProvider = ({ children }) => {
     }
   };
 
+  const setPackingItemsSync = async (updater) => {
+    const newPackingItems = typeof updater === 'function' ? updater(packingItems) : updater;
+    setPackingItems(newPackingItems);
+    if (isAuthenticated) {
+      try {
+        // Packing items are usually saved per user, not strictly synced to tripOwnerId
+        await DB.savePackingItems(newPackingItems, tripInfo.id);
+      } catch (error) {
+        console.error('Error saving packing items list:', error);
+      }
+    }
+  };
+
   // End trip - move to history
   const endTrip = async () => {
     if (tripInfo && tripInfo.destination) {
@@ -1246,7 +1259,7 @@ export const TravelProvider = ({ children }) => {
       getTotalExpenses, getExpensesByCategory,
       packingItems,
       addPackingItem,
-      setPackingItems, // Export setter if needed, but mainly helper functions
+      setPackingItems: setPackingItemsSync,
       togglePackingItem,
       deletePackingItem,
       // --- FOOD ITEMS EXPORT ---

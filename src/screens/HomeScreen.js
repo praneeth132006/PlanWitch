@@ -447,7 +447,6 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
   const finalizeAiGeneration = async (itineraryCount, foodCount, isReplace) => {
     try {
-      if (isReplace && regenOptions.packing) setPackingItems([]);
       let packingAddedCount = 0;
       if (regenOptions.packing) {
         const daysArray = generateDaysForAi(tripInfo.startDate, tripInfo.endDate);
@@ -460,7 +459,9 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         );
 
         if (res.success && res.recommendations) {
+          const newPackingItems = [];
           const addedPackingSignatures = new Set();
+
           for (const categoryData of res.recommendations) {
             const lowerCat = (categoryData.category || 'Other').toLowerCase();
             let normalizedCategory = 'other';
@@ -477,9 +478,22 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               const exists = !isReplace && packingItems.some(existing => existing.name.toLowerCase() === cleanName);
               if (!exists && !addedPackingSignatures.has(cleanName)) {
                 addedPackingSignatures.add(cleanName);
-                await addPackingItem({ name: itemName, category: normalizedCategory });
+                newPackingItems.push({
+                  id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                  name: itemName,
+                  category: normalizedCategory,
+                  packed: false
+                });
                 packingAddedCount++;
               }
+            }
+          }
+
+          if (newPackingItems.length > 0) {
+            if (isReplace) {
+              await setPackingItems(newPackingItems);
+            } else {
+              await setPackingItems(prev => [...prev, ...newPackingItems]);
             }
           }
         }

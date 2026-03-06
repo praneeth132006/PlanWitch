@@ -350,9 +350,10 @@ export const generatePackingList = async (destination, travelDate, duration, tri
 
     CRITICAL RULES FOR PACKING ITEMS:
     1. CONTEXT IS KING: Base items EXACTLY on the expected climate, temperature, and geography of ${destination} during ${travelDate}. 
-    2. BE SPECIFIC: Don't just say "Jacket", say "Light windbreaker" or "Heavy down coat" depending on the weather.
-    3. NO USELESS ITEMS: Do NOT include items that are irrelevant. For example, DO NOT suggest a "Visa" or "Passport" if the trip is domestic (within the user's home country). Only suggest items actually needed for this specific location and season.
-    4. MUST INCLUDE quantities where it makes sense based on the ${duration} days duration (e.g. "3x Casual Shirts").
+    2. BE SPECIFIC: Don't say "Jacket", say "Light windbreaker" or "Heavy down coat" depending on weather.
+    3. NO USELESS ITEMS: Do NOT suggest "Visa", "Passport", or international adapters if the trip is domestic (within the user's home country).
+    4. MUST INCLUDE quantities where it makes sense (e.g. "3x Casual Shirts").
+    5. STRICT MAXIMUM LIMIT: Do NOT generate more than 35-40 items TOTAL across all categories combined. Be extremely ruthless in eliminating non-essentials. Users hate long, cluttered packing lists.
 
     Return ONLY this JSON format:
     {
