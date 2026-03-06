@@ -925,7 +925,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                 {packingItems?.length > 0 ? (
                   <View>
                     <Text style={styles.gridValue}>
-                      {packingItems.filter(item => item.isPacked).length}/{packingItems.length}
+                      {packingItems.filter(item => item.packed).length}/{packingItems.length}
                     </Text>
                     <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>Packed</Text>
                   </View>
@@ -941,7 +941,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                 {foodItems?.length > 0 ? (
                   <View>
                     <Text style={styles.gridValue}>
-                      {foodItems.filter(item => item.isDone || item.isTried).length}/{foodItems.length}
+                      {foodItems.filter(item => item.tried).length}/{foodItems.length}
                     </Text>
                     <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>Tried</Text>
                   </View>
