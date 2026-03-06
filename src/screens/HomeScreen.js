@@ -922,14 +922,32 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                 onPress={() => navigation.navigate('Packing')}
               >
                 <Text style={styles.gridLabel}>PACKING</Text>
-                <Text style={styles.gridValue}>{packingItems?.length || 0}</Text>
+                {packingItems?.length > 0 ? (
+                  <View>
+                    <Text style={styles.gridValue}>
+                      {packingItems.filter(item => item.isPacked).length}/{packingItems.length}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>Packed</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.gridValue}>0</Text>
+                )}
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.gridItem}
                 onPress={() => navigation.navigate('Food')}
               >
                 <Text style={styles.gridLabel}>FOOD</Text>
-                <Text style={styles.gridValue}>{foodItems?.length || 0}</Text>
+                {foodItems?.length > 0 ? (
+                  <View>
+                    <Text style={styles.gridValue}>
+                      {foodItems.filter(item => item.isDone || item.isTried).length}/{foodItems.length}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>Tried</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.gridValue}>0</Text>
+                )}
               </TouchableOpacity>
             </View>
 
