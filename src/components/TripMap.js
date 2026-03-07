@@ -17,6 +17,29 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
     const directionsService = useRef(null);
     const directionsRenderer = useRef(null);
     const geocoder = useRef(null);
+    const updateCallId = useRef(0);
+    const updateTimeout = useRef(null);
+    const [nativeRoute, setNativeRoute] = React.useState([]);
+    const [isNativeRouteFallback, setIsNativeRouteFallback] = React.useState(false);
+
+    const decodePolyline = (encoded) => {
+        if (!encoded) return [];
+        let points = [];
+        let index = 0, len = encoded.length;
+        let lat = 0, lng = 0;
+        while (index < len) {
+            let b, shift = 0, result = 0;
+            do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+            let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+            lat += dlat;
+            shift = 0; result = 0;
+            do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+            let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+            lng += dlng;
+            points.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+        }
+        return points;
+    };
 
     useEffect(() => {
         if (Platform.OS !== 'web') return;
@@ -104,206 +127,250 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
             });
     }, []);
 
+    const fallbackPolyline = useRef(null);
+
     // Extract update logic to function so we can call it from init
     const updateMapContents = async () => {
         if (!mapInstance.current || !window.google) return;
 
-        // Clear existing markers
-        markers.current.forEach(m => m.setMap(null));
-        markers.current = [];
+        // Debounce logic
+        if (updateTimeout.current) clearTimeout(updateTimeout.current);
+        updateTimeout.current = setTimeout(async () => {
+            const currentCallId = ++updateCallId.current;
 
-        bounds.current = new window.google.maps.LatLngBounds();
+            // Clear existing markers
+            markers.current.forEach(m => m.setMap(null));
+            markers.current = [];
 
-        // Helper to resolve coordinates
-        const resolveLocation = async (item) => {
-            if (item.latitude && item.longitude) {
-                return { lat: item.latitude, lng: item.longitude, name: item.name };
+            // Clear fallback polyline if it exists
+            if (fallbackPolyline.current) {
+                fallbackPolyline.current.setMap(null);
+                fallbackPolyline.current = null;
             }
-            if (item.location || item.name) {
-                const query = item.location || item.name;
-                // Simple cache could be added here if needed
-                return new Promise((resolve) => {
-                    // Check if geocoder is initialized, if not initialize it
-                    if (!geocoder.current) {
-                        geocoder.current = new window.google.maps.Geocoder();
-                    }
-                    geocoder.current.geocode({ address: query }, (results, status) => {
-                        if (status === 'OK' && results[0]) {
-                            resolve({
-                                lat: results[0].geometry.location.lat(),
-                                lng: results[0].geometry.location.lng(),
-                                name: item.name || query
-                            });
-                        } else {
-                            // console.warn('Geocoding failed for:', query);
-                            resolve(null);
+
+            bounds.current = new window.google.maps.LatLngBounds();
+
+            // Helper to resolve coordinates
+            const resolveLocation = async (item) => {
+                if (item.latitude && item.longitude) {
+                    return { lat: parseFloat(item.latitude), lng: parseFloat(item.longitude), name: item.name };
+                }
+                if (item.location || item.name) {
+                    const query = item.location || item.name;
+                    return new Promise((resolve) => {
+                        if (!geocoder.current) {
+                            geocoder.current = new window.google.maps.Geocoder();
                         }
+                        geocoder.current.geocode({ address: query }, (results, status) => {
+                            if (status === 'OK' && results[0]) {
+                                resolve({
+                                    lat: results[0].geometry.location.lat(),
+                                    lng: results[0].geometry.location.lng(),
+                                    name: item.name || query
+                                });
+                            } else {
+                                resolve(null);
+                            }
+                        });
                     });
-                });
-            }
-            return null;
-        };
+                }
+                return null;
+            };
 
-        // 1. Collect all points in order with their logical label
-        const allPoints = [];
-        let labelCounter = 1;
+            // 1. Collect all points in order
+            const allPoints = [];
+            let labelCounter = 1;
 
-        // Start
-        const startPoint = origin || start;
-        if (startPoint) {
-            const resolved = await resolveLocation({ ...startPoint, name: startPoint.name || 'Start' });
-            if (resolved) {
-                allPoints.push({
-                    type: 'start',
-                    position: { lat: resolved.lat, lng: resolved.lng },
-                    label: (labelCounter++).toString(),
-                    name: resolved.name
-                });
-            }
-        }
-
-        // Stops
-        if (stops && stops.length > 0) {
-            // Process sequentially to maintain order labels
-            for (let i = 0; i < stops.length; i++) {
-                const stop = stops[i];
-                const resolved = await resolveLocation({ ...stop, name: stop.name || `Stop ${i + 1}` });
+            // Start
+            const startPoint = origin || start;
+            if (startPoint) {
+                const resolved = await resolveLocation({ ...startPoint, name: startPoint.name || 'Start' });
+                if (currentCallId !== updateCallId.current) return;
                 if (resolved) {
                     allPoints.push({
-                        type: 'stop',
+                        type: 'start',
                         position: { lat: resolved.lat, lng: resolved.lng },
                         label: (labelCounter++).toString(),
                         name: resolved.name
                     });
                 }
             }
-        }
 
-        // Visit (Legacy)
-        if (visit && (!stops || stops.length === 0)) {
-            const resolved = await resolveLocation({ ...visit, name: visit.name || 'Visit' });
-            if (resolved) {
-                allPoints.push({
-                    type: 'visit',
-                    position: { lat: resolved.lat, lng: resolved.lng },
-                    label: (labelCounter++).toString(),
-                    name: resolved.name
+            // Stops
+            if (stops && stops.length > 0) {
+                const stopPromises = stops.map((stop, i) => resolveLocation({ ...stop, name: stop.name || `Stop ${i + 1}` }));
+                const resolvedStops = await Promise.all(stopPromises);
+                if (currentCallId !== updateCallId.current) return;
+
+                resolvedStops.forEach((resolved) => {
+                    if (resolved) {
+                        allPoints.push({
+                            type: 'stop',
+                            position: { lat: resolved.lat, lng: resolved.lng },
+                            label: (labelCounter++).toString(),
+                            name: resolved.name
+                        });
+                    }
                 });
             }
-        }
 
-        // End
-        const endPoint = destination || end;
-        if (endPoint) {
-            const resolved = await resolveLocation({ ...endPoint, name: endPoint.name || 'End' });
-            if (resolved) {
-                allPoints.push({
-                    type: 'end',
-                    position: { lat: resolved.lat, lng: resolved.lng },
-                    label: (labelCounter++).toString(),
-                    name: resolved.name
-                });
-            }
-        }
-
-        if (allPoints.length === 0) return;
-
-        // 2. Group collinear points for Markers
-        // We use a simple string key of lat,lng to detect duplicates
-        const uniqueParams = {}; // "lat,lng" -> { position, labels[], title }
-
-        allPoints.forEach(p => {
-            const key = `${p.position.lat},${p.position.lng}`;
-            if (!uniqueParams[key]) {
-                uniqueParams[key] = {
-                    position: p.position,
-                    labels: [p.label],
-                    title: p.name
-                };
-            } else {
-                uniqueParams[key].labels.push(p.label);
-                // Append title if different? Usually keep first or append
-                if (!uniqueParams[key].title.includes(p.name)) {
-                    uniqueParams[key].title += ` & ${p.name}`;
+            // visit & end logic...
+            if (visit && (!stops || stops.length === 0)) {
+                const resolved = await resolveLocation({ ...visit, name: visit.name || 'Visit' });
+                if (currentCallId !== updateCallId.current) return;
+                if (resolved) {
+                    allPoints.push({
+                        type: 'visit',
+                        position: { lat: resolved.lat, lng: resolved.lng },
+                        label: (labelCounter++).toString(),
+                        name: resolved.name
+                    });
                 }
             }
-            bounds.current.extend(p.position);
-        });
 
-        // 3. Create Markers from groups
-        Object.values(uniqueParams).forEach(group => {
-            let label = '';
-            if (showDetailedMarkers) {
-                if (group.labels.length > 3) {
-                    label = `${group.labels[0]}-${group.labels[group.labels.length - 1]}`;
+            const endPoint = destination || end;
+            if (endPoint) {
+                const resolved = await resolveLocation({ ...endPoint, name: endPoint.name || 'End' });
+                if (currentCallId !== updateCallId.current) return;
+                if (resolved) {
+                    allPoints.push({
+                        type: 'end',
+                        position: { lat: resolved.lat, lng: resolved.lng },
+                        label: (labelCounter++).toString(),
+                        name: resolved.name
+                    });
+                }
+            }
+
+            if (allPoints.length === 0 || currentCallId !== updateCallId.current) return;
+
+            // 2. Group collinear points and draw Markers
+            const uniqueParams = {};
+            allPoints.forEach(p => {
+                const key = `${p.position.lat},${p.position.lng}`;
+                if (!uniqueParams[key]) {
+                    uniqueParams[key] = { position: p.position, labels: [p.label], title: p.name };
                 } else {
-                    label = group.labels.join(', ');
+                    uniqueParams[key].labels.push(p.label);
+                    if (!uniqueParams[key].title.includes(p.name)) uniqueParams[key].title += ` & ${p.name}`;
                 }
-            } else {
-                // For overview map, only show the first label of the group or none if it's too crowded?
-                // Actually, if it's the home map, we just want to see the stop.
-                // Let's show the first label if it's a primary stop, but keep it clean.
-                label = group.labels[0];
-            }
+                bounds.current.extend(p.position);
+            });
 
-            markers.current.push(new window.google.maps.Marker({
-                position: group.position,
-                map: mapInstance.current,
-                label: label,
-                title: group.title,
-            }));
-        });
+            Object.values(uniqueParams).forEach(group => {
+                let label = showDetailedMarkers ?
+                    (group.labels.length > 3 ? `${group.labels[0]}-${group.labels[group.labels.length - 1]}` : group.labels.join(', ')) :
+                    group.labels[0];
 
-        // 4. Calculate Route (Use ALL points in sequence)
-        if (directionsService.current && directionsRenderer.current) {
-            if (allPoints.length >= 2) {
-                const routeOrigin = allPoints[0].position;
-                const routeDestination = allPoints[allPoints.length - 1].position;
-
-                // Waypoints are everything in between
-                // Limit to 23 waypoints (Google limit is 25 total including origin and destination)
-                let intermediatePoints = allPoints.slice(1, -1);
-                if (intermediatePoints.length > 23) {
-                    console.warn(`Too many waypoints (${intermediatePoints.length}). Sampling to 23 to avoid MAX_WAYPOINTS_EXCEEDED.`);
-                    const sampled = [];
-                    const step = intermediatePoints.length / 23;
-                    for (let i = 0; i < 23; i++) {
-                        sampled.push(intermediatePoints[Math.floor(i * step)]);
-                    }
-                    intermediatePoints = sampled;
-                }
-
-                const waypoints = intermediatePoints.map(p => ({ location: p.position, stopover: true }));
-
-                directionsService.current.route({
-                    origin: routeOrigin,
-                    destination: routeDestination,
-                    waypoints,
-                    optimizeWaypoints: false,
-                    travelMode: window.google.maps.TravelMode.DRIVING,
-                }, (result, status) => {
-                    if (status === window.google.maps.DirectionsStatus.OK) {
-                        directionsRenderer.current.setDirections(result);
-                    } else {
-                        console.warn('Directions request failed due to ' + status);
-                        mapInstance.current.fitBounds(bounds.current);
-                    }
+                const marker = new window.google.maps.Marker({
+                    position: group.position,
+                    map: mapInstance.current,
+                    label: label,
+                    title: group.title,
                 });
-            } else {
-                directionsRenderer.current.setDirections({ routes: [] });
-                if (allPoints.length > 0) {
-                    mapInstance.current.fitBounds(bounds.current);
-                    if (bounds.current.getNorthEast().equals(bounds.current.getSouthWest())) {
-                        mapInstance.current.setZoom(10);
-                    }
+                markers.current.push(marker);
+            });
+
+            // 4. Calculate Route or Fallback
+            if (directionsService.current && directionsRenderer.current) {
+                if (allPoints.length >= 2) {
+                    const routeOrigin = allPoints[0].position;
+                    const routeDestination = allPoints[allPoints.length - 1].position;
+                    const intermediatePoints = allPoints.slice(1, -1);
+                    const waypoints = intermediatePoints.slice(0, 23).map(p => ({ location: p.position, stopover: true }));
+
+                    directionsService.current.route({
+                        origin: routeOrigin,
+                        destination: routeDestination,
+                        waypoints,
+                        optimizeWaypoints: false,
+                        travelMode: window.google.maps.TravelMode.DRIVING,
+                    }, (result, status) => {
+                        if (currentCallId !== updateCallId.current) return;
+
+                        if (status === window.google.maps.DirectionsStatus.OK) {
+                            directionsRenderer.current.setDirections(result);
+                        } else {
+                            // FALLBACK: Draw dashed lines if Google Routing fails
+                            console.warn('Directions failed (' + status + '). Using fallback Polyline.');
+                            directionsRenderer.current.setDirections({ routes: [] });
+
+                            const polylinePath = allPoints.map(p => p.position);
+                            fallbackPolyline.current = new window.google.maps.Polyline({
+                                path: polylinePath,
+                                map: mapInstance.current,
+                                strokeColor: '#000000',
+                                strokeWeight: 3,
+                                strokeOpacity: 0.5,
+                                icons: [{
+                                    icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 2 },
+                                    offset: '0',
+                                    repeat: '20px'
+                                }]
+                            });
+
+                            mapInstance.current.fitBounds(bounds.current);
+                        }
+                    });
+                } else {
+                    directionsRenderer.current.setDirections({ routes: [] });
+                    if (allPoints.length > 0) mapInstance.current.fitBounds(bounds.current);
                 }
             }
+        }, 400);
+    };
+
+    const updateNativeMap = async () => {
+        const currentCallId = ++updateCallId.current;
+        const nativePoints = [];
+        const startPoint = origin || start;
+        if (startPoint) nativePoints.push({ ...startPoint, type: 'start' });
+        if (stops && stops.length > 0) stops.forEach((s, i) => nativePoints.push({ ...s, type: 'stop', index: i + 1 }));
+        const endPoint = destination || end;
+        if (endPoint) nativePoints.push({ ...endPoint, type: 'end' });
+
+        if (nativePoints.length < 2) {
+            setNativeRoute([]);
+            setIsNativeRouteFallback(false);
+            return;
+        }
+
+        try {
+            const originStr = `${nativePoints[0].latitude},${nativePoints[0].longitude}`;
+            const destStr = `${nativePoints[nativePoints.length - 1].latitude},${nativePoints[nativePoints.length - 1].longitude}`;
+            const waypoints = nativePoints.slice(1, -1).map(p => `${p.latitude},${p.longitude}`).join('|');
+
+            const response = await fetch(
+                `https://maps.googleapis.com/maps/api/directions/json?origin=${originStr}&destination=${destStr}&waypoints=${waypoints}&key=${GOOGLE_MAPS_CONFIG.apiKey}`
+            );
+            const data = await response.json();
+
+            if (currentCallId === updateCallId.current) {
+                if (data.routes && data.routes[0]) {
+                    const points = decodePolyline(data.routes[0].overview_polyline.points);
+                    setNativeRoute(points);
+                    setIsNativeRouteFallback(false);
+                } else {
+                    // Success API call but no route found (e.g. across ocean or no roads)
+                    setNativeRoute(nativePoints.map(p => ({ latitude: parseFloat(p.latitude), longitude: parseFloat(p.longitude) })));
+                    setIsNativeRouteFallback(true);
+                }
+            }
+        } catch (error) {
+            console.error('Native directions error:', error);
+            // Fallback to straight lines
+            setNativeRoute(nativePoints.map(p => ({ latitude: parseFloat(p.latitude), longitude: parseFloat(p.longitude) })));
+            setIsNativeRouteFallback(true);
         }
     };
 
     // Update markers and route when points change
     useEffect(() => {
-        updateMapContents();
+        if (Platform.OS === 'web') {
+            updateMapContents();
+        } else {
+            updateNativeMap();
+        }
     }, [start, origin, visit, end, destination, stops]);
 
     const styles = createStyles(colors);
@@ -363,12 +430,12 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                             </View>
                         </Marker>
                     ))}
-                    {coordinates.length > 1 && (
+                    {nativeRoute.length > 1 && (
                         <Polyline
-                            coordinates={coordinates}
-                            strokeColor={colors.primary}
-                            strokeWidth={4}
-                            lineDashPattern={[1]}
+                            coordinates={nativeRoute}
+                            strokeColor={isNativeRouteFallback ? "#666666" : "#000000"}
+                            strokeWidth={isNativeRouteFallback ? 3 : 4}
+                            lineDashPattern={isNativeRouteFallback ? [5, 10] : undefined}
                         />
                     )}
                 </MapView>
