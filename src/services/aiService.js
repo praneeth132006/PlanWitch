@@ -8,19 +8,19 @@ const MOCK_ITINERARY = {
             day: 1,
             title: "Arrival & Exploration",
             activities: [
-                { time: "10:00 AM", title: "Check-in at Hotel", description: "Settle in and refresh." },
-                { time: "12:00 PM", title: "Local Lunch", description: "Try famous local dishes." },
-                { time: "02:00 PM", title: "City Walking Tour", description: "Explore the main landmarks." },
-                { time: "07:00 PM", title: "Welcome Dinner", description: "Fine dining experience." }
+                { time: "10:00 AM", title: "Check-in at Hotel", description: "Settle in and refresh.", type: "hotel", duration: "1 hour", location: "Hotel", cost: 0 },
+                { time: "12:00 PM", title: "Local Lunch", description: "Try famous local dishes.", type: "lunch", duration: "1 hour", location: "Local Restaurant", cost: 500 },
+                { time: "02:00 PM", title: "City Walking Tour", description: "Explore the main landmarks.", type: "tour", duration: "3 hours", location: "City Center", cost: 800 },
+                { time: "07:00 PM", title: "Welcome Dinner", description: "Fine dining experience.", type: "dinner", duration: "1.5 hours", location: "Fine Dining Restaurant", cost: 1500 }
             ]
         },
         {
             day: 2,
             title: "Cultural Dive",
             activities: [
-                { time: "09:00 AM", title: "Museum Visit", description: "Learn about local history." },
-                { time: "01:00 PM", title: "Traditional Market", description: "Shopping for souvenirs." },
-                { time: "04:00 PM", title: "Park Relaxation", description: "Chill at the famous city park." }
+                { time: "09:00 AM", title: "Museum Visit", description: "Learn about local history.", type: "museum", duration: "2 hours", location: "City Museum", cost: 300 },
+                { time: "01:00 PM", title: "Traditional Market", description: "Shopping for souvenirs.", type: "shopping", duration: "2 hours", location: "Old Bazaar", cost: 1000 },
+                { time: "04:00 PM", title: "Park Relaxation", description: "Chill at the famous city park.", type: "nature", duration: "1.5 hours", location: "Central Park", cost: 0 }
             ]
         }
     ],
@@ -39,7 +39,7 @@ const callGemini = async (prompt, isJson = true) => {
         throw new Error('API Key is missing. Please set GEMINI_API_KEY in your .env file.');
     }
 
-    // Using Gemini 2.0 Flash - the current default model
+    // Using Gemini 2.0 Flash with high token capacity for premium output
     const fallbackModels = [
         { ver: 'v1beta', name: 'gemini-2.0-flash' },
         { ver: 'v1beta', name: 'gemini-2.0-flash-exp' },
@@ -56,13 +56,12 @@ const callGemini = async (prompt, isJson = true) => {
             const body = {
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
                 generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 8192,
+                    temperature: 0.8,
+                    maxOutputTokens: 65536,
                     ...(isJson ? { responseMimeType: "application/json" } : {})
                 }
             };
 
-            // console.log(`[AI Attempt] Trying ${cleanName}...`);
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -142,8 +141,9 @@ const callGemini = async (prompt, isJson = true) => {
     throw lastError || new Error('All AI models failed.');
 };
 
-// Generate trip itinerary
-// Generate trip itinerary
+// ═══════════════════════════════════════════════════════════════
+// 1. PREMIUM ITINERARY GENERATION
+// ═══════════════════════════════════════════════════════════════
 export const generateTripItinerary = async (destination, days, budget, travelers, interests, preferences = {}) => {
     if (!AI_CONFIG.geminiKey) {
         console.warn('Using MOCK itinerary data (No API Key)');
@@ -154,57 +154,108 @@ export const generateTripItinerary = async (destination, days, budget, travelers
 
     const locationContext = Object.entries(locationDurations)
         .map(([loc, days]) => `- ${loc}: ${days} days`)
-        .join('\n') || 'Standard allocation';
+        .join('\n') || 'Distribute days evenly across all destinations';
 
-    const prompt = `Generate a highly detailed and logical day-by-day travel itinerary for a ${days}-day trip to ${destination}.
-      Budget Level: ${budget}
-      Travelers: ${travelers}
-      Interests: ${interests}
-      Trip Strategy: ${pace} pace.
+    const hasTimings = startTime && endTime;
 
-      CRITICAL TIMING & LOGIC RULES:
-      1. Each day MUST start strictly at ${startTime} and end around ${endTime}.
-      2. Events MUST be in STRICT CHRONOLOGICAL order.
-      3. NO overlapping events. Every activity MUST start after the previous one's end time.
-      4. Add 15-30 mins buffer for travel between different locations.
-      5. NO REDUNDANT ACTIVITIES. Do not visit the same place or suggest similar "snacks/tea" multiple times on the same day unless it's a very different context.
-      6. Use realistic durations (e.g., 1.5-2 hours for museums, 1 hour for meals).
-      
-      Per Location Breakdown:
-      ${locationContext}
+    const prompt = `You are a WORLD-CLASS LUXURY CONCIERGE TRAVEL PLANNER with 20+ years of experience curating premium travel experiences globally.
 
-      CRITICAL INSTRUCTIONS:
-      - EXCLUDE all travel time TO/FROM the destination (e.g., flights/trains to ${destination}). Only plan from the moment they are AT the destination.
-      - If location durations are specified, strictly allocate days accordingly.
-      - You must return a valid JSON object.
+Your knowledge is built from deep expertise across top travel platforms:
+• ATTRACTIONS: TripAdvisor, Viator, GetYourGuide, Atlas Obscura, Lonely Planet, Culture Trip, National Geographic Travel, Rough Guides
+• MAPS & LOGISTICS: Google Maps, OpenStreetMap — for accurate distances, travel times, and route optimization
+• WEATHER: AccuWeather, BBC Weather — for seasonal & climate awareness
+• LOCAL INSIGHTS: Culture Trip, Atlas Obscura — for hidden gems and off-the-beaten-path experiences
 
-      Structure rules for activities:
-      - "type": Must be one of: 'flight', 'train', 'bus', 'car', 'hotel', 'checkin', 'checkout', 'breakfast', 'lunch', 'dinner', 'cafe', 'attraction', 'tour', 'shopping', 'nature', 'beach', 'museum', 'nightlife'.
-      - "time": Use "HH:MM AM/PM" format. Times MUST progress sequentially through the day.
-      - "cost": Estimated cost per person in local currency (number only).
-      - "duration": Duration in hours (e.g. "2 hours").
+═══════════════════════════════════════
+TRIP BRIEF
+═══════════════════════════════════════
+• Destination: ${destination}
+• Duration: ${days} days
+• Budget Level: ${budget}
+• Travelers: ${travelers}
+• Interests: ${interests || 'General sightseeing'}
+• Pace: ${pace}
+${hasTimings ? `• Daily Window: ${startTime} to ${endTime}` : '• Daily Window: Flexible (plan a comfortable full day)'}
 
-      Return ONLY this JSON:
-      {
-        "success": true,
-        "itinerary": [
-          {
-            "day": 1,
-            "title": "Day Theme",
-            "activities": [
-              {
-                "time": "09:00 AM",
-                "title": "Activity Name",
-                "type": "attraction",
-                "duration": "2 hours",
-                "description": "...",
-                "location": "...",
-                "cost": 500
-              }
-            ]
-          }
-        ]
-      }`;
+Per-Location Day Allocation:
+${locationContext}
+
+═══════════════════════════════════════
+PLANNING RULES (MANDATORY)
+═══════════════════════════════════════
+
+1. TRAVEL LOGISTICS
+   - Calculate REALISTIC travel time between every two consecutive activities using your knowledge of Google Maps distances
+   - Include 15-30 min buffer for traffic, parking, and transitions
+   - Add airport/railway station check-in times where applicable (2 hrs for flights, 30 min for trains)
+   - Optimize route to MINIMIZE backtracking — group nearby attractions together
+   - EXCLUDE travel TO/FROM the destination (flights/trains to ${destination}). Plan starts when traveler is AT the destination.
+
+2. DAILY TIME PLANNING
+   - Structure each day into clear time blocks: Morning → Afternoon → Evening → Night
+   - Events MUST be in STRICT CHRONOLOGICAL order with NO overlaps
+   - Use realistic durations: 1.5-2 hrs for major attractions, 45 min-1 hr for meals, 30 min for quick stops
+   - Include transition/travel time between locations as implicit buffer (do not list as separate activity)
+   - NO redundant activities — do not suggest similar cafes/snack stops multiple times on the same day
+
+3. SMART ACTIVITY SELECTION
+   - Select activities based on: traveler interests, seasonal weather suitability, crowd patterns (avoid peak tourist hours where possible), location proximity
+   - PRIORITIZE in this order:
+     a) Must-see landmarks and iconic experiences
+     b) Hidden gems and local-only experiences (from Atlas Obscura, Culture Trip)
+     c) Cultural immersion activities (cooking classes, art walks, local festivals)
+     d) Nature and scenic spots
+   - Include at least 1 "hidden gem" or unique local experience per day that most tourists miss
+
+4. FOOD INTEGRATION
+   - Include breakfast, lunch, and dinner as activities with specific restaurant/food spot suggestions
+   - Recommend REAL, well-known restaurants or food streets — not generic "Local Restaurant"
+   - Mention the signature dish to try at each food spot
+   - Match food spots to the area being explored that day (no backtracking just for food)
+
+5. PRACTICAL DETAILS PER ACTIVITY
+   - "cost": Estimated cost per person in local currency (INR for India, USD for USA, EUR for Europe, etc.)
+   - "duration": Realistic time including the activity itself
+   - "description": 1-2 sentences explaining WHY this activity is special, what makes it worth visiting, and any pro tips
+   - "location": Specific area/neighborhood name, not just city name
+
+6. DAY THEMING
+   - Give each day a clear thematic title that captures the essence of the day's plan
+   - Example: "Heritage Walk & Street Food Trail", "Coastal Bliss & Sunset Cruise", "Cultural Deep Dive & Night Markets"
+
+7. ALTERNATIVE SUGGESTIONS
+   - For each day, include 1-2 optional alternative activities in the description of the main activity (e.g., "Alternative: If raining, visit XYZ indoor gallery instead")
+
+═══════════════════════════════════════
+ACTIVITY TYPES (use these exact strings)
+═══════════════════════════════════════
+Must be one of: 'flight', 'train', 'bus', 'car', 'hotel', 'checkin', 'checkout', 'breakfast', 'lunch', 'dinner', 'cafe', 'attraction', 'tour', 'shopping', 'nature', 'beach', 'museum', 'nightlife'
+
+═══════════════════════════════════════
+OUTPUT FORMAT (Return ONLY this JSON)
+═══════════════════════════════════════
+{
+  "success": true,
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "Descriptive Day Theme",
+      "activities": [
+        {
+          "time": "09:00 AM",
+          "title": "Specific Activity Name",
+          "type": "attraction",
+          "duration": "2 hours",
+          "description": "Why this is special. Pro tip: arrive early to beat crowds. Alternative: Visit XYZ if weather is bad.",
+          "location": "Specific Area/Neighborhood, City",
+          "cost": 500
+        }
+      ]
+    }
+  ]
+}
+
+IMPORTANT: Return ONLY the JSON. No markdown, no code blocks, no explanations outside the JSON.`;
 
     try {
         return await callGemini(prompt, true);
@@ -214,6 +265,9 @@ export const generateTripItinerary = async (destination, days, budget, travelers
     }
 };
 
+// ═══════════════════════════════════════════════════════════════
+// 2. PREMIUM BUDGET PLAN
+// ═══════════════════════════════════════════════════════════════
 export const generateBudgetPlan = async (answers) => {
     // If no key, return mock data
     if (!AI_CONFIG.geminiKey) {
@@ -235,72 +289,88 @@ export const generateBudgetPlan = async (answers) => {
     const duration = parseInt(answers.duration) || 3;
     const userMaxBudget = parseInt(answers.budget_max) || 50000;
 
-    const prompt = `
-    You are an expert travel budget planner.Analyze and allocate budget for this trip:
-    
-    TRIP DETAILS:
-- Destination: ${answers.destination}
-- Duration: ${duration} days
-    - Travelers: ${participantsCount}
-- User's Maximum Budget: ${userMaxBudget} ${answers.currency || 'INR'}
-    - User's Minimum Budget: ${answers.budget_min || userMaxBudget * 0.8} ${answers.currency || 'INR'}
-        - Budget Preference: ${answers.preference || 'Mid'}
-- Priority Spending: ${answers.priority || 'Experiences'}
-- Accommodation: ${answers.accommodation || 'Hotel'} (${answers.hotel_price || '2000-5000'}/night)
-- Transport: ${answers.primary_transport || 'Flight'}, Local: ${answers.local_transport || 'Cab'}
+    const prompt = `You are an EXPERT TRAVEL BUDGET ANALYST with deep knowledge of global travel costs.
 
-    CRITICAL INSTRUCTIONS:
-    1. RESEARCH & PRECISION:
-       Simulate real-time research using these specific resources to get the most sophisticated and precise budget possible:
-       - STAYS: Use https://www.makemytrip.com/hotels/, https://www.booking.com/, and https://www.google.com/travel/ to estimate realistic accommodation costs for ${answers.destination}.
-       - TRANSPORT: Use https://www.makemytrip.com/flights/ and https://www.skyscanner.co.in/ for inter-city travel, and Google Travel for local transport estimates.
-       - GENERAL: Use https://www.google.com/travel/ for a comprehensive view of all costs (activities, food, etc.).
-       - If specific data is hard to fetch, use your internal knowledge to simulate the most current market rates for these platforms.
+Your pricing intelligence is built from these authoritative sources:
+• COST DATA: Numbeo (cost of living), BudgetYourTrip (average travel expenses), Expatistan (city cost comparisons)
+• FLIGHTS: Skyscanner, Google Flights, Kayak, Momondo — for realistic flight/train cost estimates
+• STAYS: Booking.com, Airbnb, Agoda, Hotels.com, Trip.com — for accommodation pricing by category
+• TRANSPORT: Google Maps, local transport authority data — for local travel cost estimates
+• ACTIVITIES: TripAdvisor, Viator, GetYourGuide — for entry fees and tour costs
 
-    2. CALCULATE REALISTIC MINIMUM COST properly(Do not hallunicate low numbers):
-- Accommodation: Min ${duration} * ${answers.hotel_price?.split('-')[0] || 2000} (Min 2000 / night)
-- Food: Min ${duration} * ${participantsCount} * 1000(Min 1000 / person / day)
-    - Transport: Flight / Train cost + Local travel(Min 500 / day)
-        - Activities: Entry fees / tours(Min 500 / day)
-            -> SUM these to get "realistic_cost".
+═══════════════════════════════════════
+TRIP BUDGET BRIEF
+═══════════════════════════════════════
+• Destination: ${answers.destination}
+• Duration: ${duration} days
+• Travelers: ${participantsCount}
+• User's Max Budget: ${userMaxBudget} ${answers.currency || 'INR'}
+• User's Min Budget: ${answers.budget_min || Math.round(userMaxBudget * 0.8)} ${answers.currency || 'INR'}
+• Budget Preference: ${answers.preference || 'Mid'}
+• Priority Spending: ${answers.priority || 'Experiences'}
+• Accommodation: ${answers.accommodation || 'Hotel'} (${answers.hotel_price || '2000-5000'}/night)
+• Inter-city Transport: ${answers.primary_transport || 'Flight'}
+• Local Transport: ${answers.local_transport || 'Cab'}
 
-    2. Compare "realistic_cost" vs "userMaxBudget"(${userMaxBudget}).
-    
-    IF realistic_cost > ${userMaxBudget}:
-- YOU MUST SET "feasible": false
-    - Set "deficit": (realistic_cost - ${userMaxBudget})
-- Still allocate categories but WITHIN user's max budget of ${userMaxBudget}
-    - Message: "Budget is too low. Min realistic cost is ${answers.currency} <realistic_cost>."
-    
-    IF realistic_cost <= ${userMaxBudget}:
-- Set "feasible": true
-    - Set "surplus": (${userMaxBudget} - realistic_cost)
-- Allocate based on realistic cost(not the full max)
-    - Message should confirm budget is sufficient.
-    
-    MATH RULE: Sum of ALL category values MUST EQUAL the "total" field EXACTLY.
-    The "total" should NEVER exceed ${userMaxBudget}.
-    
-    Return ONLY this JSON:
+═══════════════════════════════════════
+BUDGET CALCULATION RULES (MANDATORY)
+═══════════════════════════════════════
+
+1. CALCULATE REALISTIC MINIMUM COST (Do NOT hallucinate low numbers):
+   - Accommodation: ${duration} nights × realistic nightly rate for "${answers.accommodation || 'Hotel'}" in ${answers.destination} at "${answers.hotel_price || '2000-5000'}" price range
+   - Food: ${duration} days × ${participantsCount} persons × realistic daily food cost (breakfast + lunch + dinner + snacks)
+   - Inter-city Transport: Realistic cost for ${answers.primary_transport || 'Flight'} to/from ${answers.destination} × ${participantsCount} persons
+   - Local Transport: ${duration} days × realistic daily local travel cost (${answers.local_transport || 'Cab'})
+   - Activities: ${duration} days × realistic daily activity/entrance fee cost
+   - Shopping & Other: Reasonable allocation based on destination
+
+2. FEASIBILITY CHECK:
+   IF realistic_cost > ${userMaxBudget}:
+   → Set "feasible": false
+   → Set "deficit": (realistic_cost - ${userMaxBudget})
+   → Still allocate categories WITHIN user's max budget of ${userMaxBudget}
+   → Message: Explain what's too expensive and how to make it work
+
+   IF realistic_cost <= ${userMaxBudget}:
+   → Set "feasible": true
+   → Set "surplus": (${userMaxBudget} - realistic_cost)
+   → Allocate based on realistic cost
+   → Message: Confirm budget is sufficient, suggest how to use surplus
+
+3. MATH RULES:
+   - Sum of ALL category values MUST EQUAL the "total" field EXACTLY
+   - "total" should NEVER exceed ${userMaxBudget}
+   - "per_person" = total / ${participantsCount}
+
+4. SMART TIPS:
+   - Provide 5-7 actionable, SPECIFIC cost-saving tips for ${answers.destination}
+   - Include tips like: best time to book, cheaper transport alternatives, free activities, local food vs tourist restaurants
+   - Include at least 1 "splurge-worthy" tip where spending more is genuinely worth it
+
+═══════════════════════════════════════
+OUTPUT FORMAT (Return ONLY this JSON)
+═══════════════════════════════════════
 {
     "success": true,
-        "feasible": true or false,
-            "total": <number within user's budget>,
-    "realistic_cost": <actual estimated cost based on calculation>,
-        "deficit": <if feasible=false, how much more is needed>,
-        "surplus": <if feasible=true, how much extra budget user has>,
-        "per_person": <total / travelers>,
-        "analysis_message": "<detailed explanation>",
-            "categories": {
-                "accommodation": <number>,
-                    "transport": <number>,
-                        "food": <number>,
-                            "activities": <number>,
-                                "shopping": <number>,
-                                    "other": <number>
-      },
-                                    "tips": ["tip1", "tip2"]
-    }`;
+    "feasible": true,
+    "total": <number within user's budget>,
+    "realistic_cost": <actual estimated cost>,
+    "deficit": <if feasible=false>,
+    "surplus": <if feasible=true>,
+    "per_person": <total / travelers>,
+    "analysis_message": "<detailed 2-3 sentence analysis explaining the budget breakdown and key insights>",
+    "categories": {
+        "accommodation": <number>,
+        "transport": <number>,
+        "food": <number>,
+        "activities": <number>,
+        "shopping": <number>,
+        "other": <number>
+    },
+    "tips": ["Specific tip 1", "Specific tip 2", "Specific tip 3", "Specific tip 4", "Specific tip 5"]
+}
+
+IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
 
     try {
         const result = await callGemini(prompt, true);
@@ -323,14 +393,14 @@ export const generateBudgetPlan = async (answers) => {
 };
 
 export const submitAiPlan = async (tripInfo, budgetData) => {
-    // console.log("Submitting plan:", tripInfo.destination);
     return { success: true };
 };
 
-// Generate packing list suggestions
+// ═══════════════════════════════════════════════════════════════
+// 3. PREMIUM PACKING LIST
+// ═══════════════════════════════════════════════════════════════
 export const generatePackingList = async (destination, travelDate, duration, tripType) => {
     if (!AI_CONFIG.geminiKey) {
-        // Return mock data
         return {
             success: true,
             recommendations: [
@@ -341,32 +411,74 @@ export const generatePackingList = async (destination, travelDate, duration, tri
         };
     }
 
-    const prompt = `
-    You are an expert travel coordinator. Create a HIGHLY PRECISE and practical packing list for a trip:
-    - Destination: ${destination}
-    - Travel Date: ${travelDate}
-    - Duration: ${duration} days
-    - Trip Type: ${tripType}
+    const prompt = `You are a METICULOUS TRAVEL PACKING SPECIALIST who has helped thousands of travelers pack perfectly.
 
-    CRITICAL RULES FOR PACKING ITEMS:
-    1. CONTEXT IS KING: Base items EXACTLY on the expected climate, temperature, and geography of ${destination} during ${travelDate}. 
-    2. BE SPECIFIC: Don't say "Jacket", say "Light windbreaker" or "Heavy down coat" depending on weather.
-    3. NO USELESS ITEMS: Do NOT suggest "Visa", "Passport", or international adapters if the trip is domestic (within the user's home country).
-    4. MUST INCLUDE quantities where it makes sense (e.g. "3x Casual Shirts").
-    5. STRICT MAXIMUM LIMIT: Do NOT generate more than 35-40 items TOTAL across all categories combined. Be extremely ruthless in eliminating non-essentials. Users hate long, cluttered packing lists.
+Your climate and destination knowledge comes from:
+• WEATHER: AccuWeather, BBC Weather, Weather.com — for precise seasonal weather data
+• DESTINATION: Lonely Planet, Culture Trip, TripAdvisor — for activity-specific and cultural packing needs
+• GEOGRAPHY: Knowledge of terrain, altitude, and local conditions at ${destination}
 
-    Return ONLY this JSON format:
-    {
-        "success": true,
-        "recommendations": [
-            {"category": "Essentials", "items": ["item1", "item2"] },
-            {"category": "Clothing", "items": ["item1", "item2"] },
-            {"category": "Toiletries", "items": ["item1", "item2"] },
-            {"category": "Electronics", "items": ["item1", "item2"] },
-            {"category": "Documents", "items": ["item1", "item2"] },
-            {"category": "Health", "items": ["item1", "item2"] }
-        ]
-    }`;
+═══════════════════════════════════════
+PACKING BRIEF
+═══════════════════════════════════════
+• Destination: ${destination}
+• Travel Date: ${travelDate}
+• Duration: ${duration} days
+• Trip Type: ${tripType}
+
+═══════════════════════════════════════
+PACKING RULES (MANDATORY)
+═══════════════════════════════════════
+
+1. CLIMATE-FIRST APPROACH:
+   - Research the EXPECTED WEATHER at ${destination} during ${travelDate}
+   - If hot & humid → lightweight, breathable fabrics, sun protection
+   - If cold → layering system, thermal wear, warm accessories
+   - If rainy season → waterproof gear, quick-dry clothing
+   - If variable → versatile pieces that work across conditions
+
+2. BE HYPER-SPECIFIC (Never generic):
+   ✅ "2x Quick-dry hiking shorts" instead of ❌ "Shorts"
+   ✅ "Lightweight waterproof rain jacket" instead of ❌ "Jacket"
+   ✅ "SPF 50+ reef-safe sunscreen" instead of ❌ "Sunscreen"
+   ✅ "Universal travel adapter (Type C/G)" instead of ❌ "Adapter"
+
+3. INCLUDE QUANTITIES where sensible (e.g., "3x Casual T-shirts", "5x Underwear")
+
+4. ACTIVITY-SPECIFIC ITEMS:
+   - If beach trip → swimwear, beach towel, waterproof phone pouch, reef shoes
+   - If hiking → trekking shoes, trekking poles (if steep), moisture-wicking socks
+   - If city/cultural → modest clothing for temples/churches, comfortable walking shoes
+   - If adventure → action camera mount, dry bags
+
+5. CULTURAL CONSIDERATIONS:
+   - If visiting temples/mosques → scarf/shawl for covering shoulders, long pants
+   - If conservative region → modest clothing options
+
+6. SMART EXCLUSIONS:
+   - Do NOT suggest "Passport" or "Visa" for domestic trips within the same country
+   - Do NOT suggest international adapters for domestic trips
+   - Do NOT list items available at every hotel (like towels, soap, shampoo — unless budget/hostel travel)
+
+7. STRICT LIMIT: Maximum 35-45 items TOTAL across all categories. Be ruthlessly practical.
+
+═══════════════════════════════════════
+OUTPUT FORMAT (Return ONLY this JSON)
+═══════════════════════════════════════
+{
+    "success": true,
+    "recommendations": [
+        {"category": "Essentials", "items": ["item1 with quantity", "item2"] },
+        {"category": "Clothing", "items": ["item1", "item2"] },
+        {"category": "Toiletries", "items": ["item1", "item2"] },
+        {"category": "Electronics", "items": ["item1", "item2"] },
+        {"category": "Documents", "items": ["item1", "item2"] },
+        {"category": "Health", "items": ["item1", "item2"] },
+        {"category": "Accessories", "items": ["item1", "item2"] }
+    ]
+}
+
+IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
 
     try {
         return await callGemini(prompt, true);
@@ -376,49 +488,85 @@ export const generatePackingList = async (destination, travelDate, duration, tri
     }
 };
 
-// Generate food recommendations for multiple locations
+// ═══════════════════════════════════════════════════════════════
+// 4. PREMIUM FOOD RECOMMENDATIONS
+// ═══════════════════════════════════════════════════════════════
 export const generateFoodRecommendations = async (places, preferences) => {
     const locationList = Array.isArray(places) ? places.join(', ') : places;
 
     if (!AI_CONFIG.geminiKey) {
-        // Return mock data matching expected format
         const mockPlaces = Array.isArray(places) ? places : [places];
         return {
             success: true,
             recommendations: mockPlaces.map(place => ({
                 place: place,
                 items: [
-                    { name: 'Local Specialty', type: 'veg', mustTry: true },
-                    { name: 'Street Food', type: 'non-veg', mustTry: true },
-                    { name: 'Famous Restaurant Dish', type: 'veg', mustTry: false },
+                    { name: 'Local Specialty', type: 'Veg', mustTry: true },
+                    { name: 'Street Food', type: 'Non-Veg', mustTry: true },
+                    { name: 'Famous Restaurant Dish', type: 'Veg', mustTry: false },
                 ]
             }))
         };
     }
 
-    const prompt = `
-                                    Suggest famous food items and must-try dishes for these locations: ${locationList}
-                                    Preferences: ${preferences || 'Both veg and non-veg'}
+    const prompt = `You are a FOOD & CULINARY TRAVEL EXPERT who has explored kitchens and street foods across the world.
 
-                                    CRITICAL INSTRUCTIONS:
-                                    1. "place": Must EXACTLY match one of the locations in the list: [${locationList}]. Do not group them.
-                                    2. "type": Must be EXACTLY either "Veg" or "Non-Veg" (Case sensitive, use dashes).
-       - If it contains meat/fish/egg -> "Non-Veg"
-       - If it is vegetarian -> "Veg"
+Your restaurant and food knowledge comes from:
+• REVIEWS: TripAdvisor restaurant rankings, Yelp ratings, Google Reviews
+• PLATFORMS: Zomato (India), TheFork (Europe), OpenTable (premium dining), Yelp (global)
+• GUIDES: Lonely Planet food guides, Culture Trip culinary features, Eater city guides, Michelin recommendations
+• LOCAL: Street food blogs, food tour operator menus, local food influencer recommendations
 
-                                    Return ONLY this JSON format (one entry per location):
-                                    {
-                                        "success": true,
-                                    "recommendations": [
-                                    {
-                                        "place": "Location Name",
-                                    "items": [
-                                    {"name": "Dish Name", "type": "Veg", "mustTry": true },
-                                    {"name": "Dish Name 2", "type": "Non-Veg", "mustTry": false }
-                                    ]
+═══════════════════════════════════════
+FOOD BRIEF
+═══════════════════════════════════════
+• Locations: ${locationList}
+• Dietary Preferences: ${preferences || 'Both Veg and Non-Veg'}
+
+═══════════════════════════════════════
+FOOD RECOMMENDATION RULES (MANDATORY)
+═══════════════════════════════════════
+
+1. For EACH location, suggest 6-10 MUST-TRY food items including:
+   - Iconic signature dishes of the region
+   - Famous street food items with specific stall/area names where possible
+   - At least 1 fine dining recommendation
+   - At least 1 budget-friendly local favorite
+   - Seasonal specialties if applicable
+
+2. SPECIFICITY IS KEY:
+   ✅ "Hyderabadi Dum Biryani at Paradise Restaurant" instead of ❌ "Biryani"
+   ✅ "Vada Pav from Ashok Vada Pav, Dadar" instead of ❌ "Vada Pav"
+   ✅ "Fresh Kingfish Thali at Kinara, Panjim" instead of ❌ "Fish Curry"
+
+3. CLASSIFICATION:
+   - "type" MUST be EXACTLY either "Veg" or "Non-Veg" (case sensitive)
+   - If contains any meat/fish/egg → "Non-Veg"
+   - If purely vegetarian → "Veg"
+
+4. "mustTry" flag:
+   - Set to true for the TOP 3-4 iconic dishes that define the location's food identity
+   - Set to false for good-but-optional recommendations
+
+5. "place" field MUST EXACTLY match one of the location names from: [${locationList}]
+
+═══════════════════════════════════════
+OUTPUT FORMAT (Return ONLY this JSON)
+═══════════════════════════════════════
+{
+    "success": true,
+    "recommendations": [
+        {
+            "place": "Exact Location Name",
+            "items": [
+                {"name": "Specific Dish Name (at Restaurant/Area if possible)", "type": "Veg", "mustTry": true },
+                {"name": "Another Dish", "type": "Non-Veg", "mustTry": false }
+            ]
         }
-                                    ]
-    }`;
+    ]
+}
+
+IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
 
     try {
         return await callGemini(prompt, true);
@@ -428,6 +576,9 @@ export const generateFoodRecommendations = async (places, preferences) => {
     }
 };
 
+// ═══════════════════════════════════════════════════════════════
+// 5. DESTINATION INFO
+// ═══════════════════════════════════════════════════════════════
 export const generateDestinationInfo = async (destination) => {
     if (!AI_CONFIG.geminiKey) {
         return {
@@ -436,17 +587,16 @@ export const generateDestinationInfo = async (destination) => {
         };
     }
 
-    const prompt = `
-    Write a vibrant, exciting description for a trip to ${destination}.
-    MAX 15 WORDS.
-    Focus on the vibe and culture.
+    const prompt = `You are a creative travel copywriter.
+    Write a vibrant, exciting, and evocative description for a trip to ${destination}.
+    MAX 15 WORDS. Make it feel premium and aspirational.
+    Focus on the unique vibe, culture, and energy of the destination.
 
     Return ONLY this JSON:
     {
         "success": true,
         "info": "Your description here."
-    }
-    `;
+    }`;
 
     try {
         return await callGemini(prompt, true);
@@ -456,7 +606,9 @@ export const generateDestinationInfo = async (destination) => {
     }
 };
 
-
+// ═══════════════════════════════════════════════════════════════
+// 6. PREMIUM TRIP SUGGESTIONS
+// ═══════════════════════════════════════════════════════════════
 export const generateTripSuggestions = async (destination, duration, travelers, interests) => {
     if (!AI_CONFIG.geminiKey) {
         return {
@@ -469,22 +621,39 @@ export const generateTripSuggestions = async (destination, duration, travelers, 
         };
     }
 
-    const prompt = `
-    Based on a trip to ${destination} for ${duration} days with ${travelers} (Interests: ${interests || 'General'}),
-    suggest 3 unique, specific, and exciting things to do or know.
-    - Not generic advice.
-    - "icon" should be a valid material icon name (e.g., hiking, camera, restaurant, grade, etc.).
+    const prompt = `You are a PREMIUM TRAVEL CONCIERGE with deep local knowledge.
 
-    Return ONLY this JSON:
-    {
-        "success": true,
-        "suggestions": [
-            { "title": "Catchy Title", "desc": "Short exciting description (max 10 words).", "icon": "star" },
-            { "title": "Catchy Title", "desc": "Short exciting description.", "icon": "star" },
-            { "title": "Catchy Title", "desc": "Short exciting description.", "icon": "star" }
-        ]
-    }
-    `;
+Your insights are drawn from: Atlas Obscura (hidden gems), Lonely Planet (curated guides), Culture Trip (cultural experiences), National Geographic Travel (unique adventures), Rough Guides, and local expert networks.
+
+═══════════════════════════════════════
+TRIP CONTEXT
+═══════════════════════════════════════
+• Destination: ${destination}
+• Duration: ${duration} days
+• Travelers: ${travelers}
+• Interests: ${interests || 'General exploration'}
+
+═══════════════════════════════════════
+SUGGESTION RULES
+═══════════════════════════════════════
+
+1. Suggest exactly 3 UNIQUE, SPECIFIC, and genuinely exciting things that most travelers miss
+2. These should NOT be generic tourist advice — they should feel like insider tips from a local friend
+3. Each should be actionable and specific to ${destination}
+4. Priority: hidden gems > unique local experiences > seasonal events > unusual activities
+5. "icon" MUST be a valid Material Icon name (e.g., hiking, restaurant, camera, palette, music_note, local_bar, beach_access, temple_hindu, mosque, church, castle, festival, etc.)
+
+Return ONLY this JSON:
+{
+    "success": true,
+    "suggestions": [
+        { "title": "Catchy Specific Title", "desc": "Short exciting description (max 12 words).", "icon": "valid_material_icon" },
+        { "title": "Catchy Specific Title", "desc": "Short exciting description.", "icon": "valid_material_icon" },
+        { "title": "Catchy Specific Title", "desc": "Short exciting description.", "icon": "valid_material_icon" }
+    ]
+}
+
+IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
 
     try {
         return await callGemini(prompt, true);
