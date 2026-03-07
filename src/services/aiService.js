@@ -304,8 +304,8 @@ TRIP BUDGET BRIEF
 • Destination: ${answers.destination}
 • Duration: ${duration} days
 • Travelers: ${participantsCount}
-• User's Max Budget: ${userMaxBudget} ${answers.currency || 'INR'}
-• User's Min Budget: ${answers.budget_min || Math.round(userMaxBudget * 0.8)} ${answers.currency || 'INR'}
+• User's Max Budget: ${answers.budget_max ? answers.budget_max + ' ' + (answers.currency || 'INR') : 'NOT SPECIFIED (Calculate recommended)'}
+• User's Min Budget: ${answers.budget_min ? answers.budget_min + ' ' + (answers.currency || 'INR') : 'NOT SPECIFIED'}
 • Budget Preference: ${answers.preference || 'Mid'}
 • Priority Spending: ${answers.priority || 'Experiences'}
 • Accommodation: ${answers.accommodation || 'Hotel'} (${answers.hotel_price || '2000-5000'}/night)
@@ -548,7 +548,9 @@ FOOD RECOMMENDATION RULES (MANDATORY)
    - Set to true for the TOP 3-4 iconic dishes that define the location's food identity
    - Set to false for good-but-optional recommendations
 
-5. "place" field MUST EXACTLY match one of the location names from: [${locationList}]
+5. "place" field MUST STRICTLY match one of the exact strings from this list: [${locationList}]
+   - Do NOT use "Nearby", "Local", or any other name not in the provided list.
+   - If a dish is from a specific neighborhood, still use the corresponding location name from the list as the "place".
 
 ═══════════════════════════════════════
 OUTPUT FORMAT (Return ONLY this JSON)

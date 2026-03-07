@@ -506,7 +506,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         try {
           const daysArray = generateDaysForAi(tripInfo.startDate, tripInfo.endDate);
           const duration = daysArray.length || 3;
-          const travelersCount = tripInfo.participants ? (Array.isArray(tripInfo.participants) ? tripInfo.participants.length : Object.keys(tripInfo.participants).length) : 1;
+          const travelersCount = parseInt(aiPreferences.travelers) || (tripInfo.participants ? (Array.isArray(tripInfo.participants) ? tripInfo.participants.length : Object.keys(tripInfo.participants).length) : 1);
           const budgetResult = await generateBudgetPlan({
             destination: tripInfo.destination,
             duration: duration,
@@ -631,13 +631,31 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
           if (isReplace) setFoodItems([]);
           const stops = tripInfo.stops || [];
           const stopNames = stops.map(s => typeof s === 'object' ? (s.name || s.formatted_address || 'Stop') : s);
-          const uniqueLocations = [...new Set([tripInfo.destination, ...stopNames])].filter(Boolean);
+
+          // Filter out the combined destination string if it's just a concatenation of stops
+          const mainDest = tripInfo.destination || '';
+          const isCombined = mainDest.includes(' - ');
+
+          const uniqueLocations = [...new Set([
+            ...(isCombined ? [] : [mainDest]),
+            ...stopNames
+          ])].filter(Boolean);
 
           const foodResult = await generateFoodRecommendations(uniqueLocations, 'Any');
           if (foodResult.success && foodResult.recommendations) {
             const addedFoodSignatures = new Set();
             for (const placeData of foodResult.recommendations) {
-              const targetPlace = uniqueLocations.find(p => p.toLowerCase().includes((placeData.place || '').toLowerCase())) || uniqueLocations[0];
+              // Improved matching: Find the location that is a substring of the result place, 
+              // prioritizing the longest match to avoid "Mumba" matching "Mumbai" incorrectly,
+              // but here we want the SPECIFIC stop to match the AI's "place" field.
+              const resultPlaceLower = (placeData.place || '').toLowerCase();
+
+              // Sort uniqueLocations by length descending to match most specific first
+              const sortedLocations = [...uniqueLocations].sort((a, b) => b.length - a.length);
+              const targetPlace = sortedLocations.find(p =>
+                resultPlaceLower.includes(p.toLowerCase()) ||
+                p.toLowerCase().includes(resultPlaceLower)
+              ) || uniqueLocations[0];
               for (const item of (placeData.items || [])) {
                 const signature = `${targetPlace}:${item.name.trim().toLowerCase()}`;
                 const exists = !isReplace && foodItems.some(f => f.place === targetPlace && f.name.toLowerCase() === item.name.trim().toLowerCase());
@@ -1789,7 +1807,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 6 }}>Minimum Budget</Text>
                       <TextInput
-                        style={styles.aiInput}
+                        style={[styles.aiInput, { outlineStyle: 'none' }]}
                         placeholder="e.g. 10000"
                         placeholderTextColor={colors.textMuted}
                         keyboardType="numeric"
@@ -1800,7 +1818,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 6 }}>Maximum Budget</Text>
                       <TextInput
-                        style={styles.aiInput}
+                        style={[styles.aiInput, { outlineStyle: 'none' }]}
                         placeholder="e.g. 50000"
                         placeholderTextColor={colors.textMuted}
                         keyboardType="numeric"

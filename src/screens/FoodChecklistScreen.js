@@ -48,6 +48,16 @@ export default function FoodChecklistScreen({ onSetScreen }) {
 
             // Extract names and filter duplicates
             const uniquePlaces = new Set();
+
+            // If destination is a combined string "City A - City B", don't add it as a standalone header
+            const dest = tripInfo.destination?.trim();
+            const stopsExist = tripInfo.stops.length > 0;
+            const isCombined = dest?.includes(' - ');
+
+            if (dest && (!isCombined || !stopsExist)) {
+                uniquePlaces.add(dest);
+            }
+
             tripInfo.stops.forEach(stop => {
                 if (stop.name) uniquePlaces.add(stop.name.trim());
             });
@@ -57,7 +67,7 @@ export default function FoodChecklistScreen({ onSetScreen }) {
             console.warn('Error parsing stops', e);
             return [];
         }
-    }, [tripInfo?.stops]);
+    }, [tripInfo?.destination, tripInfo?.stops]);
 
     // Modal State
     const [modalVisible, setModalVisible] = useState(false);
