@@ -1698,17 +1698,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                           <View key={index} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, padding: 12, borderRadius: 12 }}>
                             <Text style={{ flex: 1, color: colors.text, fontSize: 14, fontWeight: '500' }}>{stopName}</Text>
                             <TextInput
-                              style={{
-                                backgroundColor: colors.bg,
-                                color: colors.text,
-                                padding: 8,
-                                borderRadius: 8,
-                                width: 80,
-                                textAlign: 'center',
-                                borderWidth: 1,
-                                borderColor: colors.border,
-                                outlineStyle: 'none'
-                              }}
+                              style={[styles.aiInputSmall, { outlineStyle: 'none' }]}
                               placeholder="Days"
                               placeholderTextColor={colors.textMuted}
                               keyboardType="numeric"
@@ -1736,52 +1726,54 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                   </View>
 
                   {/* 3. Pace */}
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Trip Pace</Text>
+                  <Text style={styles.aiSectionHeader}>Trip Pace</Text>
                   <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
                     {PACE_OPTIONS.map(pace => (
                       <TouchableOpacity
                         key={pace}
-                        style={{
-                          flex: 1,
-                          padding: 12,
-                          borderRadius: 12,
-                          backgroundColor: aiPreferences.pace === pace ? colors.primary : colors.bg,
-                          alignItems: 'center',
-                          borderWidth: 1,
-                          borderColor: aiPreferences.pace === pace ? colors.primary : colors.border
-                        }}
+                        style={[
+                          styles.aiSelectionPill,
+                          {
+                            flex: 1,
+                            backgroundColor: aiPreferences.pace === pace ? colors.primary : colors.bg,
+                            borderColor: aiPreferences.pace === pace ? colors.primary : colors.border
+                          }
+                        ]}
                         onPress={() => setAiPreferences(prev => ({ ...prev, pace }))}
                       >
-                        <Text style={{
-                          fontWeight: '800',
-                          color: aiPreferences.pace === pace ? '#000000' : colors.textMuted
-                        }}>{pace}</Text>
+                        <Text style={[
+                          styles.aiSelectionText,
+                          { color: aiPreferences.pace === pace ? '#000000' : colors.textMuted }
+                        ]}>{pace}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
 
                   {/* 4. Interests */}
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Interests</Text>
+                  <Text style={styles.aiSectionHeader}>Interests</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 30 }}>
                     {INTEREST_TAGS.map(tag => {
                       const selected = aiPreferences.interests.includes(tag);
                       return (
                         <TouchableOpacity
                           key={tag}
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            backgroundColor: selected ? colors.primary + '20' : colors.bg,
-                            borderWidth: 1,
-                            borderColor: selected ? colors.primary : colors.border
-                          }}
+                          style={[
+                            styles.aiSelectionPill,
+                            {
+                              paddingHorizontal: 16,
+                              backgroundColor: selected ? colors.primary + '20' : colors.bg,
+                              borderColor: selected ? colors.primary : colors.border
+                            }
+                          ]}
                           onPress={() => handleToggleInterest(tag)}
                         >
-                          <Text style={{
-                            color: selected ? colors.primary : colors.textMuted,
-                            fontWeight: selected ? '700' : '500'
-                          }}>{tag}</Text>
+                          <Text style={[
+                            styles.aiSelectionText,
+                            {
+                              color: selected ? colors.primary : colors.textMuted,
+                              fontSize: 14 // Consistent with other pills
+                            }
+                          ]}>{tag}</Text>
                         </TouchableOpacity>
                       );
                     })}
@@ -1792,20 +1784,12 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               {(!hasExistingContent || regenOptions.budget) && (
                 <>
                   {/* 5. Budget Range */}
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Budget Range</Text>
+                  <Text style={styles.aiSectionHeader}>Budget Range</Text>
                   <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 4 }}>Minimum Budget</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 6 }}>Minimum Budget</Text>
                       <TextInput
-                        style={{
-                          backgroundColor: colors.cardLight,
-                          color: colors.text,
-                          padding: 12,
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: colors.border,
-                          outlineStyle: 'none'
-                        }}
+                        style={styles.aiInput}
                         placeholder="e.g. 10000"
                         placeholderTextColor={colors.textMuted}
                         keyboardType="numeric"
@@ -1814,17 +1798,9 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 4 }}>Maximum Budget</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 6 }}>Maximum Budget</Text>
                       <TextInput
-                        style={{
-                          backgroundColor: colors.cardLight,
-                          color: colors.text,
-                          padding: 12,
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: colors.border,
-                          outlineStyle: 'none'
-                        }}
+                        style={styles.aiInput}
                         placeholder="e.g. 50000"
                         placeholderTextColor={colors.textMuted}
                         keyboardType="numeric"
@@ -1835,74 +1811,74 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                   </View>
 
                   {/* 6. Budget Preference */}
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Budget Preference</Text>
+                  <Text style={styles.aiSectionHeader}>Budget Preference</Text>
                   <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
                     {BUDGET_PREFERENCES.map(pref => (
                       <TouchableOpacity
                         key={pref}
-                        style={{
-                          paddingHorizontal: 16,
-                          paddingVertical: 10,
-                          borderRadius: 20,
-                          backgroundColor: aiPreferences.budget_preference === pref ? colors.primary + '20' : colors.bg,
-                          borderWidth: 1,
-                          borderColor: aiPreferences.budget_preference === pref ? colors.primary : colors.border
-                        }}
+                        style={[
+                          styles.aiSelectionPill,
+                          {
+                            paddingHorizontal: 18,
+                            backgroundColor: aiPreferences.budget_preference === pref ? colors.primary + '20' : colors.bg,
+                            borderColor: aiPreferences.budget_preference === pref ? colors.primary : colors.border
+                          }
+                        ]}
                         onPress={() => setAiPreferences(prev => ({ ...prev, budget_preference: pref }))}
                       >
-                        <Text style={{
-                          color: aiPreferences.budget_preference === pref ? colors.primary : colors.textMuted,
-                          fontWeight: aiPreferences.budget_preference === pref ? '700' : '500'
-                        }}>{pref}</Text>
+                        <Text style={[
+                          styles.aiSelectionText,
+                          { color: aiPreferences.budget_preference === pref ? colors.primary : colors.textMuted }
+                        ]}>{pref}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
 
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Major Expense Priority</Text>
+                  <Text style={styles.aiSectionHeader}>Major Expense Priority</Text>
                   <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
                     {BUDGET_PRIORITIES.map(priority => {
                       const selected = aiPreferences.budget_priority.includes(priority);
                       return (
                         <TouchableOpacity
                           key={priority}
-                          style={{
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 20,
-                            backgroundColor: selected ? colors.primary + '20' : colors.bg,
-                            borderWidth: 1,
-                            borderColor: selected ? colors.primary : colors.border
-                          }}
+                          style={[
+                            styles.aiSelectionPill,
+                            {
+                              paddingHorizontal: 18,
+                              backgroundColor: selected ? colors.primary + '20' : colors.bg,
+                              borderColor: selected ? colors.primary : colors.border
+                            }
+                          ]}
                           onPress={() => handleTogglePriority(priority)}
                         >
-                          <Text style={{
-                            color: selected ? colors.primary : colors.textMuted,
-                            fontWeight: selected ? '700' : '500'
-                          }}>{priority}</Text>
+                          <Text style={[
+                            styles.aiSelectionText,
+                            { color: selected ? colors.primary : colors.textMuted }
+                          ]}>{priority}</Text>
                         </TouchableOpacity>
                       );
                     })}
                   </View>
 
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Accommodation</Text>
+                  <Text style={styles.aiSectionHeader}>Accommodation</Text>
                   <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
                     {ACCOMMODATION_TYPES.map(type => (
                       <TouchableOpacity
                         key={type}
-                        style={{
-                          paddingHorizontal: 16,
-                          paddingVertical: 10,
-                          borderRadius: 20,
-                          backgroundColor: aiPreferences.accommodation_type === type ? colors.primary + '20' : colors.bg,
-                          borderWidth: 1,
-                          borderColor: aiPreferences.accommodation_type === type ? colors.primary : colors.border
-                        }}
+                        style={[
+                          styles.aiSelectionPill,
+                          {
+                            paddingHorizontal: 18,
+                            backgroundColor: aiPreferences.accommodation_type === type ? colors.primary + '20' : colors.bg,
+                            borderColor: aiPreferences.accommodation_type === type ? colors.primary : colors.border
+                          }
+                        ]}
                         onPress={() => setAiPreferences(prev => ({ ...prev, accommodation_type: type }))}
                       >
-                        <Text style={{
-                          color: aiPreferences.accommodation_type === type ? colors.primary : colors.textMuted,
-                          fontWeight: aiPreferences.accommodation_type === type ? '700' : '500'
-                        }}>{type}</Text>
+                        <Text style={[
+                          styles.aiSelectionText,
+                          { color: aiPreferences.accommodation_type === type ? colors.primary : colors.textMuted }
+                        ]}>{type}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -1913,27 +1889,27 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                       {HOTEL_PRICE_RANGES.map(range => (
                         <TouchableOpacity
                           key={range}
-                          style={{
-                            paddingHorizontal: 12,
-                            paddingVertical: 8,
-                            borderRadius: 16,
-                            backgroundColor: aiPreferences.hotel_price === range ? colors.primary + '20' : colors.bg,
-                            borderWidth: 1,
-                            borderColor: aiPreferences.hotel_price === range ? colors.primary : colors.border
-                          }}
+                          style={[
+                            styles.aiSelectionPill,
+                            {
+                              backgroundColor: aiPreferences.hotel_price === range ? colors.primary + '20' : colors.bg,
+                              borderColor: aiPreferences.hotel_price === range ? colors.primary : colors.border
+                            }
+                          ]}
                           onPress={() => setAiPreferences(prev => ({ ...prev, hotel_price: range }))}
                         >
-                          <Text style={{
-                            color: aiPreferences.hotel_price === range ? colors.primary : colors.textMuted,
-                            fontWeight: aiPreferences.hotel_price === range ? '700' : '500',
-                            fontSize: 12
-                          }}>{range}</Text>
+                          <Text style={[
+                            styles.aiSelectionText,
+                            {
+                              color: aiPreferences.hotel_price === range ? colors.primary : colors.textMuted
+                            }
+                          ]}>{range}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
                   </View>
 
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Transport</Text>
+                  <Text style={styles.aiSectionHeader}>Transport</Text>
                   <View style={{ marginBottom: 16 }}>
                     <Text style={{ color: colors.textMuted, fontSize: 11, marginBottom: 8 }}>Primary Transport (Long distance)</Text>
                     <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
@@ -1942,24 +1918,25 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                         return (
                           <TouchableOpacity
                             key={mode}
-                            style={{
-                              paddingHorizontal: 12,
-                              paddingVertical: 8,
-                              borderRadius: 16,
-                              backgroundColor: selected ? colors.primary + '20' : colors.bg,
-                              borderWidth: 1,
-                              borderColor: selected ? colors.primary : colors.border
-                            }}
+                            style={[
+                              styles.aiSelectionPill,
+                              {
+                                paddingHorizontal: 16,
+                                backgroundColor: selected ? colors.primary + '20' : colors.bg,
+                                borderColor: selected ? colors.primary : colors.border
+                              }
+                            ]}
                             onPress={() => setAiPreferences(prev => ({
                               ...prev,
                               transport_modes: selected ? prev.transport_modes.filter(m => m !== mode) : [...prev.transport_modes, mode]
                             }))}
                           >
-                            <Text style={{
-                              color: selected ? colors.primary : colors.textMuted,
-                              fontWeight: selected ? '700' : '500',
-                              fontSize: 12
-                            }}>{mode}</Text>
+                            <Text style={[
+                              styles.aiSelectionText,
+                              {
+                                color: selected ? colors.primary : colors.textMuted
+                              }
+                            ]}>{mode}</Text>
                           </TouchableOpacity>
                         );
                       })}
@@ -1974,24 +1951,25 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                         return (
                           <TouchableOpacity
                             key={opt}
-                            style={{
-                              paddingHorizontal: 12,
-                              paddingVertical: 8,
-                              borderRadius: 16,
-                              backgroundColor: selected ? colors.primary + '20' : colors.bg,
-                              borderWidth: 1,
-                              borderColor: selected ? colors.primary : colors.border
-                            }}
+                            style={[
+                              styles.aiSelectionPill,
+                              {
+                                paddingHorizontal: 16,
+                                backgroundColor: selected ? colors.primary + '20' : colors.bg,
+                                borderColor: selected ? colors.primary : colors.border
+                              }
+                            ]}
                             onPress={() => setAiPreferences(prev => ({
                               ...prev,
                               local_transport: selected ? prev.local_transport.filter(o => o !== opt) : [...prev.local_transport, opt]
                             }))}
                           >
-                            <Text style={{
-                              color: selected ? colors.primary : colors.textMuted,
-                              fontWeight: selected ? '700' : '500',
-                              fontSize: 12
-                            }}>{opt}</Text>
+                            <Text style={[
+                              styles.aiSelectionText,
+                              {
+                                color: selected ? colors.primary : colors.textMuted
+                              }
+                            ]}>{opt}</Text>
                           </TouchableOpacity>
                         );
                       })}
@@ -2474,4 +2452,41 @@ const createStyles = (colors) => StyleSheet.create({
 
   joinedStatus: { color: colors.primary, fontSize: 11, fontWeight: '600', marginTop: 2 },
   waitingStatus: { color: '#F59E0B', fontSize: 11, fontWeight: '600', marginTop: 2 },
+
+  // Standardized AI Planner Styles
+  aiSectionHeader: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 10 },
+  aiSelectionPill: {
+    height: 42,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.2,
+  },
+  aiSelectionText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  aiInput: {
+    height: 46,
+    backgroundColor: colors.cardLight,
+    color: colors.text,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1.2,
+    borderColor: colors.border,
+    fontSize: 14,
+  },
+  aiInputSmall: {
+    height: 40,
+    backgroundColor: colors.bg,
+    color: colors.text,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontSize: 13,
+    textAlign: 'center',
+  }
 });
