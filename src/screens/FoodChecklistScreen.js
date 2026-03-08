@@ -8,15 +8,12 @@ import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
 import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
-import { generateFoodRecommendations } from '../services/aiService';
 
 export default function FoodChecklistScreen({ onSetScreen }) {
     const { colors } = useTheme();
     // Destructure new Context methods for persistence
     const { tripInfo, foodItems, addFoodItem, toggleFoodItem, deleteFoodItem, checkFeatureAccess } = useTravelContext();
     const styles = useMemo(() => createStyles(colors), [colors]);
-
-    const [isLoadingAI, setIsLoadingAI] = useState(false);
 
     // Animation refs
     const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -110,38 +107,6 @@ export default function FoodChecklistScreen({ onSetScreen }) {
 
 
 
-    const handleAIRecommendations = async () => {
-        if (places.length === 0) {
-            showAlert('No Destinations', 'Please add some places to your trip first!', 'info');
-            return;
-        }
-
-        setIsLoadingAI(true);
-        try {
-            const result = await generateFoodRecommendations(places.join(', '));
-            if (result.success && result.recommendations) {
-                // Add new items (avoid duplicates by name if possible, or just add)
-                for (const placeRec of result.recommendations) {
-                    for (const item of placeRec.items) {
-                        // Check if item already exists in this place
-                        const exists = foodItems.find(f => f.place === placeRec.place && f.name.toLowerCase() === item.name.toLowerCase());
-                        if (!exists) {
-                            await addFoodItem(placeRec.place, item.name, item.type, item.bestTime, item.bestLocations);
-                        }
-                    }
-                }
-                showAlert('Success', 'Added new foodie recommendations for your trip!', 'success');
-            } else {
-                showAlert('Error', 'Failed to get recommendations. Please try again.', 'error');
-            }
-        } catch (error) {
-            console.error('AI Recommendations Error:', error);
-            showAlert('Error', 'Something went wrong while fetching recommendations.', 'error');
-        } finally {
-            setIsLoadingAI(false);
-        }
-    };
-
     // Derived helpers for UI, filtering the global persisted list by place
     const getPlaceItems = (place) => {
         return foodItems.filter(item => item.place === place);
@@ -165,22 +130,6 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                     <Icon name="food" size={24} color={colors.text} style={{ marginRight: 8 }} />
                     <Text style={styles.headerTitle}>Food Checklist</Text>
                 </View>
-                {!tripInfo.isCompleted && (
-                    <TouchableOpacity
-                        style={[styles.aiHeaderButton, isLoadingAI && { opacity: 0.6 }]}
-                        onPress={handleAIRecommendations}
-                        disabled={isLoadingAI}
-                    >
-                        {isLoadingAI ? (
-                            <ActivityIndicator size="small" color={colors.primary} />
-                        ) : (
-                            <>
-                                <Icon name="sparkles" size={14} color={colors.primary} style={{ marginRight: 4 }} />
-                                <Text style={styles.aiHeaderButtonText}>AI Suggestions</Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-                )}
             </View>
 
             <ScrollView
@@ -188,15 +137,6 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                 contentContainerStyle={styles.mainScrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Feature Update Tip */}
-                {foodItems.length > 0 && (
-                    <View style={styles.tipBanner}>
-                        <Icon name="information" size={16} color={colors.primary} style={{ marginRight: 10 }} />
-                        <Text style={styles.tipText}>
-                            Tap <Text style={{ fontWeight: 'bold' }}>AI Suggestions</Text> above to update your list with best times and specific spots!
-                        </Text>
-                    </View>
-                )}
                 {/* Empty State / Intro */}
                 {places.length === 0 && (
                     <View style={styles.emptyHero}>
@@ -498,21 +438,6 @@ const createStyles = (colors) => StyleSheet.create({
         color: colors.text,
         fontSize: 12,
         lineHeight: 18,
-    },
-    aiHeaderButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.primaryMuted,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: colors.primaryBorder,
-    },
-    aiHeaderButtonText: {
-        color: colors.primary,
-        fontSize: 12,
-        fontWeight: 'bold',
     },
     mainScroll: {
         flex: 1,
