@@ -309,7 +309,21 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                                                         {!tripInfo.isCompleted && (
                                                             <TouchableOpacity
                                                                 style={styles.deleteBtn}
-                                                                onPress={() => deleteFoodItem(item.id)}
+                                                                onPress={() => {
+                                                                    showAlert(
+                                                                        'Remove Item?',
+                                                                        `Are you sure you want to remove "${item.name}" from your checklist?`,
+                                                                        'warning',
+                                                                        () => {
+                                                                            deleteFoodItem(item.id);
+                                                                            hideAlert();
+                                                                        },
+                                                                        () => hideAlert(),
+                                                                        null,
+                                                                        'Remove',
+                                                                        'Cancel'
+                                                                    );
+                                                                }}
                                                             >
                                                                 <Icon name="close" size={16} color={colors.textMuted} />
                                                             </TouchableOpacity>

@@ -474,16 +474,27 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
             else if (lowerCat.includes('health')) normalizedCategory = 'health';
             else if (lowerCat.includes('accessor')) normalizedCategory = 'accessories';
 
-            for (const itemName of (categoryData.items || [])) {
+            for (const itemData of (categoryData.items || [])) {
+              // Handle both legacy string items and new structured objects
+              const itemName = typeof itemData === 'object' ? itemData.name : itemData;
+              const itemQty = typeof itemData === 'object' ? (itemData.qty || 1) : 1;
+              const itemLuggage = typeof itemData === 'object' ? (itemData.luggage || 'checked') : 'checked';
+              const itemNotes = typeof itemData === 'object' ? (itemData.notes || 'AI Suggested') : 'AI Suggested';
+
+              if (!itemName) continue;
+
               const cleanName = itemName.trim().toLowerCase();
               const exists = !isReplace && packingItems.some(existing => existing.name.toLowerCase() === cleanName);
               if (!exists && !addedPackingSignatures.has(cleanName)) {
                 addedPackingSignatures.add(cleanName);
                 newPackingItems.push({
                   id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                  name: itemName,
+                  name: itemName.trim(),
                   category: normalizedCategory,
-                  packed: false
+                  packed: false,
+                  quantity: itemQty,
+                  luggageType: itemLuggage,
+                  notes: itemNotes
                 });
                 packingAddedCount++;
               }
@@ -531,16 +542,27 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
       hideAlert();
       setTimeout(() => {
-        let msg = `AI has added ${itineraryCount} stops to your itinerary`;
-        if (foodCount > 0) msg += ` and ${foodCount} food items`;
-        if (packingAddedCount > 0) msg += ` and ${packingAddedCount} packing items`;
-        msg += ' and a complete budget plan!';
-        showAlert('Generation Complete', msg, 'success');
+        const parts = [];
+        if (regenOptions.itinerary && itineraryCount > 0) parts.push(`${itineraryCount} stops`);
+        if (regenOptions.food && foodCount > 0) parts.push(`${foodCount} food items`);
+        if (regenOptions.packing && packingAddedCount > 0) parts.push(`${packingAddedCount} packing items`);
+        if (regenOptions.budget) parts.push('a complete budget plan');
+
+        if (parts.length === 0) {
+          showAlert('Generation Complete', 'AI scan complete. No new unique items were found to add to your lists.', 'info');
+        } else {
+          const message = `AI has added ${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' and ' : ''}${parts.slice(-1)} to your trip!`;
+          showAlert('Generation Complete', message, 'success');
+        }
       }, 500);
     } catch (error) {
       hideAlert();
       setTimeout(() => {
-        showAlert('Partial Success', `AI added ${itineraryCount} stops but failed on packing/budget.`, 'success');
+        const failed = [];
+        if (regenOptions.packing) failed.push('packing');
+        if (regenOptions.budget) failed.push('budget');
+        const failedText = failed.length > 0 ? ` but failed on ${failed.join('/')}` : '';
+        showAlert('Partial Success', `AI added ${itineraryCount} stops${failedText}.`, 'success');
       }, 500);
     }
   };

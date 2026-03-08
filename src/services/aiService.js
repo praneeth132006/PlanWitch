@@ -437,30 +437,28 @@ PACKING RULES (MANDATORY)
    - If rainy season → waterproof gear, quick-dry clothing
    - If variable → versatile pieces that work across conditions
 
-2. BE HYPER-SPECIFIC (Never generic):
-   ✅ "2x Quick-dry hiking shorts" instead of ❌ "Shorts"
-   ✅ "Lightweight waterproof rain jacket" instead of ❌ "Jacket"
-   ✅ "SPF 50+ reef-safe sunscreen" instead of ❌ "Sunscreen"
-   ✅ "Universal travel adapter (Type C/G)" instead of ❌ "Adapter"
+3. PREMIUM SELECTION (MANDATORY):
+   - Focus on HIGH-VALUE, SPECIALIZED, or CONTEXT-AWARE items.
+   - EXCLUDE: Basic soap, generic towels, toothbrush, basic toothpaste, or tissues.
+   - INCLUDE: Tech gear (converters, e-sim), high-end skin protection, destination-specific clothing, and premium comfort items.
 
-3. INCLUDE QUANTITIES where sensible (e.g., "3x Casual T-shirts", "5x Underwear")
+4. BE HYPER-SPECIFIC (MANDATORY):
+   - Every item MUST include a specific detail about its material, brand-type, or function.
+   ✅ "Light waterproof windbreaker for coastal winds" instead of ❌ "Jacket"
+   ✅ "Breathable mesh walking shoes for city tours" instead of ❌ "Shoes"
+   ✅ "Universal travel adapter (Type C/G/I) with USB-C" instead of ❌ "Adapter"
+   ✅ "2x Quick-dry UV-protection hiking shorts" instead of ❌ "2x Shorts"
 
-4. ACTIVITY-SPECIFIC ITEMS:
-   - If beach trip → swimwear, beach towel, waterproof phone pouch, reef shoes
-   - If hiking → trekking shoes, trekking poles (if steep), moisture-wicking socks
-   - If city/cultural → modest clothing for temples/churches, comfortable walking shoes
-   - If adventure → action camera mount, dry bags
+5. LUGGAGE STRATEGY:
+   - For each item, decide if it belongs in "carry" or "checked".
+   - Documents, electronics, and medicine MUST be "carry".
+   - Bulk clothing and large liquids MUST be "checked".
 
-5. CULTURAL CONSIDERATIONS:
-   - If visiting temples/mosques → scarf/shawl for covering shoulders, long pants
-   - If conservative region → modest clothing options
+6. QUANTITIES & ACTIVITY GROUPING:
+   - Include quantities (e.g. "3x casual shirts").
+   - Categorize items by activity if possible (e.g. "Temple Visit", "Hiking", "Fine Dining").
 
-6. SMART EXCLUSIONS:
-   - Do NOT suggest "Passport" or "Visa" for domestic trips within the same country
-   - Do NOT suggest international adapters for domestic trips
-   - Do NOT list items available at every hotel (like towels, soap, shampoo — unless budget/hostel travel)
-
-7. STRICT LIMIT: Maximum 35-45 items TOTAL across all categories. Be ruthlessly practical.
+7. STRICT LIMIT: Maximum 25-30 HIGH-IMPACT items. Quality over quantity.
 
 ═══════════════════════════════════════
 OUTPUT FORMAT (Return ONLY this JSON)
@@ -468,17 +466,16 @@ OUTPUT FORMAT (Return ONLY this JSON)
 {
     "success": true,
     "recommendations": [
-        {"category": "Essentials", "items": ["item1 with quantity", "item2"] },
-        {"category": "Clothing", "items": ["item1", "item2"] },
-        {"category": "Toiletries", "items": ["item1", "item2"] },
-        {"category": "Electronics", "items": ["item1", "item2"] },
-        {"category": "Documents", "items": ["item1", "item2"] },
-        {"category": "Health", "items": ["item1", "item2"] },
-        {"category": "Accessories", "items": ["item1", "item2"] }
+        {
+          "category": "Essentials", 
+          "items": [
+            { "name": "Specific Item Name", "qty": 1, "luggage": "carry", "notes": "Specific reason or tip" }
+          ]
+        }
     ]
 }
 
-IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
+IMPORTANT: The "luggage" field must be "carry" or "checked". Return ONLY the JSON.`;
 
     try {
         return await callGemini(prompt, true);

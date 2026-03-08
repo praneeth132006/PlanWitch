@@ -110,27 +110,56 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
     );
   }, [packingItems]);
 
-  // Premium: Smart Weather Tip based on trip month
+  // Premium: Smart Weather Tip based on trip context
   const smartTip = useMemo(() => {
-    if (!tripInfo.startDate) return { icon: '⛅', text: 'Check the local weather forecast before you head out!' };
-    try {
-      const month = new Date(tripInfo.startDate).getMonth(); // 0-11
-      const destination = (tripInfo.destination || '').toLowerCase();
+    if (!tripInfo.startDate) return { icon: '⛅', title: 'Preparation Path', text: 'Success in travel starts with a smart pack. Check the local forecast before you head out!' };
 
-      // Simple seasonal logic
+    try {
+      const date = new Date(tripInfo.startDate);
+      const month = date.getMonth(); // 0-11
+      const destination = (tripInfo.destination || '').toLowerCase();
+      const duration = parseInt(tripInfo.duration) || 3;
+
+      // 1. Duration-based tips
+      if (duration > 7) {
+        return {
+          icon: '🧺',
+          title: 'Extended Stay Hack',
+          text: `For a ${duration}-day trip, pack 4-5 days of clothes and carry travel-size laundry detergent. It saves massive space!`
+        };
+      }
+
+      // 2. Destination/Weather-based logic
+      if (destination.includes('bangalore') || destination.includes('bengaluru')) {
+        return {
+          icon: '🧥',
+          title: 'Garden City Vibe',
+          text: 'Bangalore mornings are pleasant but evenings can get chilly. A high-quality light windbreaker is a must.'
+        };
+      }
+
+      if (destination.includes('beach') || destination.includes('goa') || destination.includes('maldives')) {
+        return {
+          icon: '🏖️',
+          title: 'Ocean Essentials',
+          text: 'The sun is stronger near water. Pack mineral-safe sunscreen and a quick-dry microfiber towel.'
+        };
+      }
+
+      // 3. Seasonal logic
       if (month >= 2 && month <= 5) { // Spring
-        return { icon: '🌱', text: 'Spring weather can be unpredictable. Pack a light windbreaker and comfortable walking shoes.' };
+        return { icon: '🌱', title: 'Spring Strategy', text: 'Spring weather is unpredictable. Pack a light windbreaker and breathable walking shoes.' };
       } else if (month >= 6 && month <= 8) { // Summer
-        return { icon: '☀️', text: 'It\'s likely to be warm. Don\'t forget sunscreen, a hat, and breathable cotton fabrics.' };
+        return { icon: '☀️', title: 'Summer Comfort', text: 'It\'s likely to be warm. Prioritize moisture-wicking fabrics and a wide-brimmed hat.' };
       } else if (month >= 9 && month <= 10) { // Autumn
-        return { icon: '🍂', text: 'Cooler evenings ahead. A versatile jacket and layering pieces are your best friends.' };
+        return { icon: '🍂', title: 'Autumn Layers', text: 'Cooler breeze ahead. The secret is layering: a base, a light sweater, and a shell.' };
       } else { // Winter
-        return { icon: '❄️', text: 'Cold weather expected. Thermal layers and a good pair of wool socks are essential.' };
+        return { icon: '❄️', title: 'Winter Warmth', text: 'Cold weather expected. Thermal base layers and wool-blend socks are non-negotiable.' };
       }
     } catch (e) {
-      return { icon: '⛅', text: 'Always pack an extra layer for unexpected weather changes!' };
+      return { icon: '⛅', title: 'Expert Tip', text: 'Always pack an extra high-quality layer for unexpected air conditioning or weather changes!' };
     }
-  }, [tripInfo.startDate, tripInfo.destination]);
+  }, [tripInfo.startDate, tripInfo.destination, tripInfo.duration]);
 
   // Premium: Rotating Pro Tips
   const proTips = [
@@ -138,7 +167,11 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
     "Pack a reusable water bottle to stay hydrated and save money on the go.",
     "Use packing cubes to keep your suitcase organized and find items easily.",
     "Place heavier items at the bottom of your bag near the wheels for better balance.",
-    "Scan your important documents and email them to yourself as a backup."
+    "Scan your important documents and email them to yourself as a backup.",
+    "Place a dryer sheet in your suitcase to keep your clothes smelling fresh throughout the trip.",
+    "Wear your heaviest shoes (boots/sneakers) and jacket during travel to free up bag space.",
+    "Pack a small extension cord; hotel outlets are often in inconvenient spots.",
+    "Stuff your socks inside your shoes to maximize every inch of space and maintain shoe shape."
   ];
   const currentProTip = useMemo(() => proTips[Math.floor(Math.random() * proTips.length)], []);
 
@@ -158,15 +191,22 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
       if (res.success && res.recommendations) {
         let addedCount = 0;
         for (const cat of res.recommendations) {
-          const categoryKey = cat.category.toLowerCase();
-          for (const itemName of cat.items) {
+          const categoryKey = (cat.category || 'other').toLowerCase();
+          for (const aiItem of cat.items) {
+            // Handle both string and object formats for backwards compatibility
+            const name = typeof aiItem === 'object' ? aiItem.name : aiItem;
+            const quantity = typeof aiItem === 'object' ? aiItem.qty : 1;
+            const luggageType = typeof aiItem === 'object' ? aiItem.luggage : 'checked';
+            const notes = typeof aiItem === 'object' ? aiItem.notes : 'AI Recommended';
+
             // Check if already exists
-            if (!packingItems.some(p => p.name.toLowerCase() === itemName.toLowerCase())) {
+            if (!packingItems.some(p => p.name.toLowerCase() === name.toLowerCase())) {
               await addPackingItem({
-                name: itemName,
+                name: name,
                 category: PACKING_CATEGORIES.some(pc => pc.key === categoryKey) ? categoryKey : 'other',
-                quantity: 1,
-                notes: 'AI Recommended'
+                quantity: quantity || 1,
+                luggageType: luggageType || 'checked',
+                notes: notes
               });
               addedCount++;
             }
@@ -437,7 +477,7 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
                         key={item.id}
                         style={[styles.itemCard, item.packed && styles.itemCardPacked]}
                         onPress={() => !tripInfo.isCompleted && togglePackingItem(item.id)}
-                        onLongPress={() => !tripInfo.isCompleted && handleDeleteItem(item.id)}
+                        onLongPress={() => !tripInfo.isCompleted && handleDeleteItem(item.id, item.name)}
                         delayLongPress={500}
                         activeOpacity={tripInfo.isCompleted ? 1 : 0.7}
                       >
@@ -472,7 +512,7 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
                             style={styles.itemDelete}
                             onPress={(e) => {
                               e?.stopPropagation();
-                              handleDeleteItem(item.id);
+                              handleDeleteItem(item.id, item.name);
                             }}
                           >
                             <Icon name="close" size={14} color={colors.textMuted} />
@@ -665,14 +705,16 @@ const createStyles = (colors) => StyleSheet.create({
   weatherBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary + '10',
+    backgroundColor: colors.primary + '08',
     marginHorizontal: 20,
     marginTop: 10,
     marginBottom: 16,
     padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.primary + '20',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.primary + '15',
+    borderLeftWidth: 5,
+    borderLeftColor: colors.primary,
   },
   weatherIconContainer: {
     width: 48,
@@ -697,11 +739,16 @@ const createStyles = (colors) => StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 20,
     padding: 16,
-    backgroundColor: colors.bg,
-    borderRadius: 16,
+    backgroundColor: colors.card,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.primaryBorder,
     borderStyle: 'dashed',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
   proTipHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   proTipTitle: { color: colors.primary, fontSize: 13, fontWeight: 'bold', marginLeft: 8 },
