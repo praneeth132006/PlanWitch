@@ -139,7 +139,10 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
       <View style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Icon name="packing" size={24} color={colors.text} style={{ marginRight: 8 }} />
-          <Text style={styles.headerTitle}>Packing List</Text>
+          <View>
+            <Text style={styles.headerTitle}>Packing List</Text>
+            <Text style={styles.headerSubtitle}>Ready for {tripInfo.destination || 'your trip'}</Text>
+          </View>
         </View>
         {packingItems.length > 0 && !tripInfo.isCompleted && (
           <TouchableOpacity
@@ -150,9 +153,8 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
                 'warning',
                 async () => {
                   try {
-                    hideAlert(); // Close immediately for better UX
+                    hideAlert();
                     await setPackingItems([]);
-                    // Optional: Show success alert after a small delay
                     setTimeout(() => {
                       showAlert('Cleared!', 'All packing items have been removed.', 'success', () => hideAlert());
                     }, 500);
@@ -175,6 +177,18 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Weather Tip Banner (Premium) */}
+        <View style={styles.weatherBanner}>
+          <View style={styles.weatherIconContainer}>
+            <Text style={{ fontSize: 24 }}>⛅</Text>
+          </View>
+          <View style={styles.weatherInfo}>
+            <Text style={styles.weatherTitle}>Packing Tip</Text>
+            <Text style={styles.weatherText}>Based on the destination, lightweight layers and an umbrella are recommended.</Text>
+          </View>
+        </View>
+
+        {/* Progress Card */}
         {/* Progress Card */}
         <View style={styles.progressCard}>
           <View style={styles.progressHeader}>
@@ -207,7 +221,7 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
         {/* Category Overview */}
         <View style={styles.categoryOverview}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-            {categoryStats.filter(cat => cat.total > 0).map((cat) => (
+            {categoryStats.map((cat) => (
               <TouchableOpacity
                 key={cat.key}
                 style={[
@@ -220,7 +234,7 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
                 <View style={styles.categoryPillInfo}>
                   <Text style={[styles.categoryPillLabel, filterCategory === cat.key && { color: '#FFF' }]}>{cat.label}</Text>
                   <Text style={[styles.categoryPillCount, filterCategory === cat.key && { color: 'rgba(255,255,255,0.8)' }]}>
-                    {cat.packed}/{cat.total}
+                    {cat.total > 0 ? `${cat.packed}/${cat.total}` : 'Empty'}
                   </Text>
                 </View>
                 {cat.packed === cat.total && cat.total > 0 && (
@@ -230,6 +244,17 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
             ))}
           </ScrollView>
         </View>
+
+        {/* Packing Pro-Tip (Premium) */}
+        {!tripInfo.isCompleted && (
+          <View style={styles.proTipCard}>
+            <View style={styles.proTipHeader}>
+              <Icon name="info" size={16} color={colors.primary} />
+              <Text style={styles.proTipTitle}>Pro Packing Tip</Text>
+            </View>
+            <Text style={styles.proTipText}>Roll your clothes instead of folding them to save up to 30% more space in your suitcase!</Text>
+          </View>
+        )}
 
         {/* Quick Add Section */}
         {totalItems === 0 && !tripInfo.isCompleted && (
@@ -302,10 +327,14 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
                           {item.packed && <Text style={styles.checkmark}>✓</Text>}
                         </View>
                         <View style={styles.itemInfo}>
-                          <Text style={[styles.itemName, item.packed && styles.itemNamePacked]}>{item.name}</Text>
-                          {item.quantity > 1 && (
-                            <Text style={styles.itemQuantity}>×{item.quantity}</Text>
-                          )}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Text style={[styles.itemName, item.packed && styles.itemNamePacked]}>{item.name}</Text>
+                            {item.quantity > 1 && (
+                              <View style={styles.quantityBadge}>
+                                <Text style={styles.quantityBadgeText}>{item.quantity}</Text>
+                              </View>
+                            )}
+                          </View>
                           {item.notes && (
                             <Text style={styles.itemNotes}>{item.notes}</Text>
                           )}
@@ -318,7 +347,7 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
                               handleDeleteItem(item.id);
                             }}
                           >
-                            <Text style={styles.itemDeleteText}>🗑️</Text>
+                            <Icon name="close" size={14} color={colors.textMuted} />
                           </TouchableOpacity>
                         )}
                       </TouchableOpacity>
@@ -501,8 +530,69 @@ const createStyles = (colors) => StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 },
   headerTitle: { color: colors.text, fontSize: 24, fontWeight: '800' },
   headerSubtitle: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
-  clearAllButton: { backgroundColor: colors.primary + '15', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.primary + '30' },
-  clearAllText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  clearAllButton: { backgroundColor: 'rgba(239, 68, 68, 0.1)', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)' },
+  clearAllText: { color: '#EF4444', fontSize: 13, fontWeight: '700' },
+
+  // Weather Banner
+  weatherBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary + '10',
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  weatherIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  weatherInfo: { flex: 1 },
+  weatherTitle: { color: colors.primary, fontSize: 14, fontWeight: 'bold', marginBottom: 2 },
+  weatherText: { color: colors.text, fontSize: 12, lineHeight: 18 },
+
+  // Pro-Tip Card
+  proTipCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: colors.bg,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    borderStyle: 'dashed',
+  },
+  proTipHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  proTipTitle: { color: colors.primary, fontSize: 13, fontWeight: 'bold', marginLeft: 8 },
+  proTipText: { color: colors.textMuted, fontSize: 12, lineHeight: 18, fontStyle: 'italic' },
+
+  // Quantity Badge
+  quantityBadge: {
+    backgroundColor: colors.primary + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+  },
+  quantityBadgeText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
 
   // Progress Card
   progressCard: { marginHorizontal: 20, backgroundColor: colors.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.primaryBorder },

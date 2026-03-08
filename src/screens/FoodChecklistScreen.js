@@ -426,7 +426,7 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                 cancelText={alertConfig.cancelText}
                 neutralText={alertConfig.neutralText}
             />
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
 
@@ -730,14 +730,16 @@ const createStyles = (colors) => StyleSheet.create({
         alignItems: 'center',
         backgroundColor: colors.primaryMuted,
         paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 6,
-        gap: 4,
+        paddingVertical: 4,
+        borderRadius: 8,
+        gap: 6,
+        maxWidth: '100%',
     },
     locationBadgeText: {
         fontSize: 11,
         color: colors.primary,
         fontWeight: '600',
+        flexShrink: 1,
     },
     mustTryBadge: {
         flexDirection: 'row',
