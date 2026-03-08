@@ -103,6 +103,87 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
     return matchesCategory;
   });
 
+  // Get unpacked essentials for "Don't Forget" section
+  const unpackedEssentials = useMemo(() => {
+    return packingItems.filter(item =>
+      !item.packed && (item.category === 'essentials' || item.category === 'documents')
+    );
+  }, [packingItems]);
+
+  // Premium: Smart Weather Tip based on trip month
+  const smartTip = useMemo(() => {
+    if (!tripInfo.startDate) return { icon: '⛅', text: 'Check the local weather forecast before you head out!' };
+    try {
+      const month = new Date(tripInfo.startDate).getMonth(); // 0-11
+      const destination = (tripInfo.destination || '').toLowerCase();
+
+      // Simple seasonal logic
+      if (month >= 2 && month <= 5) { // Spring
+        return { icon: '🌱', text: 'Spring weather can be unpredictable. Pack a light windbreaker and comfortable walking shoes.' };
+      } else if (month >= 6 && month <= 8) { // Summer
+        return { icon: '☀️', text: 'It\'s likely to be warm. Don\'t forget sunscreen, a hat, and breathable cotton fabrics.' };
+      } else if (month >= 9 && month <= 10) { // Autumn
+        return { icon: '🍂', text: 'Cooler evenings ahead. A versatile jacket and layering pieces are your best friends.' };
+      } else { // Winter
+        return { icon: '❄️', text: 'Cold weather expected. Thermal layers and a good pair of wool socks are essential.' };
+      }
+    } catch (e) {
+      return { icon: '⛅', text: 'Always pack an extra layer for unexpected weather changes!' };
+    }
+  }, [tripInfo.startDate, tripInfo.destination]);
+
+  // Premium: Rotating Pro Tips
+  const proTips = [
+    "Roll your clothes instead of folding them to save up to 30% more space!",
+    "Pack a reusable water bottle to stay hydrated and save money on the go.",
+    "Use packing cubes to keep your suitcase organized and find items easily.",
+    "Place heavier items at the bottom of your bag near the wheels for better balance.",
+    "Scan your important documents and email them to yourself as a backup."
+  ];
+  const currentProTip = useMemo(() => proTips[Math.floor(Math.random() * proTips.length)], []);
+
+  // AI Suggestions Handler
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const handleAiGeneration = async () => {
+    try {
+      const { generatePackingList } = require('../services/aiService');
+      setIsAiGenerating(true);
+      const res = await generatePackingList(
+        tripInfo.destination || 'Destination',
+        tripInfo.startDate || 'Upcoming',
+        3, // Default duration if not found
+        'Leisure'
+      );
+
+      if (res.success && res.recommendations) {
+        let addedCount = 0;
+        for (const cat of res.recommendations) {
+          const categoryKey = cat.category.toLowerCase();
+          for (const itemName of cat.items) {
+            // Check if already exists
+            if (!packingItems.some(p => p.name.toLowerCase() === itemName.toLowerCase())) {
+              await addPackingItem({
+                name: itemName,
+                category: PACKING_CATEGORIES.some(pc => pc.key === categoryKey) ? categoryKey : 'other',
+                quantity: 1,
+                notes: 'AI Recommended'
+              });
+              addedCount++;
+            }
+          }
+        }
+        showAlert('Success', `Added ${addedCount} premium suggestions to your list!`, 'success');
+      } else {
+        showAlert('Error', 'Could not fetch AI suggestions. Please try again.', 'error');
+      }
+    } catch (e) {
+      console.error('AI Packing Error:', e);
+      showAlert('Error', 'Something went wrong while generating suggestions.', 'error');
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
   const groupedItems = PACKING_CATEGORIES.reduce((acc, cat) => {
     acc[cat.key] = filteredItems.filter(item => {
       const itemCat = (item.category || 'other').toLowerCase();
@@ -180,13 +261,35 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
         {/* Weather Tip Banner (Premium) */}
         <View style={styles.weatherBanner}>
           <View style={styles.weatherIconContainer}>
-            <Text style={{ fontSize: 24 }}>⛅</Text>
+            <Text style={{ fontSize: 24 }}>{smartTip.icon}</Text>
           </View>
           <View style={styles.weatherInfo}>
-            <Text style={styles.weatherTitle}>Packing Tip</Text>
-            <Text style={styles.weatherText}>Based on the destination, lightweight layers and an umbrella are recommended.</Text>
+            <Text style={styles.weatherTitle}>Smart Packing Tip</Text>
+            <Text style={styles.weatherText}>{smartTip.text}</Text>
           </View>
         </View>
+
+        {/* Don't Forget / Essentials Section (Premium) */}
+        {unpackedEssentials.length > 0 && (
+          <View style={styles.essentialsSection}>
+            <View style={styles.essentialsHeader}>
+              <Text style={styles.essentialsTitle}>🚨 Don't Forget</Text>
+              <Text style={styles.essentialsCount}>{unpackedEssentials.length} critical items</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.essentialsScroll}>
+              {unpackedEssentials.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.essentialItem}
+                  onPress={() => togglePackingItem(item.id)}
+                >
+                  <Icon name={getCategoryInfo(item.category).icon} size={16} color="#EF4444" />
+                  <Text style={styles.essentialText} numberOfLines={1}>{item.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Progress Card */}
         {/* Progress Card */}
@@ -250,15 +353,30 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
           <View style={styles.proTipCard}>
             <View style={styles.proTipHeader}>
               <Icon name="info" size={16} color={colors.primary} />
-              <Text style={styles.proTipTitle}>Pro Packing Tip</Text>
+              <Text style={styles.proTipTitle}>Expert Packing Advice</Text>
             </View>
-            <Text style={styles.proTipText}>Roll your clothes instead of folding them to save up to 30% more space in your suitcase!</Text>
+            <Text style={styles.proTipText}>{currentProTip}</Text>
           </View>
         )}
 
         {/* Quick Add Section */}
         {totalItems === 0 && !tripInfo.isCompleted && (
           <View style={styles.quickAddSection}>
+            {/* Premium AI Generator Button */}
+            <TouchableOpacity
+              style={styles.premiumAiBtn}
+              onPress={handleAiGeneration}
+              disabled={isAiGenerating}
+            >
+              <ActivityIndicator animating={isAiGenerating} size="small" color="#FFF" style={{ marginRight: 10, display: isAiGenerating ? 'flex' : 'none' }} />
+              <Text style={{ fontSize: 18, marginRight: 8 }}>✨</Text>
+              <Text style={styles.premiumAiBtnText}>
+                {isAiGenerating ? 'Curating Your List...' : 'Generate Premium Packing List'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={{ height: 20 }} />
+
             <Text style={styles.sectionTitle}>⚡ Quick Add</Text>
             <Text style={styles.quickAddHint}>Tap items to add them to your list</Text>
             {PACKING_CATEGORIES.slice(0, 4).map((cat) => (
@@ -676,14 +794,68 @@ const createStyles = (colors) => StyleSheet.create({
   fabIcon: { color: colors.bg, fontSize: 20, fontWeight: 'bold', marginRight: 6 },
   fabText: { color: colors.bg, fontSize: 15, fontWeight: 'bold' },
 
-  // Modal
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' },
-  modalContent: { backgroundColor: colors.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 12, paddingHorizontal: 24, maxHeight: '90%' },
-  modalHandle: { width: 40, height: 4, backgroundColor: colors.textMuted, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { color: colors.text, fontSize: 22, fontWeight: 'bold' },
-  modalClose: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.cardLight, justifyContent: 'center', alignItems: 'center' },
-  modalCloseText: { color: colors.textMuted, fontSize: 18 },
+  // Essentials (Don't Forget) Section
+  essentialsSection: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  essentialsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  essentialsTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  essentialsCount: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  essentialsScroll: {
+    paddingRight: 20,
+    gap: 10,
+  },
+  essentialItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+    maxWidth: 150,
+  },
+  essentialText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+
+  // Premium AI Button
+  premiumAiBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    borderRadius: 16,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  premiumAiBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 
   // Inputs
   inputGroup: { marginBottom: 16 },
