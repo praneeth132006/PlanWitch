@@ -628,7 +628,7 @@ export const TravelProvider = ({ children }) => {
   };
 
   // --- FOOD ITEMS ---
-  const addFoodItem = async (place, name, type, bestTime = null, bestLocations = []) => {
+  const addFoodItem = async (place, name, type, bestTime = null, bestLocations = [], premiumDetails = {}) => {
     const newItem = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       place,
@@ -636,6 +636,7 @@ export const TravelProvider = ({ children }) => {
       type,
       bestTime,
       bestLocations: Array.isArray(bestLocations) ? bestLocations : (bestLocations ? [bestLocations] : []),
+      ...premiumDetails, // Includes localSecret, perfectPairing, vibe, priceRange, variation
       tried: false
     };
 

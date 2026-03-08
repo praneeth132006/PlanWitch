@@ -509,7 +509,9 @@ export const generateFoodRecommendations = async (places, preferences) => {
         };
     }
 
-    const prompt = `You are a culinary travel expert. For locations: [${locationList}], suggest 6-10 iconic dishes.
+    const prompt = `You are a world-class culinary travel concierge. For locations: [${locationList}], suggest 6-10 iconic, must-try dishes.
+    
+    For each dish, provide deep, curated "insider" details.
 
     JSON SCHEMA:
     {
@@ -519,18 +521,26 @@ export const generateFoodRecommendations = async (places, preferences) => {
                 "place": "MATCH EXACTLY FROM LIST",
                 "items": [
                     {
-                        "name": "Dish only (e.g. Pad Thai)",
-                        "bestLocations": ["Spot 1", "Spot 2", "Spot 3"],
+                        "name": "Dish Name (e.g. Pad Thai)",
+                        "bestLocations": ["Specific restaurant/spot 1", "Spot 2"],
                         "bestTime": "EXACTLY one of: [Morning, Afternoon, Evening, Night, Late Night]",
                         "type": "Veg OR Non-Veg",
-                        "mustTry": true/false
+                        "mustTry": true/false,
+                        "localSecret": "A short (10-15 words) pro-tip or insider secret about how to eat this like a local.",
+                        "perfectPairing": "Return ONE authentic traditional drink or side dish that TRULY enhances this meal. If no globally recognized authentic pairing exists, return null. DO NOT suggest generic or forced combinations.",
+                        "vibe": "One short tag (2-3 words) describing the experience (e.g. 'Sunset View', 'Historic/Rustic', 'Busy Street Vibe')",
+                        "priceRange": "Return exactly one of: [₹, ₹₹, ₹₹₹]",
+                        "variation": "One specific 'special' or 'premium' version/topping of this dish to ask for."
                     }
                 ]
             }
         ]
     }
 
-    Preferences: ${preferences || 'Both Veg and Non-Veg'}
+    Rules:
+    - Recommendations must be culturally significant.
+    - perfectPairing MUST be geographically and traditionally accurate (e.g. 'Sol Kadhi' with Malvani food).
+    - Preferences: ${preferences || 'Both Veg and Non-Veg'}
     Return ONLY JSON. No markdown.`;
 
     try {

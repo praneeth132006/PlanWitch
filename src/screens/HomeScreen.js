@@ -661,7 +661,20 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                 const exists = !isReplace && foodItems.some(f => f.place === targetPlace && f.name.toLowerCase() === item.name.trim().toLowerCase());
                 if (!exists && !addedFoodSignatures.has(signature)) {
                   addedFoodSignatures.add(signature);
-                  await addFoodItem(targetPlace, item.name, item.type?.toLowerCase().includes('non') ? 'Non-Veg' : 'Veg', item.bestTime, item.bestLocations || item.bestLocation);
+                  await addFoodItem(
+                    targetPlace,
+                    item.name,
+                    item.type?.toLowerCase().includes('non') ? 'Non-Veg' : 'Veg',
+                    item.bestTime,
+                    item.bestLocations || item.bestLocation,
+                    {
+                      localSecret: item.localSecret,
+                      perfectPairing: item.perfectPairing,
+                      vibe: item.vibe,
+                      priceRange: item.priceRange,
+                      variation: item.variation
+                    }
+                  );
                   foodAddedCount++;
                 }
               }

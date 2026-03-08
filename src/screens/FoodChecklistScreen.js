@@ -232,7 +232,7 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                                                         )}
 
                                                         <View style={{ flex: 1 }}>
-                                                            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
                                                                 <Text style={[styles.itemName, item.tried && styles.itemNameTried]}>
                                                                     {item.name}
                                                                 </Text>
@@ -242,33 +242,61 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                                                                         <Text style={styles.mustTryText}>Must Try</Text>
                                                                     </View>
                                                                 )}
+                                                                {item.priceRange && (
+                                                                    <Text style={styles.priceMarker}>{item.priceRange}</Text>
+                                                                )}
                                                             </View>
 
-                                                            {(item.bestTime || (item.bestLocations && item.bestLocations.length > 0) || item.bestLocation) && (
-                                                                <View style={styles.itemDetails}>
-                                                                    {item.bestTime && (
-                                                                        <View style={[styles.timePill, { backgroundColor: getTimeColor(item.bestTime) + '20', borderColor: getTimeColor(item.bestTime) }]}>
-                                                                            <Text style={[styles.timePillText, { color: getTimeColor(item.bestTime) }]}>
-                                                                                {item.bestTime}
-                                                                            </Text>
-                                                                        </View>
-                                                                    )}
-                                                                    {/* Render Plural bestLocations */}
-                                                                    {item.bestLocations && item.bestLocations.map((loc, idx) => (
-                                                                        <View key={idx} style={styles.locationBadge}>
-                                                                            <Icon name="location" size={10} color={colors.primary} />
-                                                                            <Text style={styles.locationBadgeText}>{loc}</Text>
-                                                                        </View>
-                                                                    ))}
-                                                                    {/* Fallback for single bestLocation */}
-                                                                    {!item.bestLocations && item.bestLocation && (
-                                                                        <View style={styles.locationBadge}>
-                                                                            <Icon name="location" size={10} color={colors.primary} />
-                                                                            <Text style={styles.locationBadgeText}>{item.bestLocation}</Text>
-                                                                        </View>
-                                                                    )}
+                                                            {/* Contextual Pills: Vibe, Pairing, Time */}
+                                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                                                                {item.bestTime && (
+                                                                    <View style={[styles.timePill, { backgroundColor: getTimeColor(item.bestTime) + '15', borderColor: getTimeColor(item.bestTime) + '50' }]}>
+                                                                        <Text style={[styles.timePillText, { color: getTimeColor(item.bestTime) }]}>
+                                                                            {item.bestTime}
+                                                                        </Text>
+                                                                    </View>
+                                                                )}
+                                                                {item.vibe && (
+                                                                    <View style={styles.vibeBadge}>
+                                                                        <Text style={styles.vibeText}>✨ {item.vibe}</Text>
+                                                                    </View>
+                                                                )}
+                                                                {item.perfectPairing && (
+                                                                    <View style={styles.pairingBadge}>
+                                                                        <Icon name="drink" size={10} color="#10B981" />
+                                                                        <Text style={styles.pairingText}>Local Pairing: {item.perfectPairing}</Text>
+                                                                    </View>
+                                                                )}
+                                                            </View>
+
+                                                            {/* Local Secret / Pro-Tip */}
+                                                            {item.localSecret && (
+                                                                <View style={styles.secretBox}>
+                                                                    <View style={styles.secretIcon}>
+                                                                        <Icon name="information" size={12} color={colors.primary} />
+                                                                    </View>
+                                                                    <Text style={styles.secretText}>{item.localSecret}</Text>
                                                                 </View>
                                                             )}
+
+                                                            {/* Locations & Variations */}
+                                                            <View style={{ marginTop: 6 }}>
+                                                                {item.bestLocations && item.bestLocations.length > 0 && (
+                                                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                                                        {item.bestLocations.map((loc, idx) => (
+                                                                            <View key={idx} style={styles.locationBadge}>
+                                                                                <Icon name="location" size={10} color={colors.primary} />
+                                                                                <Text style={styles.locationBadgeText}>{loc}</Text>
+                                                                            </View>
+                                                                        ))}
+                                                                    </View>
+                                                                )}
+                                                                {item.variation && (
+                                                                    <Text style={styles.variationText}>
+                                                                        💡 <Text style={{ fontWeight: '700' }}>Signature Version:</Text> {item.variation}
+                                                                    </Text>
+                                                                )}
+                                                            </View>
                                                         </View>
 
                                                         {!tripInfo.isCompleted && (
@@ -721,10 +749,72 @@ const createStyles = (colors) => StyleSheet.create({
         gap: 2,
     },
     mustTryText: {
-        fontSize: 9,
         color: '#FFD700',
+        fontSize: 10,
         fontWeight: 'bold',
-        textTransform: 'uppercase'
+        marginLeft: 2
+    },
+    priceMarker: {
+        color: '#10B981',
+        fontSize: 12,
+        fontWeight: 'bold',
+        marginLeft: 4
+    },
+    vibeBadge: {
+        backgroundColor: colors.cardLight,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    vibeText: {
+        fontSize: 10,
+        color: colors.text,
+        fontWeight: '600',
+        fontStyle: 'italic'
+    },
+    pairingBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#10B98115',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#10B98130',
+    },
+    pairingText: {
+        fontSize: 10,
+        color: '#10B981',
+        fontWeight: '700',
+        marginLeft: 4
+    },
+    secretBox: {
+        flexDirection: 'row',
+        backgroundColor: colors.cardLight,
+        padding: 10,
+        borderRadius: 12,
+        marginTop: 4,
+        borderLeftWidth: 3,
+        borderLeftColor: colors.primary,
+    },
+    secretIcon: {
+        marginRight: 8,
+        marginTop: 1
+    },
+    secretText: {
+        flex: 1,
+        fontSize: 11,
+        color: colors.text,
+        lineHeight: 16,
+        fontStyle: 'italic'
+    },
+    variationText: {
+        fontSize: 11,
+        color: colors.textMuted,
+        marginTop: 6,
+        lineHeight: 16
     },
     typeBtn: {
         flex: 1,
