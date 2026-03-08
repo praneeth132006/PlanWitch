@@ -628,12 +628,14 @@ export const TravelProvider = ({ children }) => {
   };
 
   // --- FOOD ITEMS ---
-  const addFoodItem = async (place, name, type) => {
+  const addFoodItem = async (place, name, type, bestTime = null, bestLocation = null) => {
     const newItem = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       place,
       name,
       type,
+      bestTime,
+      bestLocation,
       tried: false
     };
 

@@ -533,11 +533,15 @@ FOOD RECOMMENDATION RULES (MANDATORY)
    - At least 1 fine dining recommendation
    - At least 1 budget-friendly local favorite
    - Seasonal specialties if applicable
+   - **For EACH item, provide the BEST TIME to eat it (e.g., Breakfast, Late Night, Afternoon Snack)**
+   - **For EACH item, provide the BEST LOCATION or REGION (e.g., Specific street, famous stall name, or local neighborhood)**
 
 2. SPECIFICITY IS KEY:
    ✅ "Hyderabadi Dum Biryani at Paradise Restaurant" instead of ❌ "Biryani"
    ✅ "Vada Pav from Ashok Vada Pav, Dadar" instead of ❌ "Vada Pav"
    ✅ "Fresh Kingfish Thali at Kinara, Panjim" instead of ❌ "Fish Curry"
+   ✅ "Best Time: 7 PM - 10 PM (Dinner)"
+   ✅ "Best Location: South Bangalore / MTR Restaurant"
 
 3. CLASSIFICATION:
    - "type" MUST be EXACTLY either "Veg" or "Non-Veg" (case sensitive)

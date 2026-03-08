@@ -74,11 +74,15 @@ export default function FoodChecklistScreen({ onSetScreen }) {
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [newItemName, setNewItemName] = useState('');
     const [newItemType, setNewItemType] = useState(null); // 'Veg' | 'Non-Veg' | null
+    const [newItemTime, setNewItemTime] = useState('');
+    const [newItemLocation, setNewItemLocation] = useState('');
 
     const openAddModal = (place) => {
         setSelectedPlace(place);
         setNewItemName('');
         setNewItemType(null);
+        setNewItemTime('');
+        setNewItemLocation('');
         setModalVisible(true);
     };
 
@@ -86,7 +90,7 @@ export default function FoodChecklistScreen({ onSetScreen }) {
         if (!newItemName.trim() || !selectedPlace) return;
 
         // Use Context method -> Persists to DB
-        await addFoodItem(selectedPlace, newItemName.trim(), newItemType);
+        await addFoodItem(selectedPlace, newItemName.trim(), newItemType, newItemTime.trim(), newItemLocation.trim());
         setModalVisible(false);
     };
 
@@ -216,9 +220,27 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                                                             </View>
                                                         )}
 
-                                                        <Text style={[styles.itemName, item.tried && styles.itemNameTried]}>
-                                                            {item.name}
-                                                        </Text>
+                                                        <View style={{ flex: 1 }}>
+                                                            <Text style={[styles.itemName, item.tried && styles.itemNameTried]}>
+                                                                {item.name}
+                                                            </Text>
+                                                            {(item.bestTime || item.bestLocation) && (
+                                                                <View style={styles.itemDetails}>
+                                                                    {item.bestTime && (
+                                                                        <View style={styles.detailRow}>
+                                                                            <Icon name="calendar" size={10} color={colors.textLight} />
+                                                                            <Text style={styles.detailText}>{item.bestTime}</Text>
+                                                                        </View>
+                                                                    )}
+                                                                    {item.bestLocation && (
+                                                                        <View style={styles.detailRow}>
+                                                                            <Icon name="location" size={10} color={colors.textLight} />
+                                                                            <Text style={styles.detailText}>{item.bestLocation}</Text>
+                                                                        </View>
+                                                                    )}
+                                                                </View>
+                                                            )}
+                                                        </View>
 
                                                         {!tripInfo.isCompleted && (
                                                             <TouchableOpacity
@@ -263,6 +285,31 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                             autoFocus={false}
                             selectionColor={colors.text}
                         />
+
+                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.inputLabel}>Best Time</Text>
+                                <TextInput
+                                    style={[styles.input, { marginBottom: 0 }]}
+                                    placeholder="e.g. Dinner"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={newItemTime}
+                                    onChangeText={setNewItemTime}
+                                    selectionColor={colors.text}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.inputLabel}>Best Area/Stall</Text>
+                                <TextInput
+                                    style={[styles.input, { marginBottom: 0 }]}
+                                    placeholder="e.g. Center Street"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={newItemLocation}
+                                    onChangeText={setNewItemLocation}
+                                    selectionColor={colors.text}
+                                />
+                            </View>
+                        </View>
 
                         {/* Veg/Non-Veg Selector */}
                         <View style={{ flexDirection: 'row', marginBottom: 20, gap: 12 }}>
@@ -578,6 +625,28 @@ const createStyles = (colors) => StyleSheet.create({
         fontSize: 16,
         color: colors.text,
         marginBottom: 20
+    },
+    inputLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: colors.textMuted,
+        marginBottom: 6,
+        marginLeft: 4,
+        textTransform: 'uppercase'
+    },
+    itemDetails: {
+        marginTop: 4,
+        gap: 2,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    detailText: {
+        fontSize: 11,
+        color: colors.textLight,
+        fontWeight: '500',
     },
     typeBtn: {
         flex: 1,
