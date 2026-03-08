@@ -446,7 +446,17 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
                         </View>
                         <View style={styles.itemInfo}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Text style={[styles.itemName, item.packed && styles.itemNamePacked]}>{item.name}</Text>
+                            <View style={{ flex: 1 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <Text style={[styles.itemName, item.packed && styles.itemNamePacked]}>{item.name}</Text>
+                                {item.luggageType && (
+                                  <View style={styles.luggageBadge}>
+                                    <Text style={styles.luggageIcon}>{item.luggageType === 'carry' ? '🎒' : '🧳'}</Text>
+                                    <Text style={styles.luggageText}>{item.luggageType === 'carry' ? 'Carry-on' : 'Checked'}</Text>
+                                  </View>
+                                )}
+                              </View>
+                            </View>
                             {item.quantity > 1 && (
                               <View style={styles.quantityBadge}>
                                 <Text style={styles.quantityBadgeText}>{item.quantity}</Text>
@@ -697,20 +707,20 @@ const createStyles = (colors) => StyleSheet.create({
   proTipTitle: { color: colors.primary, fontSize: 13, fontWeight: 'bold', marginLeft: 8 },
   proTipText: { color: colors.textMuted, fontSize: 12, lineHeight: 18, fontStyle: 'italic' },
 
-  // Quantity Badge
-  quantityBadge: {
-    backgroundColor: colors.primary + '15',
-    paddingHorizontal: 8,
+  // Luggage Badge
+  luggageBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.bg,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
+    marginLeft: 8,
     borderWidth: 1,
-    borderColor: colors.primary + '30',
+    borderColor: colors.border,
   },
-  quantityBadgeText: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
+  luggageIcon: { fontSize: 10, marginRight: 4 },
+  luggageText: { fontSize: 9, color: colors.textMuted, fontWeight: '600', textTransform: 'uppercase' },
 
   // Progress Card
   progressCard: { marginHorizontal: 20, backgroundColor: colors.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.primaryBorder },

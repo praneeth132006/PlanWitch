@@ -279,6 +279,13 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                                                                 </View>
                                                             )}
 
+                                                            {/* Premium Food Trivia */}
+                                                            {item.trivia && (
+                                                                <View style={styles.triviaBox}>
+                                                                    <Text style={styles.triviaText}>💡 Did you know? {item.trivia}</Text>
+                                                                </View>
+                                                            )}
+
                                                             {/* Locations & Variations */}
                                                             <View style={{ marginTop: 6 }}>
                                                                 {item.bestLocations && item.bestLocations.length > 0 && (
@@ -715,15 +722,19 @@ const createStyles = (colors) => StyleSheet.create({
         gap: 8,
     },
     timePill: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
         borderRadius: 20,
         borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 70,
     },
     timePillText: {
         fontSize: 10,
-        fontWeight: 'bold',
-        textTransform: 'uppercase'
+        fontWeight: '900',
+        textTransform: 'uppercase',
+        textAlign: 'center',
     },
     locationBadge: {
         flexDirection: 'row',
@@ -755,6 +766,19 @@ const createStyles = (colors) => StyleSheet.create({
         fontSize: 10,
         fontWeight: 'bold',
         marginLeft: 2
+    },
+    legendBadge: {
+        backgroundColor: '#FFD70020',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#FFD70050',
+    },
+    legendBadgeText: {
+        color: '#FFD700',
+        fontSize: 9,
+        fontWeight: '900',
     },
     priceMarker: {
         color: '#10B981',
@@ -811,6 +835,20 @@ const createStyles = (colors) => StyleSheet.create({
         color: colors.text,
         lineHeight: 16,
         fontStyle: 'italic'
+    },
+    triviaBox: {
+        backgroundColor: colors.card,
+        padding: 8,
+        borderRadius: 8,
+        marginTop: 8,
+        borderWidth: 1,
+        borderColor: colors.primary + '20',
+        borderStyle: 'dashed',
+    },
+    triviaText: {
+        fontSize: 10,
+        color: colors.textMuted,
+        fontStyle: 'italic',
     },
     variationText: {
         fontSize: 11,
