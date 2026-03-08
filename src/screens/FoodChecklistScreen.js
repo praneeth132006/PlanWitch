@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
 import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
+import { generateFoodRecommendations } from '../services/aiService';
 
 export default function FoodChecklistScreen({ onSetScreen }) {
     const { colors } = useTheme();
@@ -15,8 +16,20 @@ export default function FoodChecklistScreen({ onSetScreen }) {
     const { tripInfo, foodItems, addFoodItem, toggleFoodItem, deleteFoodItem, checkFeatureAccess } = useTravelContext();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
+    const [isLoadingAI, setIsLoadingAI] = useState(false);
+
     // Animation refs
     const pulseAnim = useRef(new Animated.Value(1)).current;
+
+    // Time Category Colors
+    const getTimeColor = (time) => {
+        const t = time?.toLowerCase() || '';
+        if (t.includes('morning')) return '#F59E0B'; // Amber
+        if (t.includes('afternoon')) return '#3B82F6'; // Blue
+        if (t.includes('evening')) return '#8B5CF6'; // Purple
+        if (t.includes('night')) return '#1F2937'; // Dark
+        return colors.primary;
+    };
 
     // Custom Alert State
     const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info', onConfirm: () => { }, onCancel: null, confirmText: 'OK', cancelText: 'Cancel', neutralText: '' });
@@ -75,26 +88,59 @@ export default function FoodChecklistScreen({ onSetScreen }) {
     const [newItemName, setNewItemName] = useState('');
     const [newItemType, setNewItemType] = useState(null); // 'Veg' | 'Non-Veg' | null
     const [newItemTime, setNewItemTime] = useState('');
-    const [newItemLocation, setNewItemLocation] = useState('');
+    const [newItemLocations, setNewItemLocations] = useState('');
 
     const openAddModal = (place) => {
         setSelectedPlace(place);
         setNewItemName('');
         setNewItemType(null);
         setNewItemTime('');
-        setNewItemLocation('');
+        setNewItemLocations('');
         setModalVisible(true);
     };
 
     const handleAddItem = async () => {
         if (!newItemName.trim() || !selectedPlace) return;
 
+        const locationsArray = newItemLocations.split(',').map(s => s.trim()).filter(Boolean);
         // Use Context method -> Persists to DB
-        await addFoodItem(selectedPlace, newItemName.trim(), newItemType, newItemTime.trim(), newItemLocation.trim());
+        await addFoodItem(selectedPlace, newItemName.trim(), newItemType, newItemTime.trim(), locationsArray);
         setModalVisible(false);
     };
 
 
+
+    const handleAIRecommendations = async () => {
+        if (places.length === 0) {
+            showAlert('No Destinations', 'Please add some places to your trip first!', 'info');
+            return;
+        }
+
+        setIsLoadingAI(true);
+        try {
+            const result = await generateFoodRecommendations(places.join(', '));
+            if (result.success && result.recommendations) {
+                // Add new items (avoid duplicates by name if possible, or just add)
+                for (const placeRec of result.recommendations) {
+                    for (const item of placeRec.items) {
+                        // Check if item already exists in this place
+                        const exists = foodItems.find(f => f.place === placeRec.place && f.name.toLowerCase() === item.name.toLowerCase());
+                        if (!exists) {
+                            await addFoodItem(placeRec.place, item.name, item.type, item.bestTime, item.bestLocations);
+                        }
+                    }
+                }
+                showAlert('Success', 'Added new foodie recommendations for your trip!', 'success');
+            } else {
+                showAlert('Error', 'Failed to get recommendations. Please try again.', 'error');
+            }
+        } catch (error) {
+            console.error('AI Recommendations Error:', error);
+            showAlert('Error', 'Something went wrong while fetching recommendations.', 'error');
+        } finally {
+            setIsLoadingAI(false);
+        }
+    };
 
     // Derived helpers for UI, filtering the global persisted list by place
     const getPlaceItems = (place) => {
@@ -119,6 +165,22 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                     <Icon name="food" size={24} color={colors.text} style={{ marginRight: 8 }} />
                     <Text style={styles.headerTitle}>Food Checklist</Text>
                 </View>
+                {!tripInfo.isCompleted && (
+                    <TouchableOpacity
+                        style={[styles.aiHeaderButton, isLoadingAI && { opacity: 0.6 }]}
+                        onPress={handleAIRecommendations}
+                        disabled={isLoadingAI}
+                    >
+                        {isLoadingAI ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                            <>
+                                <Icon name="sparkles" size={14} color={colors.primary} style={{ marginRight: 4 }} />
+                                <Text style={styles.aiHeaderButtonText}>AI Suggestions</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                )}
             </View>
 
             <ScrollView
@@ -126,6 +188,15 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                 contentContainerStyle={styles.mainScrollContent}
                 showsVerticalScrollIndicator={false}
             >
+                {/* Feature Update Tip */}
+                {foodItems.length > 0 && (
+                    <View style={styles.tipBanner}>
+                        <Icon name="information" size={16} color={colors.primary} style={{ marginRight: 10 }} />
+                        <Text style={styles.tipText}>
+                            Tap <Text style={{ fontWeight: 'bold' }}>AI Suggestions</Text> above to update your list with best times and specific spots!
+                        </Text>
+                    </View>
+                )}
                 {/* Empty State / Intro */}
                 {places.length === 0 && (
                     <View style={styles.emptyHero}>
@@ -221,21 +292,39 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                                                         )}
 
                                                         <View style={{ flex: 1 }}>
-                                                            <Text style={[styles.itemName, item.tried && styles.itemNameTried]}>
-                                                                {item.name}
-                                                            </Text>
-                                                            {(item.bestTime || item.bestLocation) && (
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                                                <Text style={[styles.itemName, item.tried && styles.itemNameTried]}>
+                                                                    {item.name}
+                                                                </Text>
+                                                                {item.mustTry && (
+                                                                    <View style={styles.mustTryBadge}>
+                                                                        <Icon name="star" size={10} color="#FFD700" />
+                                                                        <Text style={styles.mustTryText}>Must Try</Text>
+                                                                    </View>
+                                                                )}
+                                                            </View>
+
+                                                            {(item.bestTime || (item.bestLocations && item.bestLocations.length > 0) || item.bestLocation) && (
                                                                 <View style={styles.itemDetails}>
                                                                     {item.bestTime && (
-                                                                        <View style={styles.detailRow}>
-                                                                            <Icon name="calendar" size={10} color={colors.textLight} />
-                                                                            <Text style={styles.detailText}>{item.bestTime}</Text>
+                                                                        <View style={[styles.timePill, { backgroundColor: getTimeColor(item.bestTime) + '20', borderColor: getTimeColor(item.bestTime) }]}>
+                                                                            <Text style={[styles.timePillText, { color: getTimeColor(item.bestTime) }]}>
+                                                                                {item.bestTime}
+                                                                            </Text>
                                                                         </View>
                                                                     )}
-                                                                    {item.bestLocation && (
-                                                                        <View style={styles.detailRow}>
-                                                                            <Icon name="location" size={10} color={colors.textLight} />
-                                                                            <Text style={styles.detailText}>{item.bestLocation}</Text>
+                                                                    {/* Render Plural bestLocations */}
+                                                                    {item.bestLocations && item.bestLocations.map((loc, idx) => (
+                                                                        <View key={idx} style={styles.locationBadge}>
+                                                                            <Icon name="location" size={10} color={colors.primary} />
+                                                                            <Text style={styles.locationBadgeText}>{loc}</Text>
+                                                                        </View>
+                                                                    ))}
+                                                                    {/* Fallback for single bestLocation */}
+                                                                    {!item.bestLocations && item.bestLocation && (
+                                                                        <View style={styles.locationBadge}>
+                                                                            <Icon name="location" size={10} color={colors.primary} />
+                                                                            <Text style={styles.locationBadgeText}>{item.bestLocation}</Text>
                                                                         </View>
                                                                     )}
                                                                 </View>
@@ -299,13 +388,13 @@ export default function FoodChecklistScreen({ onSetScreen }) {
                                 />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>Best Area/Stall</Text>
+                                <Text style={styles.inputLabel}>Best Spots (comma separated)</Text>
                                 <TextInput
                                     style={[styles.input, { marginBottom: 0 }]}
-                                    placeholder="e.g. Center Street"
+                                    placeholder="e.g. MTR, CTR, Vidyarthi Bhavan"
                                     placeholderTextColor={colors.textMuted}
-                                    value={newItemLocation}
-                                    onChangeText={setNewItemLocation}
+                                    value={newItemLocations}
+                                    onChangeText={setNewItemLocations}
                                     selectionColor={colors.text}
                                 />
                             </View>
@@ -392,6 +481,38 @@ const createStyles = (colors) => StyleSheet.create({
         color: colors.primary,
         fontSize: 14,
         marginTop: 4
+    },
+    tipBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.primary + '10',
+        marginHorizontal: 20,
+        marginTop: 10,
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.primary + '30',
+    },
+    tipText: {
+        flex: 1,
+        color: colors.text,
+        fontSize: 12,
+        lineHeight: 18,
+    },
+    aiHeaderButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.primaryMuted,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: colors.primaryBorder,
+    },
+    aiHeaderButtonText: {
+        color: colors.primary,
+        fontSize: 12,
+        fontWeight: 'bold',
     },
     mainScroll: {
         flex: 1,
@@ -635,18 +756,50 @@ const createStyles = (colors) => StyleSheet.create({
         textTransform: 'uppercase'
     },
     itemDetails: {
-        marginTop: 4,
-        gap: 2,
+        marginTop: 6,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
     },
-    detailRow: {
+    timePill: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    timePillText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        textTransform: 'uppercase'
+    },
+    locationBadge: {
         flexDirection: 'row',
         alignItems: 'center',
+        backgroundColor: colors.primaryMuted,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
         gap: 4,
     },
-    detailText: {
+    locationBadgeText: {
         fontSize: 11,
-        color: colors.textLight,
-        fontWeight: '500',
+        color: colors.primary,
+        fontWeight: '600',
+    },
+    mustTryBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        gap: 2,
+    },
+    mustTryText: {
+        fontSize: 9,
+        color: '#FFD700',
+        fontWeight: 'bold',
+        textTransform: 'uppercase'
     },
     typeBtn: {
         flex: 1,

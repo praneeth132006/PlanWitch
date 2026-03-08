@@ -501,78 +501,37 @@ export const generateFoodRecommendations = async (places, preferences) => {
             recommendations: mockPlaces.map(place => ({
                 place: place,
                 items: [
-                    { name: 'Local Specialty', type: 'Veg', mustTry: true },
-                    { name: 'Street Food', type: 'Non-Veg', mustTry: true },
-                    { name: 'Famous Restaurant Dish', type: 'Veg', mustTry: false },
+                    { name: 'Local Specialty', type: 'Veg', mustTry: true, bestTime: 'Morning', bestLocation: 'Local Market' },
+                    { name: 'Street Food', type: 'Non-Veg', mustTry: true, bestTime: 'Night', bestLocation: 'Main Street' },
+                    { name: 'Famous Restaurant Dish', type: 'Veg', mustTry: false, bestTime: 'Evening', bestLocation: 'Iconic Plaza' },
                 ]
             }))
         };
     }
 
-    const prompt = `You are a FOOD & CULINARY TRAVEL EXPERT who has explored kitchens and street foods across the world.
+    const prompt = `You are a culinary travel expert. For locations: [${locationList}], suggest 6-10 iconic dishes.
 
-Your restaurant and food knowledge comes from:
-• REVIEWS: TripAdvisor restaurant rankings, Yelp ratings, Google Reviews
-• PLATFORMS: Zomato (India), TheFork (Europe), OpenTable (premium dining), Yelp (global)
-• GUIDES: Lonely Planet food guides, Culture Trip culinary features, Eater city guides, Michelin recommendations
-• LOCAL: Street food blogs, food tour operator menus, local food influencer recommendations
+    JSON SCHEMA:
+    {
+        "success": true,
+        "recommendations": [
+            {
+                "place": "MATCH EXACTLY FROM LIST",
+                "items": [
+                    {
+                        "name": "Dish only (e.g. Pad Thai)",
+                        "bestLocations": ["Spot 1", "Spot 2", "Spot 3"],
+                        "bestTime": "EXACTLY one of: [Morning, Afternoon, Evening, Night, Late Night]",
+                        "type": "Veg OR Non-Veg",
+                        "mustTry": true/false
+                    }
+                ]
+            }
+        ]
+    }
 
-═══════════════════════════════════════
-FOOD BRIEF
-═══════════════════════════════════════
-• Locations: ${locationList}
-• Dietary Preferences: ${preferences || 'Both Veg and Non-Veg'}
-
-═══════════════════════════════════════
-FOOD RECOMMENDATION RULES (MANDATORY)
-═══════════════════════════════════════
-
-1. For EACH location, suggest 6-10 MUST-TRY food items including:
-   - Iconic signature dishes of the region
-   - Famous street food items with specific stall/area names where possible
-   - At least 1 fine dining recommendation
-   - At least 1 budget-friendly local favorite
-   - Seasonal specialties if applicable
-   - **For EACH item, provide the BEST TIME to eat it (e.g., Breakfast, Late Night, Afternoon Snack)**
-   - **For EACH item, provide the BEST LOCATION or REGION (e.g., Specific street, famous stall name, or local neighborhood)**
-
-2. SPECIFICITY IS KEY:
-   ✅ "Hyderabadi Dum Biryani at Paradise Restaurant" instead of ❌ "Biryani"
-   ✅ "Vada Pav from Ashok Vada Pav, Dadar" instead of ❌ "Vada Pav"
-   ✅ "Fresh Kingfish Thali at Kinara, Panjim" instead of ❌ "Fish Curry"
-   ✅ "Best Time: 7 PM - 10 PM (Dinner)"
-   ✅ "Best Location: South Bangalore / MTR Restaurant"
-
-3. CLASSIFICATION:
-   - "type" MUST be EXACTLY either "Veg" or "Non-Veg" (case sensitive)
-   - If contains any meat/fish/egg → "Non-Veg"
-   - If purely vegetarian → "Veg"
-
-4. "mustTry" flag:
-   - Set to true for the TOP 3-4 iconic dishes that define the location's food identity
-   - Set to false for good-but-optional recommendations
-
-5. "place" field MUST STRICTLY match one of the exact strings from this list: [${locationList}]
-   - Do NOT use "Nearby", "Local", or any other name not in the provided list.
-   - If a dish is from a specific neighborhood, still use the corresponding location name from the list as the "place".
-
-═══════════════════════════════════════
-OUTPUT FORMAT (Return ONLY this JSON)
-═══════════════════════════════════════
-{
-    "success": true,
-    "recommendations": [
-        {
-            "place": "Exact Location Name",
-            "items": [
-                {"name": "Specific Dish Name (at Restaurant/Area if possible)", "type": "Veg", "mustTry": true },
-                {"name": "Another Dish", "type": "Non-Veg", "mustTry": false }
-            ]
-        }
-    ]
-}
-
-IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
+    Preferences: ${preferences || 'Both Veg and Non-Veg'}
+    Return ONLY JSON. No markdown.`;
 
     try {
         return await callGemini(prompt, true);
