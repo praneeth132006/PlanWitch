@@ -59,6 +59,8 @@ export const useTravelContext = () => {
       saveTripPreferences: () => { },
       CONSTANTS: { FREE_TRIP_LIMIT: 3, FREE_TRAVELER_LIMIT: 5 },
       checkFeatureAccess: () => true,
+      selectedItineraryDay: 0,
+      setSelectedItineraryDay: () => { },
     };
   }
   return context;
@@ -90,6 +92,7 @@ export const TravelProvider = ({ children }) => {
   const [customCategories, setCustomCategories] = useState(DEFAULT_CATEGORIES);
   const [isLoading, setIsLoading] = useState(false);
   const [tripOwnerId, setTripOwnerId] = useState(null);
+  const [selectedItineraryDay, setSelectedItineraryDay] = useState(null);
 
   // Ref to store real-time listener unsubscribe functions
   const unsubscribersRef = useRef({});
@@ -1251,6 +1254,7 @@ export const TravelProvider = ({ children }) => {
 
   return (
     <TravelContext.Provider value={{
+      selectedItineraryDay, setSelectedItineraryDay,
       tripInfo: tripInfo || { // Fallback if tripInfo somehow becomes null
         destination: '', startDate: '', endDate: '', name: '',
         participants: [], tripCode: '', tripType: '', isCompleted: false,

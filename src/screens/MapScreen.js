@@ -89,7 +89,7 @@ const generateDays = (startDate, endDate) => {
 };
 
 export default function MapScreen({ onBackToHome, onSetScreen }) {
-  const { itinerary, addItineraryItem, deleteItineraryItem, updateItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess, addFoodItem, foodItems, setFoodItems, addPackingItem, packingItems, setPackingItems, setBudget } = useTravelContext();
+  const { itinerary, addItineraryItem, deleteItineraryItem, updateItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess, addFoodItem, foodItems, setFoodItems, addPackingItem, packingItems, setPackingItems, setBudget, selectedItineraryDay, setSelectedItineraryDay } = useTravelContext();
   const { colors } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
@@ -98,7 +98,15 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(selectedItineraryDay !== null ? selectedItineraryDay : 0);
+
+  useEffect(() => {
+    if (selectedItineraryDay !== null) {
+      setSelectedDayIndex(selectedItineraryDay);
+      const timer = setTimeout(() => setSelectedItineraryDay(null), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedItineraryDay, setSelectedItineraryDay]);
   const [newStop, setNewStop] = useState({
     name: '', type: 'attraction', dayNumber: 1, time: '', notes: '', location: '',
     duration: '', cost: ''
@@ -514,7 +522,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                                         </TouchableOpacity>
                                       </View>
                                     )}
-                                    <View style={styles.logisticsModes}>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.logisticsModes}>
                                       {logistics.driving && (
                                         <View style={styles.logisticsMode}>
                                           <Text style={styles.logisticsModeIcon}>🚕</Text>
@@ -536,7 +544,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                                           <Text style={styles.logisticsModeLabel}>walk</Text>
                                         </View>
                                       )}
-                                    </View>
+                                    </ScrollView>
                                   </View>
                                 </View>
                               )}

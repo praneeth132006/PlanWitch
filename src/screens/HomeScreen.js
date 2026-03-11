@@ -126,6 +126,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   });
   const [useTimings, setUseTimings] = useState(false); // New state for optional timings
   const [hasExistingContent, setHasExistingContent] = useState(false);
+  const [showAllTimelineDays, setShowAllTimelineDays] = useState(false);
 
   // Custom Alert State
   const [alertConfig, setAlertConfig] = useState({
@@ -1252,28 +1253,41 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               </TouchableOpacity>
             </View>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timelineScroll}>
-              {getTimelineData().map((day, index) => (
+            <View style={styles.timelineVerticalScroll}>
+              {getTimelineData()
+                .slice(0, showAllTimelineDays ? undefined : 3)
+                .map((day, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.timelineVerticalCard}
+                    onPress={() => {
+                      setSelectedItineraryDay(index);
+                      onSetScreen('MapScreen');
+                    }}
+                  >
+                    <View style={styles.timelineVerticalBadge}>
+                      <Text style={styles.timelineDayLabel}>DAY</Text>
+                      <Text style={styles.timelineDayNumber}>{day.day}</Text>
+                    </View>
+                    <View style={styles.timelineVerticalContent}>
+                      <Text style={styles.timelineHighlight} numberOfLines={2}>
+                        {day.highlight}
+                      </Text>
+                    </View>
+                    <Icon name="arrow_right" size={20} color={colors.primary} />
+                  </TouchableOpacity>
+                ))}
+              {getTimelineData().length > 3 && (
                 <TouchableOpacity
-                  key={index}
-                  style={styles.timelineDayCard}
-                  onPress={() => onSetScreen('MapScreen')}
+                  style={styles.timelineSeeMoreBtn}
+                  onPress={() => setShowAllTimelineDays(!showAllTimelineDays)}
                 >
-                  <View style={styles.timelineDayBadge}>
-                    <Text style={styles.timelineDayLabel}>DAY</Text>
-                    <Text style={styles.timelineDayNumber}>{day.day}</Text>
-                  </View>
-                  <View style={styles.timelineDivider} />
-                  <Text style={styles.timelineHighlight} numberOfLines={2}>
-                    {day.highlight}
+                  <Text style={styles.timelineSeeMoreText}>
+                    {showAllTimelineDays ? 'See Less' : `See All ${getTimelineData().length} Days`}
                   </Text>
-                  <View style={styles.timelineStepIndicator}>
-                    <View style={styles.timelineStepDot} />
-                    <View style={styles.timelineStepLine} />
-                  </View>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              )}
+            </View>
           </Animated.View>
         )}
         {/* )} */}
@@ -2375,6 +2389,49 @@ const createStyles = (colors) => StyleSheet.create({
   participantsSection: { paddingHorizontal: 20, marginBottom: 20 },
   timelineSection: { paddingHorizontal: 20, marginBottom: 30 },
   timelineScroll: { paddingRight: 20, paddingVertical: 10 },
+  timelineVerticalScroll: { paddingVertical: 10, gap: 12 },
+  timelineVerticalCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  timelineVerticalBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary + '15',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginRight: 16,
+  },
+  timelineVerticalContent: {
+    flex: 1,
+  },
+  timelineSeeMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 4,
+    backgroundColor: colors.primary + '10',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  timelineSeeMoreText: {
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: 14,
+  },
   timelineDayCard: {
     width: 140,
     backgroundColor: colors.card,
