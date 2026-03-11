@@ -9,6 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 import TimePickerModal from '../components/TimePickerModal';
 import Icon from '../components/Icon';
 import { getTravelLogistics } from '../services/transitService';
+import { getLogistics, saveLogistics } from '../services/databaseService';
 
 const { width } = Dimensions.get('window');
 
@@ -116,6 +117,15 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
   const tripDays = useMemo(() => generateDays(tripInfo.startDate, tripInfo.endDate), [tripInfo.startDate, tripInfo.endDate]);
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  // Load all logistics for this trip once on mount
+  useEffect(() => {
+    if (tripInfo.id) {
+      getLogistics(tripInfo.id).then(data => {
+        if (data) setLogisticsData(data);
+      });
+    }
+  }, [tripInfo.id]);
+
   // Fetch logistics whenever the selected day or its stops change
   useEffect(() => {
     const day = tripDays[selectedDayIndex];
@@ -135,9 +145,16 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
       setLogisticsLoading(prev => ({ ...prev, [key]: true }));
       getTravelLogistics(stop, next).then(data => {
-        if (data) setLogisticsData(prev => ({ ...prev, [key]: data }));
+        // Now always storing data even if it contains an error object
+        if (data) {
+          setLogisticsData(prev => ({ ...prev, [key]: data }));
+          // Persist to DB (for errors we might want to retry later, but for now we save the state)
+          if (tripInfo.id) saveLogistics(tripInfo.id, key, data);
+        }
         setLogisticsLoading(prev => ({ ...prev, [key]: false }));
-      }).catch(() => {
+      }).catch(err => {
+        console.error('[MapScreen] Logistics fetch error:', err);
+        setLogisticsData(prev => ({ ...prev, [key]: { error: 'NETWORK_FAIL' } }));
         setLogisticsLoading(prev => ({ ...prev, [key]: false }));
       });
     });
@@ -478,8 +495,14 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                                         <TouchableOpacity
                                           style={styles.logisticsNavBtn}
                                           onPress={() => {
-                                            const originStr = encodeURIComponent(stop.location || stop.name);
-                                            const destStr = encodeURIComponent(nextStop.location || nextStop.name);
+                                            const getQuery = (s) => {
+                                              const parts = [];
+                                              if (s.name) parts.push(s.name);
+                                              if (s.location) parts.push(s.location);
+                                              return encodeURIComponent(parts.join(', '));
+                                            };
+                                            const originStr = getQuery(stop);
+                                            const destStr = getQuery(nextStop);
                                             Linking.openURL(`https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}`);
                                           }}
                                         >
@@ -491,6 +514,18 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                                       <View style={styles.logisticsErrorContainer}>
                                         <Text style={styles.logisticsErrorText}>⚠️ Browser Limitation Detected</Text>
                                         <Text style={styles.logisticsErrorSubtext}>Google APIs are blocked on localhost in browsers. This will work on a real phone!</Text>
+                                      </View>
+                                    )}
+                                    {logistics.error === 'NO_ROUTE' && (
+                                      <View style={[styles.logisticsErrorContainer, { backgroundColor: colors.textMuted + '10', borderColor: colors.textMuted + '25' }]}>
+                                        <Text style={[styles.logisticsErrorText, { color: colors.textMuted }]}>📍 Route details unavailable</Text>
+                                        <Text style={styles.logisticsErrorSubtext}>Targets may be too close or no road data found. Walking is likely the best option.</Text>
+                                      </View>
+                                    )}
+                                    {logistics.error === 'NETWORK_FAIL' && (
+                                      <View style={[styles.logisticsErrorContainer, { backgroundColor: '#FF634715', borderColor: '#FF634730' }]}>
+                                        <Text style={[styles.logisticsErrorText, { color: '#FF6347' }]}>📡 Network Timeout</Text>
+                                        <Text style={styles.logisticsErrorSubtext}>Could not connect to Google Maps. Re-trying might help or check your internet.</Text>
                                       </View>
                                     )}
                                     <View style={styles.logisticsModes}>

@@ -646,6 +646,24 @@ export const deleteItineraryItemFromDB = async (itemId, tripId = null, ownerId =
   await remove(ref(database, path));
 };
 
+// ============ LOGISTICS ============
+export const saveLogistics = async (tripId, key, data) => {
+  const userId = getUserId();
+  if (!userId || !tripId) return;
+
+  const path = `users/${userId}/trips/${tripId}/logistics/${key}`;
+  await set(ref(database, path), { ...data, updatedAt: Date.now() });
+};
+
+export const getLogistics = async (tripId) => {
+  const userId = getUserId();
+  if (!userId || !tripId) return {};
+
+  const path = `users/${userId}/trips/${tripId}/logistics`;
+  const snapshot = await get(ref(database, path));
+  return snapshot.exists() ? snapshot.val() : {};
+};
+
 // ============ BUDGET ============
 // ============ BUDGET ============
 export const saveBudget = async (budget, tripId = null, ownerId = null) => {

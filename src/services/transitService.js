@@ -10,13 +10,29 @@ import { Platform } from 'react-native';
 // In-memory cache: "lat,lng-lat,lng" → result
 const logisticsCache = {};
 
+const fetchWithTimeout = (url, options = {}, timeout = 8000) => {
+    return Promise.race([
+        fetch(url, options),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), timeout))
+    ]);
+};
+
 /**
  * Proxy helper for web development to bypass CORS.
  * Only used if running in a browser environment.
  */
-const getWrappedUrl = (url) => {
+const PROXIES = [
+    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    (url) => `https://thingproxy.freeboard.io/fetch/${url}`,
+];
+
+let proxyIndex = 0;
+
+const getWrappedUrl = (url, forceNext = false) => {
     if (Platform.OS === 'web') {
-        return `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        if (forceNext) proxyIndex = (proxyIndex + 1) % PROXIES.length;
+        return PROXIES[proxyIndex](url);
     }
     return url;
 };
@@ -28,23 +44,34 @@ export const geocodeAddress = async (address) => {
     if (!address) return null;
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_CONFIG.apiKey}`;
     try {
-        const res = await fetch(getWrappedUrl(url));
-        let data = await res.json();
-        if (data.contents || typeof data === 'string') {
-            try { data = JSON.parse(data.contents || data); } catch (e) { }
+        let res = await fetchWithTimeout(getWrappedUrl(url));
+        if (!res.ok) {
+            res = await fetchWithTimeout(getWrappedUrl(url, true));
         }
+
+        const text = await res.text();
+        if (!text.trim().startsWith('{')) {
+            throw new Error('Proxy returned non-JSON response');
+        }
+
+        let data = JSON.parse(text);
+        if (data.contents && typeof data.contents === 'string') {
+            data = JSON.parse(data.contents);
+        }
+
         if (data.status === 'OK' && data.results?.[0]) {
             const { lat, lng } = data.results[0].geometry.location;
             return { lat, lng };
         }
         return null;
     } catch (e) {
-        if (e.message?.includes('fetch') || e.message?.includes('Network')) {
-            console.warn('[Logistics] Geocode CORS/Network error - usually a browser limitation on localhost');
+        if (e.message?.includes('fetch') || e.message?.includes('Network') || e.message === 'TIMEOUT') {
+            console.warn(`[Logistics] Geocode ${e.message === 'TIMEOUT' ? 'Timeout' : 'CORS/Network'} error`);
+            return { error: 'GEOCODE_FAIL' };
         } else {
             console.warn('[Logistics] Geocode error:', e.message);
         }
-        return null;
+        return { error: 'GEOCODE_FAIL' };
     }
 };
 
@@ -55,11 +82,21 @@ export const geocodeAddress = async (address) => {
 const fetchDirections = async (origin, destination, mode = 'driving') => {
     const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&mode=${mode}&key=${GOOGLE_MAPS_CONFIG.apiKey}`;
     try {
-        const res = await fetch(getWrappedUrl(url));
-        let data = await res.json();
-        if (data.contents || typeof data === 'string') {
-            try { data = JSON.parse(data.contents || data); } catch (e) { }
+        let res = await fetchWithTimeout(getWrappedUrl(url));
+        if (!res.ok) {
+            res = await fetchWithTimeout(getWrappedUrl(url, true));
         }
+
+        const text = await res.text();
+        if (!text.trim().startsWith('{')) {
+            throw new Error('Proxy returned non-JSON response');
+        }
+
+        let data = JSON.parse(text);
+        if (data.contents && typeof data.contents === 'string') {
+            data = JSON.parse(data.contents);
+        }
+
         if (data.status === 'OK' && data.routes?.[0]?.legs?.[0]) {
             const leg = data.routes[0].legs[0];
             const result = {
@@ -74,9 +111,9 @@ const fetchDirections = async (origin, destination, mode = 'driving') => {
         console.warn(`[Logistics] ${mode} failed with status:`, data.status, data.error_message || '');
         return null;
     } catch (e) {
-        if (e.message?.includes('fetch') || e.message?.includes('Network')) {
-            console.warn(`[Logistics] ${mode} CORS/Network error - Google APIs block requests from localhost in browsers`);
-            return { error: 'CORS_BLOCK' };
+        if (e.message?.includes('fetch') || e.message?.includes('Network') || e.message === 'TIMEOUT') {
+            console.warn(`[Logistics] ${mode} ${e.message === 'TIMEOUT' ? 'Timeout' : 'CORS/Network'} error`);
+            return { error: 'NETWORK_FAIL' };
         } else {
             console.warn(`[Logistics] ${mode} directions error:`, e.message);
         }
@@ -97,10 +134,14 @@ export const getTravelLogistics = async (stop1, stop2) => {
     if (!origin) origin = await geocodeAddress(stop1.location || stop1.name);
     if (!dest) dest = await geocodeAddress(stop2.location || stop2.name);
 
-    if (!origin || !dest) return null;
+    if (origin?.error || dest?.error) {
+        return { error: 'NETWORK_FAIL' };
+    }
+
+    if (!origin || !dest) return { error: 'NO_ROUTE' };
 
     // 2. Check cache
-    const cacheKey = `${origin.lat.toFixed(4)},${origin.lng.toFixed(4)}-${dest.lat.toFixed(4)},${dest.lng.toFixed(4)}`;
+    const cacheKey = `${(origin.lat || 0).toFixed(4)},${(origin.lng || 0).toFixed(4)}-${(dest.lat || 0).toFixed(4)},${(dest.lng || 0).toFixed(4)}`;
     if (logisticsCache[cacheKey]) return logisticsCache[cacheKey];
 
     // 3. Fetch all three modes in parallel
@@ -119,10 +160,10 @@ export const getTravelLogistics = async (stop1, stop2) => {
         error: driving?.error || walking?.error || transit?.error || null,
     };
 
-    // 4. Cache and return only if we have at least a distance OR an error
+    // 4. Cache and return
     if (!result.distance && !result.error) {
-        console.warn('[Logistics] No travel data found between points');
-        return null;
+        // If we geocoded but Google found no route
+        result.error = 'NO_ROUTE';
     }
 
     logisticsCache[cacheKey] = result;
