@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
-  Modal, StyleSheet, Animated, Dimensions, Image, ActivityIndicator
+  Modal, StyleSheet, Animated, Dimensions, Image, ActivityIndicator, Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTravelContext } from '../context/TravelContext';
@@ -473,7 +473,19 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                                   <View style={styles.logisticsContent}>
                                     <View style={styles.logisticsHeader}>
                                       <Text style={styles.logisticsLabel}>ROUTE INFO</Text>
-                                      {logistics.distance && <Text style={styles.logisticsDistance}>📏 {logistics.distance}</Text>}
+                                      <View style={styles.logisticsActions}>
+                                        {logistics.distance && <Text style={styles.logisticsDistance}>📏 {logistics.distance}</Text>}
+                                        <TouchableOpacity
+                                          style={styles.logisticsNavBtn}
+                                          onPress={() => {
+                                            const originStr = encodeURIComponent(stop.location || stop.name);
+                                            const destStr = encodeURIComponent(nextStop.location || nextStop.name);
+                                            Linking.openURL(`https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}`);
+                                          }}
+                                        >
+                                          <Text style={styles.logisticsNavBtnText}>🗺️ Navigate</Text>
+                                        </TouchableOpacity>
+                                      </View>
                                     </View>
                                     {logistics.error === 'CORS_BLOCK' && (
                                       <View style={styles.logisticsErrorContainer}>
@@ -491,9 +503,9 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                                       )}
                                       {logistics.transit && (
                                         <View style={styles.logisticsMode}>
-                                          <Text style={styles.logisticsModeIcon}>🚇</Text>
+                                          <Text style={styles.logisticsModeIcon}>🚌</Text>
                                           <Text style={styles.logisticsModeTime}>{logistics.transit.duration}</Text>
-                                          <Text style={styles.logisticsModeLabel}>metro</Text>
+                                          <Text style={styles.logisticsModeLabel}>transit</Text>
                                         </View>
                                       )}
                                       {logistics.walking && (
@@ -812,9 +824,27 @@ const createStyles = (colors) => StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
+  logisticsActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   logisticsDistance: {
     color: colors.primary,
     fontSize: 12,
+    fontWeight: '700',
+  },
+  logisticsNavBtn: {
+    backgroundColor: colors.primary + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+  },
+  logisticsNavBtnText: {
+    color: colors.primary,
+    fontSize: 10,
     fontWeight: '700',
   },
   logisticsModes: {

@@ -5,6 +5,7 @@
  */
 
 import GOOGLE_MAPS_CONFIG from '../config/googleMaps';
+import { Platform } from 'react-native';
 
 // In-memory cache: "lat,lng-lat,lng" → result
 const logisticsCache = {};
@@ -14,7 +15,7 @@ const logisticsCache = {};
  * Only used if running in a browser environment.
  */
 const getWrappedUrl = (url) => {
-    if (typeof window !== 'undefined' && window.location?.hostname === 'localhost') {
+    if (Platform.OS === 'web') {
         return `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
     }
     return url;
@@ -28,8 +29,11 @@ export const geocodeAddress = async (address) => {
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_CONFIG.apiKey}`;
     try {
         const res = await fetch(getWrappedUrl(url));
-        const data = await res.json();
-        if (data.status === 'OK' && data.results[0]) {
+        let data = await res.json();
+        if (data.contents || typeof data === 'string') {
+            try { data = JSON.parse(data.contents || data); } catch (e) { }
+        }
+        if (data.status === 'OK' && data.results?.[0]) {
             const { lat, lng } = data.results[0].geometry.location;
             return { lat, lng };
         }
@@ -52,8 +56,11 @@ const fetchDirections = async (origin, destination, mode = 'driving') => {
     const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&mode=${mode}&key=${GOOGLE_MAPS_CONFIG.apiKey}`;
     try {
         const res = await fetch(getWrappedUrl(url));
-        const data = await res.json();
-        if (data.status === 'OK' && data.routes[0]?.legs[0]) {
+        let data = await res.json();
+        if (data.contents || typeof data === 'string') {
+            try { data = JSON.parse(data.contents || data); } catch (e) { }
+        }
+        if (data.status === 'OK' && data.routes?.[0]?.legs?.[0]) {
             const leg = data.routes[0].legs[0];
             const result = {
                 distance: leg.distance.text,
