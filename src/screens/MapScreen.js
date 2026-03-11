@@ -5,10 +5,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTravelContext } from '../context/TravelContext';
-
 import { useTheme } from '../context/ThemeContext';
 import TimePickerModal from '../components/TimePickerModal';
 import Icon from '../components/Icon';
+import { getTravelLogistics } from '../services/transitService';
 
 const { width } = Dimensions.get('window');
 
@@ -89,7 +89,7 @@ const generateDays = (startDate, endDate) => {
 };
 
 export default function MapScreen({ onBackToHome, onSetScreen }) {
-  const { itinerary, addItineraryItem, deleteItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess, addFoodItem, foodItems, setFoodItems, addPackingItem, packingItems, setPackingItems, setBudget } = useTravelContext();
+  const { itinerary, addItineraryItem, deleteItineraryItem, updateItineraryItem, tripInfo, getAllTravelers, setItinerary, checkFeatureAccess, addFoodItem, foodItems, setFoodItems, addPackingItem, packingItems, setPackingItems, setBudget } = useTravelContext();
   const { colors } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
@@ -109,8 +109,39 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
   const floatAnim = useState(new Animated.Value(0))[0];
   const pulseAnim = useState(new Animated.Value(1))[0];
 
+  // --- Travel Logistics State ---
+  const [logisticsData, setLogisticsData] = useState({});
+  const [logisticsLoading, setLogisticsLoading] = useState({});
+
   const tripDays = useMemo(() => generateDays(tripInfo.startDate, tripInfo.endDate), [tripInfo.startDate, tripInfo.endDate]);
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  // Fetch logistics whenever the selected day or its stops change
+  useEffect(() => {
+    const day = tripDays[selectedDayIndex];
+    if (!day) return;
+    const dayStops = getStopsForDay(day.dayNumber);
+    if (dayStops.length < 2) return;
+
+    dayStops.forEach((stop, i) => {
+      if (i >= dayStops.length - 1) return;
+      const next = dayStops[i + 1];
+      const key = `${stop.id}-${next.id}`;
+      // Skip if already fetched or currently loading
+      if (logisticsData[key] || logisticsLoading[key]) return;
+
+      // Only fetch if at least one stop has a location or name
+      if (!(stop.location || stop.name) || !(next.location || next.name)) return;
+
+      setLogisticsLoading(prev => ({ ...prev, [key]: true }));
+      getTravelLogistics(stop, next).then(data => {
+        if (data) setLogisticsData(prev => ({ ...prev, [key]: data }));
+        setLogisticsLoading(prev => ({ ...prev, [key]: false }));
+      }).catch(() => {
+        setLogisticsLoading(prev => ({ ...prev, [key]: false }));
+      });
+    });
+  }, [selectedDayIndex, itinerary]);
 
   useEffect(() => {
     Animated.loop(Animated.sequence([
@@ -370,64 +401,126 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                         {dayStops.map((stop, stopIndex) => {
                           const type = getStopType(stop.type);
                           const isLast = stopIndex === dayStops.length - 1;
+                          const nextStop = !isLast ? dayStops[stopIndex + 1] : null;
+                          const logisticsKey = nextStop ? `${stop.id}-${nextStop.id}` : null;
+                          const logistics = logisticsKey ? logisticsData[logisticsKey] : null;
+                          const isLoadingLogistics = logisticsKey ? logisticsLoading[logisticsKey] : false;
 
                           return (
-                            <View key={stop.id} style={styles.stopWrapper}>
-                              {/* Time Column */}
-                              <View style={styles.stopTimeContainer}>
-                                <Text style={styles.stopTimeText}>{stop.time || '--:--'}</Text>
-                                {!isLast && <View style={[styles.stopTimeLine, { backgroundColor: type.color + '40' }]} />}
-                              </View>
-
-                              {/* Stop Card */}
-                              <View style={[styles.stopCard, { borderLeftColor: type.color }]}>
-                                {/* Category Tag */}
-                                <View style={[styles.categoryTag, { backgroundColor: type.color + '20' }]}>
-                                  <Text style={[styles.categoryTagText, { color: type.color }]}>{type.category.toUpperCase()}</Text>
+                            <React.Fragment key={stop.id}>
+                              <View style={styles.stopWrapper}>
+                                {/* Time Column */}
+                                <View style={styles.stopTimeContainer}>
+                                  <Text style={styles.stopTimeText}>{stop.time || '--:--'}</Text>
+                                  {!isLast && <View style={[styles.stopTimeLine, { backgroundColor: type.color + '40' }]} />}
                                 </View>
 
-                                <View style={styles.stopCardHeader}>
-                                  <View style={[styles.stopIconContainer, { backgroundColor: type.color + '25' }]}>
-                                    <Icon name={type.icon} size={20} color={type.color} />
+                                {/* Stop Card */}
+                                <View style={[styles.stopCard, { borderLeftColor: type.color }]}>
+                                  {/* Category Tag */}
+                                  <View style={[styles.categoryTag, { backgroundColor: type.color + '20' }]}>
+                                    <Text style={[styles.categoryTagText, { color: type.color }]}>{type.category.toUpperCase()}</Text>
                                   </View>
-                                  <View style={styles.stopCardInfo}>
-                                    <Text style={styles.stopCardName}>{stop.name}</Text>
-                                    <View style={styles.stopCardMeta}>
-                                      <View style={[styles.stopTypeBadge, { backgroundColor: type.color + '15' }]}>
-                                        <Text style={[styles.stopTypeBadgeText, { color: type.color }]}>{type.label}</Text>
-                                      </View>
-                                      {stop.duration && <Text style={styles.stopDuration}>⏱️ {stop.duration}</Text>}
+
+                                  <View style={styles.stopCardHeader}>
+                                    <View style={[styles.stopIconContainer, { backgroundColor: type.color + '25' }]}>
+                                      <Icon name={type.icon} size={20} color={type.color} />
                                     </View>
+                                    <View style={styles.stopCardInfo}>
+                                      <Text style={styles.stopCardName}>{stop.name}</Text>
+                                      <View style={styles.stopCardMeta}>
+                                        <View style={[styles.stopTypeBadge, { backgroundColor: type.color + '15' }]}>
+                                          <Text style={[styles.stopTypeBadgeText, { color: type.color }]}>{type.label}</Text>
+                                        </View>
+                                        {stop.duration && <Text style={styles.stopDuration}>⏱️ {stop.duration}</Text>}
+                                      </View>
+                                    </View>
+                                    {!tripInfo.isCompleted && (
+                                      <View style={styles.stopActions}>
+                                        <TouchableOpacity style={styles.stopEditBtn} onPress={() => openEditModal(stop)}>
+                                          <Icon name="pen" size={14} color={colors.primary} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={styles.stopDeleteBtn} onPress={() => deleteItineraryItem(stop.id)}>
+                                          <Icon name="close" size={14} color="#EF4444" />
+                                        </TouchableOpacity>
+                                      </View>
+                                    )}
                                   </View>
-                                  {!tripInfo.isCompleted && (
-                                    <View style={styles.stopActions}>
-                                      <TouchableOpacity style={styles.stopEditBtn} onPress={() => openEditModal(stop)}>
-                                        <Icon name="pen" size={14} color={colors.primary} />
-                                      </TouchableOpacity>
-                                      <TouchableOpacity style={styles.stopDeleteBtn} onPress={() => deleteItineraryItem(stop.id)}>
-                                        <Icon name="close" size={14} color="#EF4444" />
-                                      </TouchableOpacity>
+
+                                  {stop.location && (
+                                    <View style={styles.stopDetailRow}>
+                                      <Text style={styles.stopDetailIcon}>📍</Text>
+                                      <Text style={styles.stopDetailText}>{stop.location}</Text>
+                                    </View>
+                                  )}
+
+                                  {stop.notes && (
+                                    <View style={styles.stopNotesContainer}>
+                                      <Text style={styles.stopNotes}>{stop.notes}</Text>
                                     </View>
                                   )}
                                 </View>
-
-                                {stop.location && (
-                                  <View style={styles.stopDetailRow}>
-                                    <Text style={styles.stopDetailIcon}>📍</Text>
-                                    <Text style={styles.stopDetailText}>{stop.location}</Text>
-                                  </View>
-                                )}
-
-
-                                {/* Cost removed as per user request */}
-
-                                {stop.notes && (
-                                  <View style={styles.stopNotesContainer}>
-                                    <Text style={styles.stopNotes}>{stop.notes}</Text>
-                                  </View>
-                                )}
                               </View>
-                            </View>
+
+                              {/* === Smart Travel Logistics Card === */}
+                              {!isLast && logistics && (
+                                <View style={styles.logisticsCard}>
+                                  <View style={styles.logisticsTimeline}>
+                                    <View style={styles.logisticsDot} />
+                                    <View style={styles.logisticsDash} />
+                                    <View style={styles.logisticsDot} />
+                                  </View>
+                                  <View style={styles.logisticsContent}>
+                                    <View style={styles.logisticsHeader}>
+                                      <Text style={styles.logisticsLabel}>ROUTE INFO</Text>
+                                      {logistics.distance && <Text style={styles.logisticsDistance}>📏 {logistics.distance}</Text>}
+                                    </View>
+                                    {logistics.error === 'CORS_BLOCK' && (
+                                      <View style={styles.logisticsErrorContainer}>
+                                        <Text style={styles.logisticsErrorText}>⚠️ Browser Limitation Detected</Text>
+                                        <Text style={styles.logisticsErrorSubtext}>Google APIs are blocked on localhost in browsers. This will work on a real phone!</Text>
+                                      </View>
+                                    )}
+                                    <View style={styles.logisticsModes}>
+                                      {logistics.driving && (
+                                        <View style={styles.logisticsMode}>
+                                          <Text style={styles.logisticsModeIcon}>🚕</Text>
+                                          <Text style={styles.logisticsModeTime}>{logistics.driving.duration}</Text>
+                                          <Text style={styles.logisticsModeLabel}>taxi</Text>
+                                        </View>
+                                      )}
+                                      {logistics.transit && (
+                                        <View style={styles.logisticsMode}>
+                                          <Text style={styles.logisticsModeIcon}>🚇</Text>
+                                          <Text style={styles.logisticsModeTime}>{logistics.transit.duration}</Text>
+                                          <Text style={styles.logisticsModeLabel}>metro</Text>
+                                        </View>
+                                      )}
+                                      {logistics.walking && (
+                                        <View style={styles.logisticsMode}>
+                                          <Text style={styles.logisticsModeIcon}>🚶</Text>
+                                          <Text style={styles.logisticsModeTime}>{logistics.walking.duration}</Text>
+                                          <Text style={styles.logisticsModeLabel}>walk</Text>
+                                        </View>
+                                      )}
+                                    </View>
+                                  </View>
+                                </View>
+                              )}
+                              {!isLast && isLoadingLogistics && !logistics && (
+                                <View style={styles.logisticsCard}>
+                                  <View style={styles.logisticsTimeline}>
+                                    <View style={styles.logisticsDot} />
+                                    <View style={styles.logisticsDash} />
+                                    <View style={styles.logisticsDot} />
+                                  </View>
+                                  <View style={styles.logisticsContent}>
+                                    <ActivityIndicator size="small" color={colors.primary} />
+                                    <Text style={styles.logisticsLoadingText}>Calculating route...</Text>
+                                  </View>
+                                </View>
+                              )}
+                            </React.Fragment>
                           );
                         })}
                       </View>
@@ -669,6 +762,113 @@ const createStyles = (colors) => StyleSheet.create({
   stopDetailText: { color: colors.textMuted, fontSize: 11, flex: 1 },
   stopNotesContainer: { marginTop: 8, backgroundColor: colors.cardLight, padding: 8, borderRadius: 6 },
   stopNotes: { color: colors.textLight, fontSize: 11, lineHeight: 16 },
+
+  // Smart Travel Logistics
+  logisticsCard: {
+    flexDirection: 'row',
+    marginLeft: 14,
+    marginVertical: 6,
+    paddingLeft: 10,
+  },
+  logisticsTimeline: {
+    alignItems: 'center',
+    width: 20,
+    paddingVertical: 4,
+  },
+  logisticsDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary + '60',
+  },
+  logisticsDash: {
+    width: 1.5,
+    flex: 1,
+    backgroundColor: colors.primary + '30',
+    marginVertical: 2,
+    borderRadius: 1,
+  },
+  logisticsContent: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 12,
+    marginLeft: 8,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary + '40',
+  },
+  logisticsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  logisticsLabel: {
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 8,
+  },
+  logisticsDistance: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  logisticsModes: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  logisticsMode: {
+    alignItems: 'center',
+    backgroundColor: colors.cardLight,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minWidth: 64,
+  },
+  logisticsModeIcon: {
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  logisticsModeTime: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  logisticsModeLabel: {
+    color: colors.textMuted,
+    fontSize: 9,
+    marginTop: 1,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  logisticsLoadingText: {
+    color: colors.textMuted,
+    fontSize: 11,
+    marginLeft: 8,
+  },
+  logisticsErrorContainer: {
+    marginVertical: 4,
+    padding: 10,
+    backgroundColor: colors.primary + '10',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary + '25',
+  },
+  logisticsErrorText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  logisticsErrorSubtext: {
+    color: colors.textMuted,
+    fontSize: 10,
+    lineHeight: 14,
+  },
 
   // FAB
   fab: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 14, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
