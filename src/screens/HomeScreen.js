@@ -47,6 +47,19 @@ const STOP_TYPES = [
   { key: 'nightlife', label: 'Nightlife', icon: 'nightlife', color: '#9932CC', category: 'activity' },
 ];
 
+// Helper to convert time to 24hr format for sorting
+const timeToMinutes = (timeStr) => {
+  if (!timeStr) return 9999;
+  const match = timeStr.toString().match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return 9999;
+  let hours = parseInt(match[1]);
+  const minutes = parseInt(match[2]);
+  const period = match[3].toUpperCase();
+  if (period === 'PM' && hours !== 12) hours += 12;
+  if (period === 'AM' && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+};
+
 export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const {
     tripInfo, setTripInfo, budget, setBudget, getTotalExpenses, getRemainingBudget,
@@ -287,8 +300,44 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
     }
   };
 
-  const tripDays = getTripDays();
+  const totalTripDaysCount = getTripDays();
   const daysUntil = getDaysUntilTrip();
+
+  const getTimelineData = () => {
+    if (!itinerary || itinerary.length === 0) return [];
+    const days = totalTripDaysCount;
+    if (days <= 0) return [];
+
+    const timeline = [];
+    for (let i = 1; i <= days; i++) {
+      const dayStops = itinerary.filter(s => s.dayNumber === i)
+        .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+
+      let highlight = "Daily Exploration";
+      if (dayStops.length > 0) {
+        if (i === 1) {
+          const firstArrive = dayStops.find(s => ['flight', 'train', 'bus', 'car'].includes(s.type));
+          highlight = firstArrive ? `Arrival & ${dayStops[0].name}` : `Exploring ${dayStops[0].name}`;
+        } else if (i === days) {
+          highlight = `Departure & ${dayStops[dayStops.length - 1].name}`;
+        } else {
+          const attractions = dayStops.filter(s => ['attraction', 'tour', 'nature', 'beach', 'museum'].includes(s.type));
+          if (attractions.length > 0) {
+            highlight = attractions.slice(0, 2).map(a => a.name).join(' & ');
+          } else {
+            highlight = dayStops[0].name;
+          }
+        }
+      }
+
+      timeline.push({
+        day: i,
+        title: `Day ${i}`,
+        highlight: highlight
+      });
+    }
+    return timeline;
+  };
 
   const uniquePlacesCount = useMemo(() => {
     const places = new Set();
@@ -931,7 +980,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                   </View>
                   <View style={[styles.typeTag, { backgroundColor: tripInfo.isCompleted ? colors.textMuted + '20' : '#3B82F620' }]}>
                     <Text style={[styles.typeTagText, { color: tripInfo.isCompleted ? colors.textMuted : '#3B82F6' }]}>
-                      {tripInfo.isCompleted ? 'COMPLETED' : `${tripDays} DAYS`}
+                      {tripInfo.isCompleted ? 'COMPLETED' : `${totalTripDaysCount} DAYS`}
                     </Text>
                   </View>
                 </View>
@@ -1189,6 +1238,44 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
             </View>
           </View>
         </Animated.View>
+
+        {/* Interactive Trip Timeline */}
+        {itinerary.length > 0 && (
+          <Animated.View style={[styles.timelineSection, { opacity: fadeAnim }]}>
+            <View style={styles.sectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Icon name="calendar" size={24} color={colors.primary} style={{ marginRight: 10 }} />
+                <Text style={{ fontSize: 24, fontWeight: '800', color: colors.text }}>Interactive Timeline</Text>
+              </View>
+              <TouchableOpacity onPress={() => onSetScreen('MapScreen')}>
+                <Text style={styles.viewMoreText}>View Map →</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timelineScroll}>
+              {getTimelineData().map((day, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.timelineDayCard}
+                  onPress={() => onSetScreen('MapScreen')}
+                >
+                  <View style={styles.timelineDayBadge}>
+                    <Text style={styles.timelineDayLabel}>DAY</Text>
+                    <Text style={styles.timelineDayNumber}>{day.day}</Text>
+                  </View>
+                  <View style={styles.timelineDivider} />
+                  <Text style={styles.timelineHighlight} numberOfLines={2}>
+                    {day.highlight}
+                  </Text>
+                  <View style={styles.timelineStepIndicator}>
+                    <View style={styles.timelineStepDot} />
+                    <View style={styles.timelineStepLine} />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        )}
         {/* )} */}
 
 
@@ -2286,6 +2373,37 @@ const createStyles = (colors) => StyleSheet.create({
 
   // Participants
   participantsSection: { paddingHorizontal: 20, marginBottom: 20 },
+  timelineSection: { paddingHorizontal: 20, marginBottom: 30 },
+  timelineScroll: { paddingRight: 20, paddingVertical: 10 },
+  timelineDayCard: {
+    width: 140,
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 16,
+    marginRight: 15,
+    borderWidth: 1,
+    borderColor: colors.border,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  timelineDayBadge: {
+    backgroundColor: colors.primary + '15',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+  },
+  timelineDayLabel: { fontSize: 10, fontWeight: '700', color: colors.primary, opacity: 0.8 },
+  timelineDayNumber: { fontSize: 18, fontWeight: '800', color: colors.primary },
+  timelineDivider: { height: 1, backgroundColor: colors.border, marginVertical: 10 },
+  timelineHighlight: { fontSize: 13, color: colors.text, fontWeight: '600', lineHeight: 18, minHeight: 40 },
+  timelineStepIndicator: { position: 'absolute', bottom: 10, left: 16, right: 16, height: 10, justifyContent: 'center' },
+  timelineStepDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
+  timelineStepLine: { height: 1, backgroundColor: colors.primary + '30', position: 'absolute', left: 6, right: 0 },
   participantsCard: { backgroundColor: colors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.primaryBorder },
   participantsList: {
     padding: 8,

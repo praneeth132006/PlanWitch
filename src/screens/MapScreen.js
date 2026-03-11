@@ -14,7 +14,6 @@ import { getLogistics, saveLogistics } from '../services/databaseService';
 const { width } = Dimensions.get('window');
 
 // Simplified and organized stop types
-// Simplified and organized stop types
 const STOP_TYPES = [
   { key: 'flight', label: 'Flight', icon: 'flight', color: '#87CEEB', category: 'transport' },
   { key: 'train', label: 'Train', icon: 'train', color: '#4682B4', category: 'transport' },
@@ -105,7 +104,6 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     duration: '', cost: ''
   });
 
-
   const scrollViewRef = useRef(null);
   const floatAnim = useState(new Animated.Value(0))[0];
   const pulseAnim = useState(new Animated.Value(1))[0];
@@ -126,6 +124,26 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     }
   }, [tripInfo.id]);
 
+  const handleRetryLogistics = (stop, next) => {
+    const key = `${stop.id}-${next.id}`;
+    setLogisticsLoading(prev => ({ ...prev, [key]: true }));
+    setLogisticsData(prev => {
+      const nextData = { ...prev };
+      delete nextData[key];
+      return nextData;
+    });
+
+    getTravelLogistics(stop, next).then(data => {
+      if (data) {
+        setLogisticsData(prev => ({ ...prev, [key]: data }));
+        if (tripInfo.id) saveLogistics(tripInfo.id, key, data);
+      }
+      setLogisticsLoading(prev => ({ ...prev, [key]: false }));
+    }).catch(() => {
+      setLogisticsLoading(prev => ({ ...prev, [key]: false }));
+    });
+  };
+
   // Fetch logistics whenever the selected day or its stops change
   useEffect(() => {
     const day = tripDays[selectedDayIndex];
@@ -145,10 +163,8 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
       setLogisticsLoading(prev => ({ ...prev, [key]: true }));
       getTravelLogistics(stop, next).then(data => {
-        // Now always storing data even if it contains an error object
         if (data) {
           setLogisticsData(prev => ({ ...prev, [key]: data }));
-          // Persist to DB (for errors we might want to retry later, but for now we save the state)
           if (tripInfo.id) saveLogistics(tripInfo.id, key, data);
         }
         setLogisticsLoading(prev => ({ ...prev, [key]: false }));
@@ -215,7 +231,6 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
   const getStopType = (key) => STOP_TYPES.find(t => t.key === key) || STOP_TYPES[11];
 
-  // Sort stops by time
   const getStopsForDay = (dayNumber) => {
     const numericDay = parseInt(dayNumber);
     return itinerary
@@ -224,7 +239,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
         const timeA = timeToMinutes(a.time);
         const timeB = timeToMinutes(b.time);
         if (timeA !== timeB) return timeA - timeB;
-        return (a.name || '').localeCompare(b.name || ''); // Stable sort for same time
+        return (a.name || '').localeCompare(b.name || '');
       });
   };
 
@@ -232,7 +247,9 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     const stops = getStopsForDay(dayNumber);
     return {
       transport: stops.filter(s => getStopType(s.type).category === 'transport').length,
-      // ... existing categories
+      accommodation: stops.filter(s => getStopType(s.type).category === 'accommodation').length,
+      meal: stops.filter(s => getStopType(s.type).category === 'meal').length,
+      activity: stops.filter(s => getStopType(s.type).category === 'activity').length,
     };
   };
 
@@ -246,8 +263,6 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Fixed Header */}
-      {/* Fixed Header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10, backgroundColor: colors.bg, zIndex: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Icon name="itinerary" size={24} color={colors.text} style={{ marginRight: 8 }} />
@@ -261,10 +276,6 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
         contentContainerStyle={styles.mainScrollContent}
         bounces={true}
       >
-
-
-
-        {/* Trip Summary Card - Moved Inside ScrollView */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
@@ -299,7 +310,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
             </View>
           )}
         </View>
-        {/* Empty Hero */}
+
         {totalStops === 0 && (
           <View style={styles.emptyHero}>
             <Animated.View style={[styles.emptyHeroContent, { transform: [{ translateY: floatTranslate }] }]}>
@@ -310,23 +321,12 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
             </Animated.View>
             <Text style={styles.emptyHeroTitle}>Plan Your Perfect Day</Text>
             <Text style={styles.emptyHeroText}>Add transportation, meals, activities & more</Text>
-            <View style={styles.emptyHeroTips}>
-              <View style={styles.tipItem}><Text style={styles.tipIcon}>✈️</Text><Text style={styles.tipText}>Transport</Text></View>
-              <View style={styles.tipItem}><Text style={styles.tipIcon}>🏨</Text><Text style={styles.tipText}>Stay</Text></View>
-              <View style={styles.tipItem}><Text style={styles.tipIcon}>🍽️</Text><Text style={styles.tipText}>Meals</Text></View>
-              <View style={styles.tipItem}><Text style={styles.tipIcon}>🎯</Text><Text style={styles.tipText}>Activities</Text></View>
-            </View>
           </View>
         )}
 
-        {/* Day Selector (Horizontal Pill List) */}
         {tripDays.length > 0 && totalStops > 0 && (
           <View style={styles.daySelectorContainer}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.daySelectorScroll}
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daySelectorScroll}>
               {tripDays.map((day, index) => {
                 const isActive = index === selectedDayIndex;
                 const stopsForDay = getStopsForDay(day.dayNumber);
@@ -351,10 +351,8 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
           </View>
         )}
 
-        {/* Timeline */}
         <View style={styles.timeline}>
           {tripDays.length > 0 && totalStops > 0 && (() => {
-            // Render only the currently selected day
             const day = tripDays[selectedDayIndex] || tripDays[0];
             const dayIndex = selectedDayIndex;
             const dayStops = getStopsForDay(day.dayNumber);
@@ -365,7 +363,6 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
             return (
               <View key={day.dayNumber} style={styles.daySection}>
                 <View style={styles.dayCard}>
-                  {/* Day Badge Column */}
                   <View style={styles.dayCardLeft}>
                     <View style={[styles.dayBadge, hasStops && styles.dayBadgeActive]}>
                       <Text style={[styles.dayBadgeText, hasStops && styles.dayBadgeTextActive]}>{day.dayNumber}</Text>
@@ -373,9 +370,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                     {!isLastDay && <View style={styles.dayConnector} />}
                   </View>
 
-                  {/* Day Content */}
                   <View style={styles.dayCardContent}>
-                    {/* Day Header */}
                     <View style={styles.dayCardHeader}>
                       <View>
                         <Text style={styles.dayCardTitle}>Day {day.dayNumber}</Text>
@@ -388,7 +383,6 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                       )}
                     </View>
 
-                    {/* Day Stats Mini */}
                     {hasStops && (
                       <View style={styles.dayStats}>
                         {stats.transport > 0 && <View style={styles.dayStatItem}><Text style={styles.dayStatIcon}>🚗</Text><Text style={styles.dayStatCount}>{stats.transport}</Text></View>}
@@ -398,19 +392,12 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                       </View>
                     )}
 
-                    {/* Stops */}
                     {dayStops.length === 0 ? (
-                      <TouchableOpacity
-                        style={styles.emptyCard}
-                        onPress={() => !tripInfo.isCompleted && openAddModal(day)}
-                        disabled={tripInfo.isCompleted}
-                      >
+                      <TouchableOpacity style={styles.emptyCard} onPress={() => !tripInfo.isCompleted && openAddModal(day)} disabled={tripInfo.isCompleted}>
                         <View style={styles.emptyCardIcon}><Text style={styles.emptyCardEmoji}>✨</Text></View>
                         <View style={styles.emptyCardText}>
                           <Text style={styles.emptyCardTitle}>No activities planned</Text>
-                          {!tripInfo.isCompleted && (
-                            <Text style={styles.emptyCardSubtitle}>Tap to add transport, meals, or activities</Text>
-                          )}
+                          {!tripInfo.isCompleted && <Text style={styles.emptyCardSubtitle}>Tap to add transport, meals, or activities</Text>}
                         </View>
                       </TouchableOpacity>
                     ) : (
@@ -426,15 +413,12 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                           return (
                             <React.Fragment key={stop.id}>
                               <View style={styles.stopWrapper}>
-                                {/* Time Column */}
                                 <View style={styles.stopTimeContainer}>
                                   <Text style={styles.stopTimeText}>{stop.time || '--:--'}</Text>
                                   {!isLast && <View style={[styles.stopTimeLine, { backgroundColor: type.color + '40' }]} />}
                                 </View>
 
-                                {/* Stop Card */}
                                 <View style={[styles.stopCard, { borderLeftColor: type.color }]}>
-                                  {/* Category Tag */}
                                   <View style={[styles.categoryTag, { backgroundColor: type.color + '20' }]}>
                                     <Text style={[styles.categoryTagText, { color: type.color }]}>{type.category.toUpperCase()}</Text>
                                   </View>
@@ -479,7 +463,6 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                                 </View>
                               </View>
 
-                              {/* === Smart Travel Logistics Card === */}
                               {!isLast && logistics && (
                                 <View style={styles.logisticsCard}>
                                   <View style={styles.logisticsTimeline}>
@@ -526,6 +509,9 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                                       <View style={[styles.logisticsErrorContainer, { backgroundColor: '#FF634715', borderColor: '#FF634730' }]}>
                                         <Text style={[styles.logisticsErrorText, { color: '#FF6347' }]}>📡 Network Timeout</Text>
                                         <Text style={styles.logisticsErrorSubtext}>Could not connect to Google Maps. Re-trying might help or check your internet.</Text>
+                                        <TouchableOpacity style={styles.retryButton} onPress={() => handleRetryLogistics(stop, nextStop)}>
+                                          <Text style={styles.retryButtonText}>Retry Calculation</Text>
+                                        </TouchableOpacity>
                                       </View>
                                     )}
                                     <View style={styles.logisticsModes}>
@@ -578,18 +564,13 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
             );
           })()}
         </View>
-
         <View style={{ height: 120 }} />
       </ScrollView>
 
-
-
-      {/* Add Stop Modal */}
       <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
-
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderInfo}>
                 <Text style={styles.modalTitle}>{isEditing ? 'Edit Activity' : 'Add to Itinerary'}</Text>
@@ -604,9 +585,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                 <Icon name="close" size={24} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
-
             <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Category Filter */}
               <View style={styles.categoryFilter}>
                 {['all', 'transport', 'accommodation', 'meal', 'activity'].map(cat => (
                   <TouchableOpacity key={cat} style={[styles.categoryChip, selectedCategory === cat && styles.categoryChipActive]} onPress={() => setSelectedCategory(cat)}>
@@ -616,8 +595,6 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                   </TouchableOpacity>
                 ))}
               </View>
-
-              {/* Type Selection */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Type</Text>
                 <View style={styles.typeGrid}>
@@ -629,14 +606,10 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                   ))}
                 </View>
               </View>
-
-              {/* Name */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Name / Description *</Text>
                 <TextInput style={[styles.input, { outlineStyle: 'none' }]} placeholder="e.g., Flight to Paris, Eiffel Tower Visit" placeholderTextColor={colors.textMuted} value={newStop.name} onChangeText={(t) => setNewStop({ ...newStop, name: t })} />
               </View>
-
-              {/* Time - Tap to open picker */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>⏰ Time</Text>
                 <TouchableOpacity style={styles.timePickerButton} onPress={() => setTimePickerVisible(true)}>
@@ -647,8 +620,6 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                   <Text style={styles.timePickerArrow}>→</Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Duration & Cost Row */}
               <View style={styles.inputRow}>
                 <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
                   <Text style={styles.inputLabel}>⏱️ Duration</Text>
@@ -659,19 +630,14 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                   <TextInput style={[styles.input, { outlineStyle: 'none' }]} placeholder="$50" placeholderTextColor={colors.textMuted} keyboardType="numeric" value={newStop.cost} onChangeText={(t) => setNewStop({ ...newStop, cost: t })} />
                 </View>
               </View>
-
-              {/* Location */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>📍 Location</Text>
                 <TextInput style={[styles.input, { outlineStyle: 'none' }]} placeholder="Address or place name" placeholderTextColor={colors.textMuted} value={newStop.location} onChangeText={(t) => setNewStop({ ...newStop, location: t })} />
               </View>
-
-              {/* Notes */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>📝 Notes (optional)</Text>
                 <TextInput style={[styles.input, styles.notesInput, { outlineStyle: 'none' }]} placeholder="Tips, reminders, details..." placeholderTextColor={colors.textMuted} value={newStop.notes} onChangeText={(t) => setNewStop({ ...newStop, notes: t })} multiline />
               </View>
-
               <TouchableOpacity style={[styles.submitButton, !newStop.name.trim() && styles.submitButtonDisabled]} onPress={handleAddStop} disabled={!newStop.name.trim()}>
                 <Text style={styles.submitButtonText}>Add to Day {selectedDay?.dayNumber}</Text>
               </TouchableOpacity>
@@ -679,8 +645,6 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
           </View>
         </View>
       </Modal>
-
-      {/* Time Picker Modal */}
       <TimePickerModal
         visible={timePickerVisible}
         onClose={() => setTimePickerVisible(false)}
@@ -688,23 +652,15 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
         selectedTime={newStop.time}
         title="Select Time"
       />
-
     </SafeAreaView>
   );
 }
 
 const createStyles = (colors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-
-  // Header
+  container: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
   headerTitle: { color: colors.text, fontSize: 24, fontWeight: '800' },
   headerSubtitle: { color: colors.primary, fontSize: 14, marginTop: 4 },
-
-  // Summary Card
   summaryCard: { marginHorizontal: 20, backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.primaryBorder },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between' },
   summaryItem: { flexDirection: 'row', alignItems: 'center', flex: 1 },
@@ -714,8 +670,6 @@ const createStyles = (colors) => StyleSheet.create({
   summaryDivider: { width: 1, backgroundColor: colors.primaryBorder, marginHorizontal: 8 },
   dateRange: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.primaryBorder, alignItems: 'center' },
   dateRangeText: { color: colors.primary, fontSize: 13, fontWeight: '500' },
-
-  // Day Selector
   daySelectorContainer: { marginBottom: 12 },
   daySelectorScroll: { paddingHorizontal: 20, gap: 8 },
   dayPill: { alignItems: 'center', backgroundColor: colors.card, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.primaryBorder, minWidth: 52 },
@@ -728,16 +682,8 @@ const createStyles = (colors) => StyleSheet.create({
   dayPillBadgeActive: { backgroundColor: colors.bg },
   dayPillBadgeText: { color: colors.bg, fontSize: 10, fontWeight: 'bold' },
   dayPillBadgeTextActive: { color: colors.primary },
-
-  mainScroll: {
-    flex: 1,
-  },
-  mainScrollContent: {
-    flexGrow: 1,
-    paddingBottom: 20,
-  },
-
-  // Empty Hero
+  mainScroll: { flex: 1 },
+  mainScrollContent: { flexGrow: 1, paddingBottom: 20 },
   emptyHero: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 20 },
   emptyHeroContent: { marginBottom: 20 },
   emptyHeroGlobe: { width: 100, height: 100, alignItems: 'center', justifyContent: 'center' },
@@ -749,8 +695,6 @@ const createStyles = (colors) => StyleSheet.create({
   tipItem: { alignItems: 'center' },
   tipIcon: { fontSize: 24 },
   tipText: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
-
-  // Timeline
   timeline: { paddingHorizontal: 16, marginTop: 10 },
   daySection: { marginBottom: 24 },
   dayCard: { flexDirection: 'row' },
@@ -766,28 +710,21 @@ const createStyles = (colors) => StyleSheet.create({
   dayCardDate: { color: colors.primary, fontSize: 12, marginTop: 2 },
   addButton: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.primaryMuted, borderWidth: 1, borderColor: colors.primaryBorder, alignItems: 'center', justifyContent: 'center' },
   addButtonIcon: { color: colors.primary, fontSize: 20 },
-
-  // Day Stats
   dayStats: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   dayStatItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   dayStatIcon: { fontSize: 12, marginRight: 4 },
   dayStatCount: { color: colors.text, fontSize: 12, fontWeight: '600' },
-
-  // Empty Card
   emptyCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.primaryBorder, borderStyle: 'dashed' },
   emptyCardIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.primaryMuted, alignItems: 'center', justifyContent: 'center' },
   emptyCardEmoji: { fontSize: 18 },
   emptyCardText: { marginLeft: 12 },
   emptyCardTitle: { color: colors.textMuted, fontSize: 13, fontWeight: '500' },
   emptyCardSubtitle: { color: colors.textLight, fontSize: 11, marginTop: 2 },
-
-  // Stops Timeline
   stopsTimeline: { gap: 10 },
   stopWrapper: { flexDirection: 'row' },
   stopTimeContainer: { width: 32, alignItems: 'center' },
   stopTimeText: { color: colors.primary, fontSize: 10, fontWeight: '600' },
   stopTimeLine: { width: 2, flex: 1, marginTop: 4, marginBottom: -4, borderRadius: 1 },
-
   stopCard: { flex: 1, backgroundColor: colors.card, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: colors.primaryBorder, borderLeftWidth: 3, marginLeft: 6 },
   categoryTag: { position: 'absolute', top: 8, right: 8, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   categoryTagText: { fontSize: 8, fontWeight: '700', letterSpacing: 0.5 },
@@ -803,180 +740,62 @@ const createStyles = (colors) => StyleSheet.create({
   stopActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   stopEditBtn: { padding: 6, backgroundColor: colors.primary + '15', borderRadius: 6, borderWidth: 1, borderColor: colors.primary + '30' },
   stopDeleteBtn: { padding: 6, backgroundColor: '#EF444415', borderRadius: 6, borderWidth: 1, borderColor: '#EF444430' },
-  stopDeleteIcon: { color: '#EF4444', fontSize: 16 },
   stopDetailRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   stopDetailIcon: { fontSize: 11, marginRight: 6 },
   stopDetailText: { color: colors.textMuted, fontSize: 11, flex: 1 },
   stopNotesContainer: { marginTop: 8, backgroundColor: colors.cardLight, padding: 8, borderRadius: 6 },
   stopNotes: { color: colors.textLight, fontSize: 11, lineHeight: 16 },
-
-  // Smart Travel Logistics
-  logisticsCard: {
-    flexDirection: 'row',
-    marginLeft: 14,
-    marginVertical: 6,
-    paddingLeft: 10,
-  },
-  logisticsTimeline: {
-    alignItems: 'center',
-    width: 20,
-    paddingVertical: 4,
-  },
-  logisticsDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.primary + '60',
-  },
-  logisticsDash: {
-    width: 1.5,
-    flex: 1,
-    backgroundColor: colors.primary + '30',
-    marginVertical: 2,
-    borderRadius: 1,
-  },
-  logisticsContent: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 12,
-    marginLeft: 8,
-    borderWidth: 1,
-    borderColor: colors.primary + '20',
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary + '40',
-  },
-  logisticsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  logisticsLabel: {
-    color: colors.textMuted,
-    fontSize: 10,
-    fontWeight: '600',
-    flex: 1,
-    marginRight: 8,
-  },
-  logisticsActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  logisticsDistance: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  logisticsNavBtn: {
-    backgroundColor: colors.primary + '15',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.primary + '30',
-  },
-  logisticsNavBtnText: {
-    color: colors.primary,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  logisticsModes: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  logisticsMode: {
-    alignItems: 'center',
-    backgroundColor: colors.cardLight,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    minWidth: 64,
-  },
-  logisticsModeIcon: {
-    fontSize: 16,
-    marginBottom: 2,
-  },
-  logisticsModeTime: {
-    color: colors.text,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  logisticsModeLabel: {
-    color: colors.textMuted,
-    fontSize: 9,
-    marginTop: 1,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  logisticsLoadingText: {
-    color: colors.textMuted,
-    fontSize: 11,
-    marginLeft: 8,
-  },
-  logisticsErrorContainer: {
-    marginVertical: 4,
-    padding: 10,
-    backgroundColor: colors.primary + '10',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.primary + '25',
-  },
-  logisticsErrorText: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  logisticsErrorSubtext: {
-    color: colors.textMuted,
-    fontSize: 10,
-    lineHeight: 14,
-  },
-
-  // FAB
+  logisticsCard: { flexDirection: 'row', marginLeft: 14, marginVertical: 6, paddingLeft: 10 },
+  logisticsTimeline: { alignItems: 'center', width: 20, paddingVertical: 4 },
+  logisticsDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary + '60' },
+  logisticsDash: { width: 1.5, flex: 1, backgroundColor: colors.primary + '30', marginVertical: 2, borderRadius: 1 },
+  logisticsContent: { flex: 1, backgroundColor: colors.card, borderRadius: 12, padding: 12, marginLeft: 8, borderWidth: 1, borderColor: colors.primary + '20', borderLeftWidth: 3, borderLeftColor: colors.primary + '40' },
+  logisticsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  logisticsLabel: { color: colors.textMuted, fontSize: 10, fontWeight: '600', flex: 1, marginRight: 8 },
+  logisticsActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logisticsDistance: { color: colors.primary, fontSize: 12, fontWeight: '700' },
+  logisticsNavBtn: { backgroundColor: colors.primary + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: colors.primary + '30' },
+  logisticsNavBtnText: { color: colors.primary, fontSize: 10, fontWeight: '700' },
+  logisticsModes: { flexDirection: 'row', gap: 12 },
+  logisticsMode: { alignItems: 'center', backgroundColor: colors.cardLight, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, minWidth: 64 },
+  logisticsModeIcon: { fontSize: 16, marginBottom: 2 },
+  logisticsModeTime: { color: colors.text, fontSize: 12, fontWeight: '700' },
+  logisticsModeLabel: { color: colors.textMuted, fontSize: 9, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.5 },
+  logisticsLoadingText: { color: colors.textMuted, fontSize: 11, marginLeft: 8 },
+  logisticsErrorContainer: { marginVertical: 4, padding: 10, backgroundColor: colors.primary + '10', borderRadius: 8, borderWidth: 1, borderColor: colors.primary + '25' },
+  logisticsErrorText: { color: colors.primary, fontSize: 11, fontWeight: '700', marginBottom: 2 },
+  logisticsErrorSubtext: { color: colors.textMuted, fontSize: 10, lineHeight: 14, marginBottom: 10 },
+  retryButton: { backgroundColor: colors.primary + '20', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.primary + '30', alignSelf: 'flex-start' },
+  retryButtonText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
   fab: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 14, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
   fabIcon: { color: colors.bg, fontSize: 18, fontWeight: 'bold', marginRight: 6 },
   fabText: { color: colors.bg, fontSize: 14, fontWeight: 'bold' },
-
-  // Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.8)' },
   modalContent: { backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 20, paddingBottom: 20, maxHeight: '88%' },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.textMuted, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  modalHeaderInfo: {},
   modalTitle: { color: colors.text, fontSize: 22, fontWeight: 'bold' },
   modalDayBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
   modalDayText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   modalDateText: { color: colors.textMuted, fontSize: 13 },
   modalClose: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cardLight, borderRadius: 8 },
-  modalCloseText: { color: colors.textMuted, fontSize: 20 },
-
-  // Category Filter
   categoryFilter: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   categoryChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.cardLight, borderWidth: 1, borderColor: colors.primaryBorder },
   categoryChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   categoryChipText: { color: colors.text, fontSize: 12 },
   categoryChipTextActive: { color: colors.bg, fontWeight: '600' },
-
   inputGroup: { marginBottom: 14 },
   inputLabel: { color: colors.textMuted, fontSize: 12, marginBottom: 6, fontWeight: '500' },
   inputRow: { flexDirection: 'row' },
   input: { backgroundColor: colors.cardLight, color: colors.text, padding: 14, borderRadius: 10, fontSize: 14, borderWidth: 1, borderColor: colors.primaryBorder },
   notesInput: { height: 70, textAlignVertical: 'top' },
-
-  // Time Picker Button
   timePickerButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: colors.primaryBorder },
   timePickerIcon: { fontSize: 20, marginRight: 10 },
   timePickerText: { flex: 1, color: colors.text, fontSize: 16, fontWeight: '500' },
   timePickerArrow: { color: colors.primary, fontSize: 16 },
-
   typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   typeChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: colors.primaryBorder },
-  typeChipIcon: { fontSize: 12, marginRight: 4 },
   typeChipText: { color: colors.text, fontSize: 11, fontWeight: '500' },
-
   submitButton: { backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, marginBottom: 20 },
   submitButtonDisabled: { opacity: 0.5 },
   submitButtonText: { color: colors.bg, fontSize: 16, fontWeight: 'bold' },
