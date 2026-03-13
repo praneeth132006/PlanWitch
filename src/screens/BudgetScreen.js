@@ -16,7 +16,10 @@ export default function BudgetScreen({ onSetScreen }) {
   const {
     budget = { total: 0, categories: {} },
     setBudget,
-    getExpensesByCategory,
+    expensesByCategory,
+    totalSpent,
+    remainingBudget,
+    autoAllocateBudget,
     formatCurrency,
     currency = { symbol: '₹', code: 'INR' },
     tripInfo = {},
@@ -60,7 +63,6 @@ export default function BudgetScreen({ onSetScreen }) {
     setCategoryInputs(inputs);
   }, [budget.categories, CATEGORIES]);
 
-  const expensesByCategory = getExpensesByCategory ? getExpensesByCategory() : {};
   const styles = useMemo(() => createStyles(colors), [colors]);
 
 
@@ -127,8 +129,6 @@ export default function BudgetScreen({ onSetScreen }) {
 
   const allocatedTotal = Object.values(budget.categories || {}).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
   const unallocated = (budget.total || 0) - allocatedTotal;
-  const totalSpent = Object.values(expensesByCategory).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-  const remainingBudget = (budget.total || 0) - totalSpent;
   const spentPercentage = budget.total > 0 ? (totalSpent / budget.total) * 100 : 0;
 
   // Calculate Per Person
@@ -203,13 +203,23 @@ export default function BudgetScreen({ onSetScreen }) {
 
           {/* Allocation Warning */}
           {unallocated !== 0 && Math.abs(unallocated) > 1 && (
-            <View style={styles.allocationWarning}>
-              <Text style={styles.warningIcon}>{unallocated > 0 ? '⚠️' : '🛑'}</Text>
-              <Text style={styles.warningText}>
-                {unallocated > 0
-                  ? `You have ${safeFormat(unallocated)} unallocated`
-                  : `You allocated ${safeFormat(Math.abs(unallocated))} more than budget`}
-              </Text>
+            <View style={[styles.allocationWarning, unallocated < 0 && { backgroundColor: '#FEE2E2' }]}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.warningIcon}>{unallocated > 0 ? '⚠️' : '🛑'}</Text>
+                <Text style={[styles.warningText, unallocated < 0 && { color: '#EF4444' }]}>
+                  {unallocated > 0
+                    ? `You have ${safeFormat(unallocated)} unallocated`
+                    : `You allocated ${safeFormat(Math.abs(unallocated))} more than budget`}
+                </Text>
+              </View>
+              {unallocated > 0 && autoAllocateBudget && (
+                <TouchableOpacity
+                  style={styles.autoAllocateBtn}
+                  onPress={() => autoAllocateBudget()}
+                >
+                  <Text style={styles.autoAllocateText}>Auto-Fix</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
@@ -487,9 +497,12 @@ const createStyles = (colors) => StyleSheet.create({
   mainStats: { flexDirection: 'row', justifyContent: 'space-between' },
   mainStatText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
 
-  allocationWarning: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', padding: 10, borderRadius: 12, marginTop: 16 },
+  allocationWarning: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FEF3C7', padding: 12, borderRadius: 16, marginTop: 16 },
   warningIcon: { marginRight: 8 },
-  warningText: { fontSize: 12, color: '#D97706', fontWeight: '600' },
+  warningText: { fontSize: 13, color: '#D97706', fontWeight: '600' },
+
+  autoAllocateBtn: { backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  autoAllocateText: { color: '#000', fontSize: 12, fontWeight: '700' },
 
   categoriesSection: { gap: 16 },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.textMuted, marginBottom: 8, marginLeft: 4 },

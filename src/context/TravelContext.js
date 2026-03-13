@@ -519,17 +519,54 @@ export const TravelProvider = ({ children }) => {
 
   // Set budget and save to Firebase
   const setBudget = async (updater) => {
-    const newBudget = typeof updater === 'function' ? updater(budget) : updater;
+    let newBudget = typeof updater === 'function' ? updater(budget) : updater;
+
+    // Sanitization: Ensure total is a positive number
+    const total = Math.max(0, parseFloat(newBudget.total) || 0);
+    const categories = { ...(newBudget.categories || {}) };
+
+    // Sanitize category values
+    Object.keys(categories).forEach(key => {
+      categories[key] = Math.max(0, parseFloat(categories[key]) || 0);
+    });
+
+    newBudget = { total, categories };
     setBudgetState(newBudget);
 
     if (isAuthenticated) {
       try {
-        // Save to specific trip path to ensure persistence across reloads
         await DB.saveBudget(newBudget, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error saving budget:', error);
       }
     }
+  };
+
+  /**
+   * Automatically allocates budget based on standard percentage tips
+   * defined in categories.
+   */
+  const autoAllocateBudget = (totalAmount = null) => {
+    const amount = totalAmount !== null ? totalAmount : budget.total;
+    if (amount <= 0) return;
+
+    const newCategories = {};
+    const categories = customCategories || DEFAULT_CATEGORIES;
+
+    categories.forEach(cat => {
+      if (cat.tip) {
+        // Parse "20-30%" format - take the middle or average
+        const matches = cat.tip.match(/(\d+)/g);
+        if (matches && matches.length > 0) {
+          const pct = matches.length === 2
+            ? (parseInt(matches[0]) + parseInt(matches[1])) / 2
+            : parseInt(matches[0]);
+          newCategories[cat.key] = Math.round((amount * pct) / 100);
+        }
+      }
+    });
+
+    setBudget({ total: amount, categories: newCategories });
   };
 
   // Add expense and save to Firebase
@@ -974,17 +1011,32 @@ export const TravelProvider = ({ children }) => {
 
     return newTrip;
   };
-  const getTotalExpenses = () => expenses
-    .filter(e => !e.type || e.type === 'expense')
-    .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  /**
+   * MEMOIZED SELECTORS for Performance
+   * Prevents re-calculating everything on every render of the context
+   */
+  const totalSpent = useMemo(() => {
+    return expenses
+      .filter(e => !e.type || e.type === 'expense')
+      .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  }, [expenses]);
 
-  const getExpensesByCategory = () => expenses.reduce((acc, e) => {
-    const amount = parseFloat(e.amount) || 0;
-    acc[e.category] = (acc[e.category] || 0) + amount;
-    return acc;
-  }, {});
+  const expensesByCategory = useMemo(() => {
+    return expenses.reduce((acc, e) => {
+      const amount = parseFloat(e.amount) || 0;
+      acc[e.category] = (acc[e.category] || 0) + amount;
+      return acc;
+    }, {});
+  }, [expenses]);
 
-  const getRemainingBudget = () => (budget.total || 0) - getTotalExpenses();
+  const remainingBudget = useMemo(() => {
+    return (budget.total || 0) - totalSpent;
+  }, [budget.total, totalSpent]);
+
+  // Compatibility helpers (legacy function calls)
+  const getTotalExpenses = () => totalSpent;
+  const getExpensesByCategory = () => expensesByCategory;
+  const getRemainingBudget = () => remainingBudget;
 
   const formatCurrency = (amount) => {
     const num = parseFloat(amount) || 0;
@@ -1285,6 +1337,8 @@ export const TravelProvider = ({ children }) => {
       deleteItineraryItem,
       updateItineraryItem,
       getRemainingBudget,
+      totalSpent, expensesByCategory, remainingBudget,
+      autoAllocateBudget,
       clearTrip, endTrip,
       tripHistory, setTripHistory,
       currency, setCurrency, currencies,
