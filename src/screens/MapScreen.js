@@ -8,8 +8,9 @@ import { useTravelContext } from '../context/TravelContext';
 import { useTheme } from '../context/ThemeContext';
 import TimePickerModal from '../components/TimePickerModal';
 import Icon from '../components/Icon';
-import { getTravelLogistics } from '../services/transitService';
+import { getTravelLogistics, geocodeAddress } from '../services/transitService';
 import { getLogistics, saveLogistics } from '../services/databaseService';
+import { CustomAlert } from '../components/CustomAlert';
 
 const { width } = Dimensions.get('window');
 
@@ -111,6 +112,15 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     name: '', type: 'attraction', dayNumber: 1, time: '', notes: '', location: '',
     duration: '', cost: ''
   });
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false, title: '', message: '', type: 'info',
+    onConfirm: () => { }, confirmText: 'OK'
+  });
+
+  const showAlert = (title, message, type = 'info', onConfirm = () => hideAlert(), confirmText = 'OK') => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm, confirmText });
+  };
+  const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
 
   const scrollViewRef = useRef(null);
   const floatAnim = useState(new Animated.Value(0))[0];
@@ -197,18 +207,51 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
   const floatTranslate = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
 
-  const handleAddStop = () => {
+  const commitAddStop = () => {
+    if (isEditing) {
+      updateItineraryItem(editingId, { ...newStop, dayNumber: parseInt(selectedDay?.dayNumber || newStop.dayNumber) });
+    } else {
+      addItineraryItem({ ...newStop, dayNumber: parseInt(selectedDay?.dayNumber || 1), latitude: 0, longitude: 0 });
+    }
+    setNewStop({ name: '', type: 'attraction', dayNumber: 1, time: '', notes: '', location: '', duration: '', cost: '' });
+    setIsEditing(false);
+    setEditingId(null);
+    setModalVisible(false);
+    setSelectedDay(null);
+  };
+
+  const handleAddStop = async () => {
     if (newStop.name.trim()) {
-      if (isEditing) {
-        updateItineraryItem(editingId, { ...newStop, dayNumber: parseInt(selectedDay?.dayNumber || newStop.dayNumber) });
+      const searchTarget = newStop.location || newStop.name;
+
+      // Do a quick geocode validation
+      const resolved = await geocodeAddress(searchTarget);
+
+      if (!resolved || resolved.error) {
+        setModalVisible(false); // Hide the add modal temporarily to show alert
+        showAlert(
+          'Location Not Recognized 🌍',
+          `We couldn't accurately find "${searchTarget}" on the map.\n\nTips for better results:\n• Be specific (e.g., "Eiffel Tower, Paris" instead of "Tower")\n• Include the city or state\n• Ensure correct spelling\n\nDo you still want to add it without routing capabilities?`,
+          'warning',
+          () => {
+            hideAlert();
+            commitAddStop();
+          },
+          'Add Anyway'
+        );
+        // We need to re-show the modal if they cancel, so we can override onCancel
+        setAlertConfig(prev => ({
+          ...prev,
+          onCancel: () => {
+            hideAlert();
+            setModalVisible(true);
+          },
+          cancelText: 'Edit Location'
+        }));
       } else {
-        addItineraryItem({ ...newStop, dayNumber: parseInt(selectedDay?.dayNumber || 1), latitude: 0, longitude: 0 });
+        // Validation succeeded
+        commitAddStop();
       }
-      setNewStop({ name: '', type: 'attraction', dayNumber: 1, time: '', notes: '', location: '', duration: '', cost: '' });
-      setIsEditing(false);
-      setEditingId(null);
-      setModalVisible(false);
-      setSelectedDay(null);
     }
   };
 
@@ -659,6 +702,17 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
         onSelect={(time) => setNewStop({ ...newStop, time })}
         selectedTime={newStop.time}
         title="Select Time"
+      />
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
       />
     </SafeAreaView>
   );
