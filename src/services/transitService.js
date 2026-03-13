@@ -169,3 +169,68 @@ export const getTravelLogistics = async (stop1, stop2) => {
     logisticsCache[cacheKey] = result;
     return result;
 };
+
+/**
+ * Fetch place suggestions from Google Places Autocomplete API
+ * Uses Google Maps SDK on web if available, otherwise falls back to fetch.
+ */
+export const getPlaceSuggestions = async (query) => {
+    if (!query || query.length < 2) return [];
+
+    // Web-specific SDK implementation
+    if (Platform.OS === 'web' && window.google?.maps?.places?.AutocompleteService) {
+        try {
+            const service = new window.google.maps.places.AutocompleteService();
+            return new Promise((resolve) => {
+                service.getPlacePredictions({ input: query }, (predictions, status) => {
+                    if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+                        resolve(predictions.map(p => ({
+                            description: p.description,
+                            mainText: p.structured_formatting?.main_text || p.description,
+                            secondaryText: p.structured_formatting?.secondary_text || '',
+                            placeId: p.place_id
+                        })));
+                    } else {
+                        resolve([]);
+                    }
+                });
+            });
+        } catch (e) {
+            console.warn('[Logistics] SDK Suggestions error:', e.message);
+            // Fallthrough to fetch
+        }
+    }
+
+    // Fallback/Native implementation
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_MAPS_CONFIG.apiKey}`;
+
+    try {
+        let res = await fetchWithTimeout(getWrappedUrl(url));
+        if (!res.ok) {
+            res = await fetchWithTimeout(getWrappedUrl(url, true));
+        }
+
+        const text = await res.text();
+        if (!text.trim().startsWith('{')) {
+            throw new Error('Proxy returned non-JSON response');
+        }
+
+        let data = JSON.parse(text);
+        if (data.contents && typeof data.contents === 'string') {
+            data = JSON.parse(data.contents);
+        }
+
+        if (data.status === 'OK' && data.predictions) {
+            return data.predictions.map(p => ({
+                description: p.description,
+                mainText: p.structured_formatting?.main_text || p.description,
+                secondaryText: p.structured_formatting?.secondary_text || '',
+                placeId: p.place_id
+            }));
+        }
+        return [];
+    } catch (e) {
+        console.warn('[Logistics] Fetch Suggestions error:', e.message);
+        return [];
+    }
+};

@@ -8,7 +8,7 @@ import { useTravelContext } from '../context/TravelContext';
 import { useTheme } from '../context/ThemeContext';
 import TimePickerModal from '../components/TimePickerModal';
 import Icon from '../components/Icon';
-import { getTravelLogistics, geocodeAddress } from '../services/transitService';
+import { getTravelLogistics, geocodeAddress, getPlaceSuggestions } from '../services/transitService';
 import { getLogistics, saveLogistics } from '../services/databaseService';
 import { CustomAlert } from '../components/CustomAlert';
 
@@ -116,6 +116,10 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     visible: false, title: '', message: '', type: 'info',
     onConfirm: () => { }, confirmText: 'OK'
   });
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const suggestionTimeout = useRef(null);
 
   const showAlert = (title, message, type = 'info', onConfirm = () => hideAlert(), confirmText = 'OK') => {
     setAlertConfig({ visible: true, title, message, type, onConfirm, confirmText });
@@ -207,6 +211,75 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
   const floatTranslate = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
 
+  const handleAddStop = async () => {
+    if (isSaving) return;
+    if (newStop.name.trim()) {
+      setIsSaving(true);
+      try {
+        const searchTarget = (newStop.location && newStop.location.trim()) ? newStop.location.trim() : newStop.name.trim();
+
+        // Do a quick geocode validation
+        const resolved = await geocodeAddress(searchTarget);
+
+        if (!resolved || resolved.error) {
+          setIsSaving(false);
+          setModalVisible(false); // Hide the add modal temporarily to show alert
+          showAlert(
+            'Location Not Recognized 🌍',
+            `We couldn't accurately find "${searchTarget}" on the map.\n\nTips for better results:\n• Be specific (e.g., "Eiffel Tower, Paris" instead of "Tower")\n• Include city/state\n• Ensure correct spelling`,
+            'warning',
+            () => {
+              // Edit Location (Primary)
+              hideAlert();
+              setModalVisible(true);
+            },
+            'Edit Location'
+          );
+
+          // Use Neutral button for "Add Anyway"
+          setAlertConfig(prev => ({
+            ...prev,
+            neutralText: 'Add Anyway',
+            onNeutral: () => {
+              hideAlert();
+              commitAddStop();
+            }
+          }));
+        } else {
+          // Validation succeeded
+          commitAddStop();
+        }
+      } catch (error) {
+        console.error('[MapScreen] Error adding stop:', error);
+        setIsSaving(false);
+      }
+    }
+  };
+
+  const handleLocationChange = (text) => {
+    setNewStop({ ...newStop, location: text });
+
+    if (suggestionTimeout.current) clearTimeout(suggestionTimeout.current);
+
+    if (text.length < 2) {
+      setSuggestions([]);
+      setIsSearchingSuggestions(false);
+      return;
+    }
+
+    setIsSearchingSuggestions(true);
+    suggestionTimeout.current = setTimeout(async () => {
+      const result = await getPlaceSuggestions(text);
+      setSuggestions(result);
+      setIsSearchingSuggestions(false);
+    }, 400);
+  };
+
+  const handleSelectSuggestion = (suggestion) => {
+    setNewStop({ ...newStop, location: suggestion.description });
+    setSuggestions([]);
+  };
+
   const commitAddStop = () => {
     // Ensure we use the dayNumber from newStop which was set when opening the modal
     const targetDay = parseInt(newStop.dayNumber || 1);
@@ -221,43 +294,8 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     setEditingId(null);
     setModalVisible(false);
     setSelectedDay(null);
-  };
-
-  const handleAddStop = async () => {
-    if (newStop.name.trim()) {
-      const searchTarget = (newStop.location && newStop.location.trim()) ? newStop.location.trim() : newStop.name.trim();
-
-      // Do a quick geocode validation
-      const resolved = await geocodeAddress(searchTarget);
-
-      if (!resolved || resolved.error) {
-        setModalVisible(false); // Hide the add modal temporarily to show alert
-        showAlert(
-          'Location Not Recognized 🌍',
-          `We couldn't accurately find "${searchTarget}" on the map.\n\nTips for better results:\n• Be specific (e.g., "Eiffel Tower, Paris" instead of "Tower")\n• Include city/state\n• Ensure correct spelling`,
-          'warning',
-          () => {
-            // Edit Location (Primary)
-            hideAlert();
-            setModalVisible(true);
-          },
-          'Edit Location'
-        );
-
-        // Use Neutral button for "Add Anyway"
-        setAlertConfig(prev => ({
-          ...prev,
-          neutralText: 'Add Anyway',
-          onNeutral: () => {
-            hideAlert();
-            commitAddStop();
-          }
-        }));
-      } else {
-        // Validation succeeded
-        commitAddStop();
-      }
-    }
+    setIsSaving(false);
+    setSuggestions([]);
   };
 
   const openAddModal = (day) => {
@@ -688,14 +726,52 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
               </View>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>📍 Location</Text>
-                <TextInput style={[styles.input, { outlineStyle: 'none' }]} placeholder="Address or place name" placeholderTextColor={colors.textMuted} value={newStop.location} onChangeText={(t) => setNewStop({ ...newStop, location: t })} />
+                <View style={{ position: 'relative' }}>
+                  <TextInput
+                    style={[styles.input, { outlineStyle: 'none' }]}
+                    placeholder="Address or place name"
+                    placeholderTextColor={colors.textMuted}
+                    value={newStop.location}
+                    onChangeText={handleLocationChange}
+                  />
+                  {isSearchingSuggestions && (
+                    <View style={styles.inputLoader}>
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    </View>
+                  )}
+                </View>
+                {suggestions.length > 0 && (
+                  <View style={styles.suggestionsContainer}>
+                    {suggestions.map((item, index) => (
+                      <TouchableOpacity
+                        key={item.placeId || index}
+                        style={[styles.suggestionItem, index === suggestions.length - 1 && { borderBottomWidth: 0 }]}
+                        onPress={() => handleSelectSuggestion(item)}
+                      >
+                        <Icon name="location" size={14} color={colors.textMuted} style={{ marginRight: 10 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.suggestionMainText} numberOfLines={1}>{item.mainText}</Text>
+                          <Text style={styles.suggestionSecondaryText} numberOfLines={1}>{item.secondaryText}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>📝 Notes (optional)</Text>
                 <TextInput style={[styles.input, styles.notesInput, { outlineStyle: 'none' }]} placeholder="Tips, reminders, details..." placeholderTextColor={colors.textMuted} value={newStop.notes} onChangeText={(t) => setNewStop({ ...newStop, notes: t })} multiline />
               </View>
-              <TouchableOpacity style={[styles.submitButton, !newStop.name.trim() && styles.submitButtonDisabled]} onPress={handleAddStop} disabled={!newStop.name.trim()}>
-                <Text style={styles.submitButtonText}>{isEditing ? 'Save Changes' : `Add to Day ${selectedDay?.dayNumber}`}</Text>
+              <TouchableOpacity
+                style={[styles.submitButton, (!newStop.name.trim() || isSaving) && styles.submitButtonDisabled]}
+                onPress={handleAddStop}
+                disabled={!newStop.name.trim() || isSaving}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color={colors.bg} />
+                ) : (
+                  <Text style={styles.submitButtonText}>{isEditing ? 'Save Changes' : `Add to Day ${selectedDay?.dayNumber}`}</Text>
+                )}
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -868,4 +944,41 @@ const createStyles = (colors) => StyleSheet.create({
   submitButton: { backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, marginBottom: 20 },
   submitButtonDisabled: { opacity: 0.5 },
   submitButtonText: { color: colors.bg, fontSize: 16, fontWeight: 'bold' },
+  // Suggestions Styles
+  suggestionsContainer: {
+    marginTop: 4,
+    backgroundColor: colors.cardLight,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    zIndex: 2000,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.primaryBorder,
+  },
+  suggestionMainText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  suggestionSecondaryText: {
+    color: colors.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  inputLoader: {
+    position: 'absolute',
+    right: 12,
+    top: 14,
+  },
 });
