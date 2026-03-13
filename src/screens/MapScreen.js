@@ -208,10 +208,13 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
   const floatTranslate = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
 
   const commitAddStop = () => {
+    // Ensure we use the dayNumber from newStop which was set when opening the modal
+    const targetDay = parseInt(newStop.dayNumber || 1);
+
     if (isEditing) {
-      updateItineraryItem(editingId, { ...newStop, dayNumber: parseInt(selectedDay?.dayNumber || newStop.dayNumber) });
+      updateItineraryItem(editingId, { ...newStop, dayNumber: targetDay });
     } else {
-      addItineraryItem({ ...newStop, dayNumber: parseInt(selectedDay?.dayNumber || 1), latitude: 0, longitude: 0 });
+      addItineraryItem({ ...newStop, dayNumber: targetDay, latitude: 0, longitude: 0 });
     }
     setNewStop({ name: '', type: 'attraction', dayNumber: 1, time: '', notes: '', location: '', duration: '', cost: '' });
     setIsEditing(false);
@@ -222,7 +225,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
   const handleAddStop = async () => {
     if (newStop.name.trim()) {
-      const searchTarget = newStop.location || newStop.name;
+      const searchTarget = (newStop.location && newStop.location.trim()) ? newStop.location.trim() : newStop.name.trim();
 
       // Do a quick geocode validation
       const resolved = await geocodeAddress(searchTarget);
@@ -231,22 +234,24 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
         setModalVisible(false); // Hide the add modal temporarily to show alert
         showAlert(
           'Location Not Recognized 🌍',
-          `We couldn't accurately find "${searchTarget}" on the map.\n\nTips for better results:\n• Be specific (e.g., "Eiffel Tower, Paris" instead of "Tower")\n• Include the city or state\n• Ensure correct spelling\n\nDo you still want to add it without routing capabilities?`,
+          `We couldn't accurately find "${searchTarget}" on the map.\n\nTips for better results:\n• Be specific (e.g., "Eiffel Tower, Paris" instead of "Tower")\n• Include city/state\n• Ensure correct spelling`,
           'warning',
           () => {
-            hideAlert();
-            commitAddStop();
-          },
-          'Add Anyway'
-        );
-        // We need to re-show the modal if they cancel, so we can override onCancel
-        setAlertConfig(prev => ({
-          ...prev,
-          onCancel: () => {
+            // Edit Location (Primary)
             hideAlert();
             setModalVisible(true);
           },
-          cancelText: 'Edit Location'
+          'Edit Location'
+        );
+
+        // Use Neutral button for "Add Anyway"
+        setAlertConfig(prev => ({
+          ...prev,
+          neutralText: 'Add Anyway',
+          onNeutral: () => {
+            hideAlert();
+            commitAddStop();
+          }
         }));
       } else {
         // Validation succeeded
@@ -690,7 +695,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                 <TextInput style={[styles.input, styles.notesInput, { outlineStyle: 'none' }]} placeholder="Tips, reminders, details..." placeholderTextColor={colors.textMuted} value={newStop.notes} onChangeText={(t) => setNewStop({ ...newStop, notes: t })} multiline />
               </View>
               <TouchableOpacity style={[styles.submitButton, !newStop.name.trim() && styles.submitButtonDisabled]} onPress={handleAddStop} disabled={!newStop.name.trim()}>
-                <Text style={styles.submitButtonText}>Add to Day {selectedDay?.dayNumber}</Text>
+                <Text style={styles.submitButtonText}>{isEditing ? 'Save Changes' : `Add to Day ${selectedDay?.dayNumber}`}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -711,8 +716,10 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
         type={alertConfig.type}
         onConfirm={alertConfig.onConfirm}
         onCancel={alertConfig.onCancel}
+        onNeutral={alertConfig.onNeutral}
         confirmText={alertConfig.confirmText}
         cancelText={alertConfig.cancelText}
+        neutralText={alertConfig.neutralText}
       />
     </SafeAreaView>
   );
