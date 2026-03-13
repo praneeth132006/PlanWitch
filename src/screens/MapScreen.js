@@ -269,7 +269,8 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
     setIsSearchingSuggestions(true);
     suggestionTimeout.current = setTimeout(async () => {
-      const result = await getPlaceSuggestions(text);
+      // Pass the destination as biasing location
+      const result = await getPlaceSuggestions(text, tripInfo.destination);
       setSuggestions(result);
       setIsSearchingSuggestions(false);
     }, 400);

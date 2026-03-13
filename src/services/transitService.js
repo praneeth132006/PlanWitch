@@ -42,6 +42,26 @@ const getWrappedUrl = (url, forceNext = false) => {
  */
 export const geocodeAddress = async (address) => {
     if (!address) return null;
+
+    // Web-specific SDK implementation
+    if (Platform.OS === 'web' && window.google?.maps?.Geocoder) {
+        try {
+            const geocoder = new window.google.maps.Geocoder();
+            return new Promise((resolve) => {
+                geocoder.geocode({ address }, (results, status) => {
+                    if (status === 'OK' && results?.[0]) {
+                        const { lat, lng } = results[0].geometry.location;
+                        resolve({ lat: lat(), lng: lng() });
+                    } else {
+                        resolve(null);
+                    }
+                });
+            });
+        } catch (e) {
+            console.warn('[Logistics] SDK Geocode error:', e.message);
+        }
+    }
+
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_CONFIG.apiKey}`;
     try {
         let res = await fetchWithTimeout(getWrappedUrl(url));
@@ -173,16 +193,35 @@ export const getTravelLogistics = async (stop1, stop2) => {
 /**
  * Fetch place suggestions from Google Places Autocomplete API
  * Uses Google Maps SDK on web if available, otherwise falls back to fetch.
+ * biasLocation: string or {lat, lng} to prioritize results near this area
  */
-export const getPlaceSuggestions = async (query) => {
+export const getPlaceSuggestions = async (query, biasLocation = null) => {
     if (!query || query.length < 2) return [];
+
+    let coords = null;
+    if (biasLocation) {
+        if (typeof biasLocation === 'string') {
+            coords = await geocodeAddress(biasLocation);
+        } else if (biasLocation.lat && biasLocation.lng) {
+            coords = biasLocation;
+        }
+    }
 
     // Web-specific SDK implementation
     if (Platform.OS === 'web' && window.google?.maps?.places?.AutocompleteService) {
         try {
             const service = new window.google.maps.places.AutocompleteService();
+            const request = { input: query };
+
+            if (coords && !coords.error) {
+                request.locationBias = new window.google.maps.Circle({
+                    center: { lat: coords.lat, lng: coords.lng },
+                    radius: 50000
+                });
+            }
+
             return new Promise((resolve) => {
-                service.getPlacePredictions({ input: query }, (predictions, status) => {
+                service.getPlacePredictions(request, (predictions, status) => {
                     if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
                         resolve(predictions.map(p => ({
                             description: p.description,
@@ -197,12 +236,15 @@ export const getPlaceSuggestions = async (query) => {
             });
         } catch (e) {
             console.warn('[Logistics] SDK Suggestions error:', e.message);
-            // Fallthrough to fetch
         }
     }
 
     // Fallback/Native implementation
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_MAPS_CONFIG.apiKey}`;
+    let url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_MAPS_CONFIG.apiKey}`;
+
+    if (coords && !coords.error) {
+        url += `&locationbias=circle:50000@${coords.lat},${coords.lng}`;
+    }
 
     try {
         let res = await fetchWithTimeout(getWrappedUrl(url));
