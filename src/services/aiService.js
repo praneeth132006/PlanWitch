@@ -186,6 +186,7 @@ PLANNING RULES (MANDATORY)
 
 1. TRAVEL LOGISTICS
    - Calculate REALISTIC travel time between every two consecutive activities using your knowledge of Google Maps distances
+   - IMPORTANT: Activities 20km apart MUST have at least 30-45 mins of travel time between them.
    - Include 15-30 min buffer for traffic, parking, and transitions
    - Add airport/railway station check-in times where applicable (2 hrs for flights, 30 min for trains)
    - Optimize route to MINIMIZE backtracking — group nearby attractions together

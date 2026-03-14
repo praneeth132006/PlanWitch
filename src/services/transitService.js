@@ -96,6 +96,21 @@ export const geocodeAddress = async (address) => {
 };
 
 /**
+ * Calculate distance between two coordinates in km using Haversine formula
+ */
+const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+};
+
+/**
  * Fetch travel logistics between two points for a given mode.
  * mode: 'driving' | 'walking' | 'transit'
  */
@@ -128,11 +143,53 @@ const fetchDirections = async (origin, destination, mode = 'driving') => {
             console.log(`[Logistics] ${mode} success:`, result.distance, result.duration);
             return result;
         }
+
+        // --- FALLBACK LOGIC ---
+        // If Google fails but we have coordinates, provide an estimate
+        if (origin.lat && origin.lng && destination.lat && destination.lng) {
+            const distKm = calculateHaversineDistance(origin.lat, origin.lng, destination.lat, destination.lng);
+            // Rough multipliers for road distance and speed
+            const roadDistKm = distKm * 1.3;
+            let speedKph = 40; // Default driving speed
+            if (mode === 'walking') speedKph = 5;
+            if (mode === 'transit') speedKph = 25;
+
+            const durationHrs = roadDistKm / speedKph;
+            const durationMins = Math.round(durationHrs * 60);
+
+            return {
+                distance: `${roadDistKm.toFixed(1)} km (est)`,
+                distanceValue: Math.round(roadDistKm * 1000),
+                duration: durationMins >= 60
+                    ? `${Math.floor(durationMins / 60)}h ${durationMins % 60}m`
+                    : `${durationMins} mins`,
+                durationValue: durationMins * 60,
+                isFallback: true
+            };
+        }
+
         console.warn(`[Logistics] ${mode} failed with status:`, data.status, data.error_message || '');
         return null;
     } catch (e) {
         if (e.message?.includes('fetch') || e.message?.includes('Network') || e.message === 'TIMEOUT') {
             console.warn(`[Logistics] ${mode} ${e.message === 'TIMEOUT' ? 'Timeout' : 'CORS/Network'} error`);
+            // Attempt fallback even on timeout if we have coords
+            if (origin.lat && origin.lng && destination.lat && destination.lng) {
+                const distKm = calculateHaversineDistance(origin.lat, origin.lng, destination.lat, destination.lng);
+                const roadDistKm = distKm * 1.3;
+                let speedKph = mode === 'walking' ? 5 : (mode === 'transit' ? 25 : 40);
+                const durationMins = Math.round((roadDistKm / speedKph) * 60);
+
+                return {
+                    distance: `${roadDistKm.toFixed(1)} km (est)`,
+                    distanceValue: Math.round(roadDistKm * 1000),
+                    duration: durationMins >= 60
+                        ? `${Math.floor(durationMins / 60)}h ${durationMins % 60}m`
+                        : `${durationMins} mins`,
+                    durationValue: durationMins * 60,
+                    isFallback: true
+                };
+            }
             return { error: 'NETWORK_FAIL' };
         } else {
             console.warn(`[Logistics] ${mode} directions error:`, e.message);

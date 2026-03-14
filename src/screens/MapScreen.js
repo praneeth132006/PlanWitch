@@ -600,13 +600,19 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                                         <Text style={styles.logisticsErrorSubtext}>Targets may be too close or no road data found. Walking is likely the best option.</Text>
                                       </View>
                                     )}
-                                    {logistics.error === 'NETWORK_FAIL' && (
+                                    {logistics.error === 'NETWORK_FAIL' && !logistics.isFallback && (
                                       <View style={[styles.logisticsErrorContainer, { backgroundColor: '#FF634715', borderColor: '#FF634730' }]}>
                                         <Text style={[styles.logisticsErrorText, { color: '#FF6347' }]}>📡 Network Timeout</Text>
                                         <Text style={styles.logisticsErrorSubtext}>Could not connect to Google Maps. Re-trying might help or check your internet.</Text>
                                         <TouchableOpacity style={styles.retryButton} onPress={() => handleRetryLogistics(stop, nextStop)}>
                                           <Text style={styles.retryButtonText}>Retry Calculation</Text>
                                         </TouchableOpacity>
+                                      </View>
+                                    )}
+                                    {logistics.isFallback && (
+                                      <View style={[styles.logisticsErrorContainer, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '20' }]}>
+                                        <Text style={[styles.logisticsErrorText, { color: colors.primary }]}>💡 Estimated Route (AI Fallback)</Text>
+                                        <Text style={styles.logisticsErrorSubtext}>Google Maps is currently unavailable. Shown values are realistic estimates based on distance.</Text>
                                       </View>
                                     )}
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.logisticsModes}>

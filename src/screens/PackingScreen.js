@@ -175,54 +175,6 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
   ];
   const currentProTip = useMemo(() => proTips[Math.floor(Math.random() * proTips.length)], []);
 
-  // AI Suggestions Handler
-  const [isAiGenerating, setIsAiGenerating] = useState(false);
-  const handleAiGeneration = async () => {
-    try {
-      const { generatePackingList } = require('../services/aiService');
-      setIsAiGenerating(true);
-      const res = await generatePackingList(
-        tripInfo.destination || 'Destination',
-        tripInfo.startDate || 'Upcoming',
-        3, // Default duration if not found
-        'Leisure'
-      );
-
-      if (res.success && res.recommendations) {
-        let addedCount = 0;
-        for (const cat of res.recommendations) {
-          const categoryKey = (cat.category || 'other').toLowerCase();
-          for (const aiItem of cat.items) {
-            // Handle both string and object formats for backwards compatibility
-            const name = typeof aiItem === 'object' ? aiItem.name : aiItem;
-            const quantity = typeof aiItem === 'object' ? aiItem.qty : 1;
-            const luggageType = typeof aiItem === 'object' ? aiItem.luggage : 'checked';
-            const notes = typeof aiItem === 'object' ? aiItem.notes : 'AI Recommended';
-
-            // Check if already exists
-            if (!packingItems.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-              await addPackingItem({
-                name: name,
-                category: PACKING_CATEGORIES.some(pc => pc.key === categoryKey) ? categoryKey : 'other',
-                quantity: quantity || 1,
-                luggageType: luggageType || 'checked',
-                notes: notes
-              });
-              addedCount++;
-            }
-          }
-        }
-        showAlert('Success', `Added ${addedCount} premium suggestions to your list!`, 'success');
-      } else {
-        showAlert('Error', 'Could not fetch AI suggestions. Please try again.', 'error');
-      }
-    } catch (e) {
-      console.error('AI Packing Error:', e);
-      showAlert('Error', 'Something went wrong while generating suggestions.', 'error');
-    } finally {
-      setIsAiGenerating(false);
-    }
-  };
 
   const groupedItems = PACKING_CATEGORIES.reduce((acc, cat) => {
     acc[cat.key] = filteredItems.filter(item => {
@@ -402,18 +354,6 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
         {/* Quick Add Section */}
         {totalItems === 0 && !tripInfo.isCompleted && (
           <View style={styles.quickAddSection}>
-            {/* Premium AI Generator Button */}
-            <TouchableOpacity
-              style={styles.premiumAiBtn}
-              onPress={handleAiGeneration}
-              disabled={isAiGenerating}
-            >
-              <ActivityIndicator animating={isAiGenerating} size="small" color="#FFF" style={{ marginRight: 10, display: isAiGenerating ? 'flex' : 'none' }} />
-              <Text style={{ fontSize: 18, marginRight: 8 }}>✨</Text>
-              <Text style={styles.premiumAiBtnText}>
-                {isAiGenerating ? 'Curating Your List...' : 'Generate Premium Packing List'}
-              </Text>
-            </TouchableOpacity>
 
             <View style={{ height: 20 }} />
 
