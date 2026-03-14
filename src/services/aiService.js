@@ -175,7 +175,7 @@ TRIP BRIEF
 • Travelers: ${travelers}
 • Interests: ${interests || 'General sightseeing'}
 • Pace: ${pace}
-${hasTimings ? `• Daily Window: ${startTime} to ${endTime}` : '• Daily Window: Flexible (plan a comfortable full day)'}
+${hasTimings ? `• Daily Window: ${startTime} to ${endTime}` : '• Daily Window: CHOOSE OPTIMAL TIMES (e.g., start earlier for sunrise/nature, end late for nightlife)'}
 
 Per-Location Day Allocation:
 ${locationContext}
@@ -197,6 +197,7 @@ PLANNING RULES (MANDATORY)
    - Events MUST be in STRICT CHRONOLOGICAL order with NO overlaps
    - Use realistic durations: 1.5-2 hrs for major attractions, 45 min-1 hr for meals, 30 min for quick stops
    - Include transition/travel time between locations as implicit buffer (do not list as separate activity)
+   - IMPORTANT: Travel time is NOT teleportation. If the next activity is in a different neighborhood, leave a 30-60 min gap in the timeline for travel.
    - NO redundant activities — do not suggest similar cafes/snack stops multiple times on the same day
 
 3. SMART ACTIVITY SELECTION
@@ -507,7 +508,7 @@ export const generateFoodRecommendations = async (places, preferences) => {
         };
     }
 
-    const prompt = `You are a world-class culinary travel concierge. For locations: [${locationList}], suggest 6-10 iconic, must-try dishes.
+    const prompt = `You are a world-class culinary travel concierge. For locations: [${locationList}], suggest 12-15 iconic, must-try dishes and local food specialties.
     
     For each dish, provide deep, curated "insider" details.
 

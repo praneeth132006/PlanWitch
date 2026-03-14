@@ -49,6 +49,38 @@ const timeToMinutes = (timeStr) => {
   return hours * 60 + minutes;
 };
 
+// Helper to convert minutes back to 12hr time string
+const minutesToTime = (totalMinutes) => {
+  let mins = totalMinutes % 1440;
+  if (mins < 0) mins += 1440;
+  let hours = Math.floor(mins / 60);
+  const m = mins % 60;
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  return `${hours}:${m < 10 ? '0' : ''}${m} ${ampm}`;
+};
+
+// Helper to add duration (string like "2 hours" or minutes) to a time string
+const addDurationToTime = (timeStr, durationStr) => {
+  if (!timeStr) return null;
+  const startMins = timeToMinutes(timeStr);
+  let durMins = 0;
+
+  if (typeof durationStr === 'number') {
+    durMins = durationStr;
+  } else if (durationStr) {
+    const match = durationStr.toString().match(/(\d+)\s*(hour|hr|min|m)/i);
+    if (match) {
+      const val = parseInt(match[1]);
+      if (match[2].toLowerCase().startsWith('h')) durMins = val * 60;
+      else durMins = val;
+    }
+  }
+
+  return minutesToTime(startMins + durMins);
+};
+
 // Helper to generate days between two dates
 const generateDays = (startDate, endDate) => {
   const days = [];
@@ -609,6 +641,43 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                                         </TouchableOpacity>
                                       </View>
                                     )}
+
+                                    {(() => {
+                                      // Interval and Conflict logic
+                                      const startMinutes = timeToMinutes(stop.time);
+                                      const stopTime = addDurationToTime(stop.time, stop.duration);
+                                      const stopMinutes = timeToMinutes(stopTime);
+                                      const nextMinutes = timeToMinutes(nextStop.time);
+
+                                      // The gap between activities
+                                      const availableGapMins = nextMinutes - stopMinutes;
+
+                                      // Best travel duration we found (driving > transit > walking)
+                                      const bestTravelMins = (logistics.driving?.durationValue || logistics.transit?.durationValue || logistics.walking?.durationValue || 0) / 60;
+
+                                      const isConflict = availableGapMins < bestTravelMins;
+
+                                      return (
+                                        <>
+                                          <View style={[styles.travelIntervalRow, isConflict && styles.travelIntervalConflict]}>
+                                            <Icon name="navigation" size={14} color={isConflict ? '#EF4444' : colors.textMuted} />
+                                            <Text style={[styles.travelIntervalText, isConflict && { color: '#EF4444', fontWeight: 'bold' }]}>
+                                              ⌚ Travel: {stopTime} - {nextStop.time || 'Next'}
+                                              {isConflict ? ' • TIMING CONFLICT' : ''}
+                                            </Text>
+                                          </View>
+
+                                          {isConflict && (
+                                            <View style={styles.conflictAlert}>
+                                              <Text style={styles.conflictAlertText}>
+                                                ⚠️ This journey takes ~{Math.round(bestTravelMins)} mins, but you only have {availableGapMins} mins.
+                                              </Text>
+                                            </View>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
+
                                     {logistics.isFallback && (
                                       <View style={[styles.logisticsErrorContainer, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '20' }]}>
                                         <Text style={[styles.logisticsErrorText, { color: colors.primary }]}>💡 Estimated Route (AI Fallback)</Text>
@@ -987,5 +1056,38 @@ const createStyles = (colors) => StyleSheet.create({
     position: 'absolute',
     right: 12,
     top: 14,
+  },
+  travelIntervalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  travelIntervalText: {
+    color: colors.textMuted,
+    fontSize: 11,
+  },
+  travelIntervalConflict: {
+    backgroundColor: '#EF444410',
+    paddingVertical: 4,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#EF444420',
+  },
+  conflictAlert: {
+    backgroundColor: '#EF444415',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EF444430',
+    marginBottom: 10,
+  },
+  conflictAlertText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 15,
   },
 });
