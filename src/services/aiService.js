@@ -184,21 +184,21 @@ ${locationContext}
 PLANNING RULES (MANDATORY)
 ═══════════════════════════════════════
 
-1. TRAVEL LOGISTICS
-   - Calculate REALISTIC travel time between every two consecutive activities using your knowledge of Google Maps distances
-   - IMPORTANT: Activities 20km apart MUST have at least 30-45 mins of travel time between them.
-   - Include 15-30 min buffer for traffic, parking, and transitions
-   - Add airport/railway station check-in times where applicable (2 hrs for flights, 30 min for trains)
-   - Optimize route to MINIMIZE backtracking — group nearby attractions together
-   - EXCLUDE travel TO/FROM the destination (flights/trains to ${destination}). Plan starts when traveler is AT the destination.
+1. TRAVEL LOGISTICS & GAPS (STRICT)
+   - Calculate REALISTIC travel time between every two consecutive activities using your knowledge of Google Maps distances.
+   - TRAVEL TIME IS NOT TELEPORTATION. You MUST leave a gap in the timeline for transit.
+   - Rule: Activity B "time" MUST = (Activity A "time" + Activity A "duration") + (Calculated Travel Time) + (15-30 min buffer).
+   - IMPORTANT: If Activity A ends at 10:00 AM and is 5km away, Activity B CANNOT start at 10:00 AM. It should start at 10:30 AM or later.
+   - Optimize route to MINIMIZE backtracking — group nearby attractions together.
 
 2. DAILY TIME PLANNING
-   - Structure each day into clear time blocks: Morning → Afternoon → Evening → Night
-   - Events MUST be in STRICT CHRONOLOGICAL order with NO overlaps
-   - Use realistic durations: 1.5-2 hrs for major attractions, 45 min-1 hr for meals, 30 min for quick stops
-   - Include transition/travel time between locations as implicit buffer (do not list as separate activity)
-   - IMPORTANT: Travel time is NOT teleportation. If the next activity is in a different neighborhood, leave a 30-60 min gap in the timeline for travel.
-   - NO redundant activities — do not suggest similar cafes/snack stops multiple times on the same day
+   - Structure each day into clear time blocks: Morning → Afternoon → Evening → Night.
+   - Events MUST be in STRICT CHRONOLOGICAL order with gaps for travel.
+   - WRONG: Activity 1 (09:00-10:00), Activity 2 (10:00-11:00) <- NO! This allows 0 mins for travel.
+   - RIGHT: Activity 1 (09:00-10:00), Travel gap (10:00-10:30), Activity 2 (10:30-11:30) <- YES!
+   - STRICT JSON RULE: The "time" value of an activity MUST account for the duration AND travel time of the previous activity.
+   - Use realistic durations: 1.5-2 hrs for major attractions, 45 min-1 hr for meals, 30 min for quick stops.
+   - NO redundant activities — do not suggest similar cafes/snack stops multiple times on the same day.
 
 3. SMART ACTIVITY SELECTION
    - Select activities based on: traveler interests, seasonal weather suitability, crowd patterns (avoid peak tourist hours where possible), location proximity

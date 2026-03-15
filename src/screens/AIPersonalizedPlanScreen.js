@@ -104,6 +104,13 @@ export default function AIPersonalizedPlanScreen({ navigation }) {
 - Travelers: ${details.travelers} (Ages: ${details.ages})
 - Additional Notes: ${details.additionalNotes}
 
+PLANNING RULES (MANDATORY):
+1. TRAVEL LOGISTICS: Calculate REALISTIC travel time between every two consecutive activities. TRAVEL TIME IS NOT TELEPORTATION. You MUST leave a gap in the timeline for transit.
+2. Rule: Activity B "time" MUST = (Activity A "time" + Activity A "duration") + (Calculated Travel Time) + (15-30 min buffer).
+3. NO BACK-TO-BACK: An activity MUST NOT start at the same time the previous one ends if they are at different locations.
+   - WRONG: Activity 1 (10:00 AM - 11:00 AM), Activity 2 (11:00 AM)
+   - RIGHT: Activity 1 (10:00 AM - 11:00 AM), Travel gap (30 mins), Activity 2 (11:30 AM)
+
 Return ONLY a JSON object (no extra text) with this exact structure:
 {
   "success": true,
@@ -112,7 +119,7 @@ Return ONLY a JSON object (no extra text) with this exact structure:
       "day": 1,
       "title": "Day Title",
       "activities": [
-        { "time": "hh:mm AM/PM", "title": "Activity Name", "description": "Brief description", "cost": "est cost" }
+        { "time": "hh:mm AM/PM", "title": "Activity Name", "description": "Brief description", "duration": "e.g. 2 hours", "cost": "est cost" }
       ]
     }
   ],
