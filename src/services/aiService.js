@@ -142,6 +142,76 @@ const callGemini = async (prompt, isJson = true) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// SIMPLE OVERLAP FIXER — No API calls, no geocoding, just math.
+// Only adjusts activities that start BEFORE the previous one ends.
+// ═══════════════════════════════════════════════════════════════
+const parseTime = (t) => {
+    if (!t) return null;
+    const m = t.toString().match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!m) return null;
+    let h = parseInt(m[1]);
+    const mins = parseInt(m[2]);
+    const p = m[3].toUpperCase();
+    if (p === 'PM' && h !== 12) h += 12;
+    if (p === 'AM' && h === 12) h = 0;
+    return h * 60 + mins;
+};
+
+const toTimeStr = (total) => {
+    let h = Math.floor(total / 60) % 24;
+    const mins = total % 60;
+    const p = h >= 12 ? 'PM' : 'AM';
+    if (h > 12) h -= 12;
+    if (h === 0) h = 12;
+    return `${h.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')} ${p}`;
+};
+
+const parseDuration = (d) => {
+    if (!d) return 60;
+    const s = d.toString().toLowerCase();
+    const hm = s.match(/(\d+\.?\d*)\s*h/i);
+    if (hm) {
+        const extraM = s.match(/(\d+)\s*m/i);
+        return Math.round(parseFloat(hm[1]) * 60) + (extraM ? parseInt(extraM[1]) : 0);
+    }
+    const mo = s.match(/(\d+)\s*m/i);
+    if (mo) return parseInt(mo[1]);
+    const n = s.match(/(\d+\.?\d*)/);
+    if (n) { const v = parseFloat(n[1]); return v < 5 ? Math.round(v * 60) : Math.round(v); }
+    return 60;
+};
+
+const TRAVEL_BUFFER = 15; // 15 min buffer for travel between activities
+
+const fixOverlappingActivities = (itinerary) => {
+    if (!itinerary || !Array.isArray(itinerary)) return itinerary;
+
+    return itinerary.map(day => {
+        if (!day.activities || day.activities.length <= 1) return day;
+
+        const acts = [...day.activities];
+        for (let i = 1; i < acts.length; i++) {
+            const prevStart = parseTime(acts[i - 1].time);
+            const prevDur = parseDuration(acts[i - 1].duration);
+            const currStart = parseTime(acts[i].time);
+            if (prevStart == null || currStart == null) continue;
+
+            const prevEnd = prevStart + prevDur;
+
+            // Only fix if current starts BEFORE previous ends (overlap)
+            if (currStart < prevEnd) {
+                const fixed = prevEnd + TRAVEL_BUFFER;
+                // Safety: don't push past 10 PM
+                if (fixed <= 22 * 60) {
+                    acts[i] = { ...acts[i], time: toTimeStr(fixed) };
+                }
+            }
+        }
+        return { ...day, activities: acts };
+    });
+};
+
+// ═══════════════════════════════════════════════════════════════
 // 1. PREMIUM ITINERARY GENERATION
 // ═══════════════════════════════════════════════════════════════
 export const generateTripItinerary = async (destination, days, budget, travelers, interests, preferences = {}) => {
@@ -260,7 +330,14 @@ OUTPUT FORMAT (Return ONLY this JSON)
 IMPORTANT: Return ONLY the JSON. No markdown, no code blocks, no explanations outside the JSON.`;
 
     try {
-        return await callGemini(prompt, true);
+        const result = await callGemini(prompt, true);
+
+        // Simple overlap fix: only adjust activities that start before the previous one ends
+        if (result.success && result.itinerary) {
+            result.itinerary = fixOverlappingActivities(result.itinerary);
+        }
+
+        return result;
     } catch (error) {
         console.error("AI Error:", error);
         return { success: false, error: error.message };
