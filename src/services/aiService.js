@@ -150,13 +150,29 @@ export const generateTripItinerary = async (destination, days, budget, travelers
         return new Promise(resolve => setTimeout(() => resolve(MOCK_ITINERARY), 2000));
     }
 
-    const { pace = 'Moderate', startTime = '09:00 AM', endTime = '09:00 PM', locationDurations = {} } = preferences;
+    const { 
+        pace = 'Moderate', 
+        startTime = '09:00 AM', 
+        endTime = '09:00 PM', 
+        locationDurations = {},
+        startLocation = '',
+        transitModes = [],
+        routeOptimization = 'optimize',
+        placesAndDurationEnabled = true
+    } = preferences;
 
-    const locationContext = Object.entries(locationDurations)
-        .map(([loc, days]) => `- ${loc}: ${days} days`)
-        .join('\n') || 'Distribute days evenly across all destinations';
+    let locationContext = 'Distribute days logically across the destination based on best travel routes.';
+    if (placesAndDurationEnabled && Object.keys(locationDurations).length > 0) {
+        locationContext = Object.entries(locationDurations)
+            .map(([loc, days]) => `- ${loc}: ${days} days`)
+            .join('\n');
+    }
 
     const hasTimings = startTime && endTime;
+
+    const transitContext = transitModes.length > 0 ? `Preferred inter-city transit: ${transitModes.join(', ')}.` : '';
+    const routeContext = routeOptimization === 'follow-order' ? 'Follow the exact order of locations provided.' : 'Optimize the route order to minimize travel time between locations.';
+    const originContext = startLocation ? `Trip starts from exactly: ${startLocation}. Include initial travel from here.` : '';
 
     const prompt = `You are a WORLD-CLASS LUXURY CONCIERGE TRAVEL PLANNER with 20+ years of experience curating premium travel experiences globally.
 
@@ -176,6 +192,7 @@ TRIP BRIEF
 • Interests: ${interests || 'General sightseeing'}
 • Pace: ${pace}
 ${hasTimings ? `• Daily Window: ${startTime} to ${endTime}` : '• Daily Window: CHOOSE OPTIMAL TIMES (e.g., start earlier for sunrise/nature, end late for nightlife)'}
+${originContext ? `• Origin: ${originContext}\n` : ''}${transitContext ? `• Transit Preference: ${transitContext}\n` : ''}${routeContext ? `• Routing: ${routeContext}` : ''}
 
 Per-Location Day Allocation:
 ${locationContext}
@@ -184,7 +201,12 @@ ${locationContext}
 PLANNING RULES (MANDATORY)
 ═══════════════════════════════════════
 
-1. TRAVEL AS SEPARATE ITEMS (MOST IMPORTANT RULE)
+1. STRICT GEOGRAPHIC BOUNDS (NO HALLUCINATIONS)
+   - You MUST ONLY suggest places physically located IN OR VERY NEAR the requested destinations (${destination}).
+   - DO NOT suggest places in other states/cities just because they share a name (e.g., if asked for Gokarna, DO NOT suggest Mahabaleshwar in Maharashtra; use Mahabaleshwar Temple in Gokarna).
+   - Verify the exact state/region of EVERY place you suggest before adding it.
+
+2. TRAVEL AS SEPARATE ITEMS (MOST IMPORTANT RULE)
    - Between EVERY two consecutive activities, you MUST insert a TRAVEL item.
    - The travel item MUST have type "car" and include the estimated distance (in km) and travel time.
    - The travel item's "time" = when the previous activity ends (previous time + previous duration).
@@ -661,4 +683,71 @@ IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
         console.error("AI Suggestions Error:", error);
         return { success: false, error: error.message };
     }
+};
+
+// Generate comprehensive personalized plan (Full Itinerary + Packing + Food)
+export const generateFullPersonalizedPlan = async (details) => {
+    console.log(`[AI Service] Generating Nuclear Plan for ${details.startLocation} to ${details.endLocation}`);
+
+    const transitContext = details.transitModes?.length > 0 ? `Preferred inter-city transit: ${details.transitModes.join(', ')}.` : '';
+    const routeContext = details.routeOptimization === 'follow-order' ? 'Follow the exact order of locations provided.' : 'Optimize the route order to minimize travel time between locations.';
+    const stopsContext = details.placesEnabled ? `\n- Intermediate Stops: ${JSON.stringify(details.stops)}` : '';
+
+    const prompt = `Act as a premium travel concierge. Create a comprehensive, billionaire-level travel plan based on these details:
+- Start Location: ${details.startLocation}
+- End Location / Main Destination: ${details.endLocation}${stopsContext}
+- Total Days: ${details.totalDays}
+- Budget: ${details.budget}
+- Dietary Preference: ${details.dietary}
+- Travelers: ${details.travelers} (Ages: ${details.ages})
+- Additional Notes: ${details.additionalNotes}
+${transitContext ? `- Transit Preferences: ${transitContext}\n` : ''}${routeContext ? `- Routing Logic: ${routeContext}\n` : ''}
+
+PLANNING RULES (MANDATORY):
+
+1. STRICT GEOGRAPHIC BOUNDS (NO HALLUCINATIONS)
+   - You MUST ONLY suggest places physically located IN OR VERY NEAR the requested destinations (${details.endLocation}).
+   - DO NOT suggest places in other states/cities just because they share a name (e.g., if asked for Gokarna, DO NOT suggest Mahabaleshwar in Maharashtra; use Mahabaleshwar Temple in Gokarna).
+   - Verify the exact state/region of EVERY place you suggest before adding it.
+
+2. TRAVEL AS SEPARATE ITEMS (MOST IMPORTANT RULE)
+   - Between EVERY two consecutive activities, you MUST insert a TRAVEL item.
+   - The travel item MUST have type "car" and include the estimated distance (in km) and travel time.
+   - The travel item's "time" = when the previous activity ends (previous time + previous duration).
+   - The next activity's "time" = travel item's "time" + travel item's "duration".
+   - Example sequence:
+     Activity A at 09:00 AM (1 hour) → Travel at 10:00 AM (20 mins, 4km) → Activity B at 10:20 AM (2 hours)
+   - This is MANDATORY. An itinerary without travel items between activities is INVALID.
+
+3. TIMING: Real-world timings. No overlaps. Be generous with travel times.
+
+4. SPECIFICITY: Use specific restaurant/place names, not generic ones.
+
+Return ONLY a JSON object (no extra text) with this exact structure:
+{
+  "success": true,
+  "itinerary": [
+    {
+      "day": 1,
+      "title": "Day Title",
+      "activities": [
+        { "time": "08:00 AM", "title": "Breakfast at Place", "type": "breakfast", "duration": "45 minutes", "description": "Details", "location": "Place, Area", "cost": 150 },
+        { "time": "08:45 AM", "title": "Travel to Next Place", "type": "car", "duration": "20 minutes", "description": "4 km by auto-rickshaw", "location": "En route", "cost": 100 },
+        { "time": "09:05 AM", "title": "Next Activity", "type": "attraction", "duration": "2 hours", "description": "Details", "location": "Place, Area", "cost": 0 }
+      ]
+    }
+  ],
+  "packingList": [
+    { "category": "Clothing/Gear/Health", "items": ["Item name with reason"] }
+  ],
+  "foodRecommendations": [
+    { "name": "Dish/Restaurant Name", "description": "Why they should try it", "isVegFriendly": true }
+  ],
+  "budgetAnalysis": {
+    "summary": "Short breakdown of how to spend the budget",
+    "tips": ["Tip 1", "Tip 2"]
+  }
+}`;
+
+    return callGemini(prompt, true);
 };

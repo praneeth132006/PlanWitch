@@ -545,184 +545,83 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
                                   {!isLast && <View style={[styles.stopTimeLine, { backgroundColor: type.color + '40' }]} />}
                                 </View>
 
-                                <View style={[styles.stopCard, { borderLeftColor: type.color }]}>
-                                  <View style={[styles.categoryTag, { backgroundColor: type.color + '20' }]}>
-                                    <Text style={[styles.categoryTagText, { color: type.color }]}>{type.category.toUpperCase()}</Text>
-                                  </View>
-
-                                  <View style={styles.stopCardHeader}>
-                                    <View style={[styles.stopIconContainer, { backgroundColor: type.color + '25' }]}>
-                                      <Icon name={type.icon} size={20} color={type.color} />
+                                {stop.type === 'car' ? (
+                                  <View style={[styles.stopCard, { borderLeftColor: type.color, paddingVertical: 10, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center' }]}>
+                                    <View style={[styles.stopIconContainer, { backgroundColor: type.color + '25', width: 32, height: 32, marginRight: 12, borderRadius: 8 }]}>
+                                      <Icon name={type.icon} size={16} color={type.color} />
                                     </View>
-                                    <View style={styles.stopCardInfo}>
-                                      <Text style={styles.stopCardName}>{stop.name}</Text>
-                                      <View style={styles.stopCardMeta}>
-                                        <View style={[styles.stopTypeBadge, { backgroundColor: type.color + '15' }]}>
-                                          <Text style={[styles.stopTypeBadgeText, { color: type.color }]}>{type.label}</Text>
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={[styles.stopCardName, { fontSize: 14 }]}>{stop.name}</Text>
+                                      {stop.description ? <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>{stop.description}</Text> : null}
+                                    </View>
+                                    <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
+                                      {stop.duration && (
+                                        <View style={{ backgroundColor: colors.cardLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 6 }}>
+                                          <Text style={{ fontSize: 12, color: colors.text, fontWeight: '600' }}>{stop.duration}</Text>
                                         </View>
-                                        {stop.duration && <Text style={styles.stopDuration}>⏱️ {stop.duration}</Text>}
-                                      </View>
+                                      )}
+                                      <TouchableOpacity
+                                        style={{ backgroundColor: colors.primary + '15', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 }}
+                                        onPress={() => {
+                                          const prev = stopIndex > 0 ? dayStops[stopIndex - 1] : null;
+                                          const next = stopIndex < dayStops.length - 1 ? dayStops[stopIndex + 1] : null;
+                                          if (!next) return;
+                                          const getQuery = (s) => encodeURIComponent(s.location && s.location !== 'En route' ? s.location : s.name);
+                                          const originStr = prev ? getQuery(prev) : '';
+                                          const destStr = getQuery(next);
+                                          Linking.openURL(`https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}`);
+                                        }}
+                                      >
+                                        <Text style={{ color: colors.primary, fontSize: 12, fontWeight: 'bold' }}>🗺️ Navigate</Text>
+                                      </TouchableOpacity>
                                     </View>
-                                    {!tripInfo.isCompleted && (
-                                      <View style={styles.stopActions}>
-                                        <TouchableOpacity style={styles.stopEditBtn} onPress={() => openEditModal(stop)}>
-                                          <Icon name="pen" size={14} color={colors.primary} />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity style={styles.stopDeleteBtn} onPress={() => deleteItineraryItem(stop.id)}>
-                                          <Icon name="close" size={14} color="#EF4444" />
-                                        </TouchableOpacity>
-                                      </View>
-                                    )}
                                   </View>
-
-                                  {stop.location && (
-                                    <View style={styles.stopDetailRow}>
-                                      <Text style={styles.stopDetailIcon}>📍</Text>
-                                      <Text style={styles.stopDetailText}>{stop.location}</Text>
+                                ) : (
+                                  <View style={[styles.stopCard, { borderLeftColor: type.color }]}>
+                                    <View style={[styles.categoryTag, { backgroundColor: type.color + '20' }]}>
+                                      <Text style={[styles.categoryTagText, { color: type.color }]}>{type.category.toUpperCase()}</Text>
                                     </View>
-                                  )}
 
-                                  {stop.notes && (
-                                    <View style={styles.stopNotesContainer}>
-                                      <Text style={styles.stopNotes}>{stop.notes}</Text>
-                                    </View>
-                                  )}
-                                </View>
-                              </View>
-
-                              {!isLast && logistics && (
-                                <View style={styles.logisticsCard}>
-                                  <View style={styles.logisticsTimeline}>
-                                    <View style={styles.logisticsDot} />
-                                    <View style={styles.logisticsDash} />
-                                    <View style={styles.logisticsDot} />
-                                  </View>
-                                  <View style={styles.logisticsContent}>
-                                    <View style={styles.logisticsHeader}>
-                                      <Text style={styles.logisticsLabel}>ROUTE INFO</Text>
-                                      <View style={styles.logisticsActions}>
-                                        {logistics.distance && <Text style={styles.logisticsDistance}>📏 {logistics.distance}</Text>}
-                                        <TouchableOpacity
-                                          style={styles.logisticsNavBtn}
-                                          onPress={() => {
-                                            const getQuery = (s) => {
-                                              const parts = [];
-                                              if (s.name) parts.push(s.name);
-                                              if (s.location) parts.push(s.location);
-                                              return encodeURIComponent(parts.join(', '));
-                                            };
-                                            const originStr = getQuery(stop);
-                                            const destStr = getQuery(nextStop);
-                                            Linking.openURL(`https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}`);
-                                          }}
-                                        >
-                                          <Text style={styles.logisticsNavBtnText}>🗺️ Navigate</Text>
-                                        </TouchableOpacity>
+                                    <View style={styles.stopCardHeader}>
+                                      <View style={[styles.stopIconContainer, { backgroundColor: type.color + '25' }]}>
+                                        <Icon name={type.icon} size={20} color={type.color} />
                                       </View>
-                                    </View>
-                                    {logistics.error === 'CORS_BLOCK' && (
-                                      <View style={styles.logisticsErrorContainer}>
-                                        <Text style={styles.logisticsErrorText}>⚠️ Browser Limitation Detected</Text>
-                                        <Text style={styles.logisticsErrorSubtext}>Google APIs are blocked on localhost in browsers. This will work on a real phone!</Text>
-                                      </View>
-                                    )}
-                                    {logistics.error === 'NO_ROUTE' && (
-                                      <View style={[styles.logisticsErrorContainer, { backgroundColor: colors.textMuted + '10', borderColor: colors.textMuted + '25' }]}>
-                                        <Text style={[styles.logisticsErrorText, { color: colors.textMuted }]}>📍 Route details unavailable</Text>
-                                        <Text style={styles.logisticsErrorSubtext}>Targets may be too close or no road data found. Walking is likely the best option.</Text>
-                                      </View>
-                                    )}
-                                    {logistics.error === 'NETWORK_FAIL' && !logistics.isFallback && (
-                                      <View style={[styles.logisticsErrorContainer, { backgroundColor: '#FF634715', borderColor: '#FF634730' }]}>
-                                        <Text style={[styles.logisticsErrorText, { color: '#FF6347' }]}>📡 Network Timeout</Text>
-                                        <Text style={styles.logisticsErrorSubtext}>Could not connect to Google Maps. Re-trying might help or check your internet.</Text>
-                                        <TouchableOpacity style={styles.retryButton} onPress={() => handleRetryLogistics(stop, nextStop)}>
-                                          <Text style={styles.retryButtonText}>Retry Calculation</Text>
-                                        </TouchableOpacity>
-                                      </View>
-                                    )}
-
-                                    {(() => {
-                                      // Interval and Conflict logic
-                                      const startMinutes = timeToMinutes(stop.time);
-                                      const stopTime = addDurationToTime(stop.time, stop.duration);
-                                      const stopMinutes = timeToMinutes(stopTime);
-                                      const nextMinutes = timeToMinutes(nextStop.time);
-
-                                      // The gap between activities
-                                      const availableGapMins = nextMinutes - stopMinutes;
-
-                                      // Best travel duration we found (driving > transit > walking)
-                                      const bestTravelMins = (logistics.driving?.durationValue || logistics.transit?.durationValue || logistics.walking?.durationValue || 0) / 60;
-
-                                      const isConflict = availableGapMins < bestTravelMins;
-
-                                      return (
-                                        <>
-                                          <View style={[styles.travelIntervalRow, isConflict && styles.travelIntervalConflict]}>
-                                            <Icon name="navigation" size={14} color={isConflict ? '#EF4444' : colors.textMuted} />
-                                            <Text style={[styles.travelIntervalText, isConflict && { color: '#EF4444', fontWeight: 'bold' }]}>
-                                              ⌚ Travel: {stopTime} - {nextStop.time || 'Next'}
-                                              {isConflict ? ' • TIMING CONFLICT' : ''}
-                                            </Text>
+                                      <View style={styles.stopCardInfo}>
+                                        <Text style={styles.stopCardName}>{stop.name}</Text>
+                                        <View style={styles.stopCardMeta}>
+                                          <View style={[styles.stopTypeBadge, { backgroundColor: type.color + '15' }]}>
+                                            <Text style={[styles.stopTypeBadgeText, { color: type.color }]}>{type.label}</Text>
                                           </View>
+                                          {stop.duration && <Text style={styles.stopDuration}>⏱️ {stop.duration}</Text>}
+                                        </View>
+                                      </View>
+                                      {!tripInfo.isCompleted && (
+                                        <View style={styles.stopActions}>
+                                          <TouchableOpacity style={styles.stopEditBtn} onPress={() => openEditModal(stop)}>
+                                            <Icon name="pen" size={14} color={colors.primary} />
+                                          </TouchableOpacity>
+                                          <TouchableOpacity style={styles.stopDeleteBtn} onPress={() => deleteItineraryItem(stop.id)}>
+                                            <Icon name="close" size={14} color="#EF4444" />
+                                          </TouchableOpacity>
+                                        </View>
+                                      )}
+                                    </View>
 
-                                          {isConflict && (
-                                            <View style={styles.conflictAlert}>
-                                              <Text style={styles.conflictAlertText}>
-                                                ⚠️ This journey takes ~{Math.round(bestTravelMins)} mins, but you only have {availableGapMins} mins.
-                                              </Text>
-                                            </View>
-                                          )}
-                                        </>
-                                      );
-                                    })()}
-
-                                    {logistics.isFallback && (
-                                      <View style={[styles.logisticsErrorContainer, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '20' }]}>
-                                        <Text style={[styles.logisticsErrorText, { color: colors.primary }]}>💡 Estimated Route (AI Fallback)</Text>
-                                        <Text style={styles.logisticsErrorSubtext}>Google Maps is currently unavailable. Shown values are realistic estimates based on distance.</Text>
+                                    {stop.location && (
+                                      <View style={styles.stopDetailRow}>
+                                        <Text style={styles.stopDetailIcon}>📍</Text>
+                                        <Text style={styles.stopDetailText}>{stop.location}</Text>
                                       </View>
                                     )}
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.logisticsModes}>
-                                      {logistics.driving && (
-                                        <View style={styles.logisticsMode}>
-                                          <Text style={styles.logisticsModeIcon}>🚕</Text>
-                                          <Text style={styles.logisticsModeTime}>{logistics.driving.duration}</Text>
-                                          <Text style={styles.logisticsModeLabel}>taxi</Text>
-                                        </View>
-                                      )}
-                                      {logistics.transit && (
-                                        <View style={styles.logisticsMode}>
-                                          <Text style={styles.logisticsModeIcon}>🚌</Text>
-                                          <Text style={styles.logisticsModeTime}>{logistics.transit.duration}</Text>
-                                          <Text style={styles.logisticsModeLabel}>transit</Text>
-                                        </View>
-                                      )}
-                                      {logistics.walking && (
-                                        <View style={styles.logisticsMode}>
-                                          <Text style={styles.logisticsModeIcon}>🚶</Text>
-                                          <Text style={styles.logisticsModeTime}>{logistics.walking.duration}</Text>
-                                          <Text style={styles.logisticsModeLabel}>walk</Text>
-                                        </View>
-                                      )}
-                                    </ScrollView>
+
+                                    {stop.notes && (
+                                      <View style={styles.stopNotesContainer}>
+                                        <Text style={styles.stopNotes}>{stop.notes}</Text>
+                                      </View>
+                                    )}
                                   </View>
-                                </View>
-                              )}
-                              {!isLast && isLoadingLogistics && !logistics && (
-                                <View style={styles.logisticsCard}>
-                                  <View style={styles.logisticsTimeline}>
-                                    <View style={styles.logisticsDot} />
-                                    <View style={styles.logisticsDash} />
-                                    <View style={styles.logisticsDot} />
-                                  </View>
-                                  <View style={styles.logisticsContent}>
-                                    <ActivityIndicator size="small" color={colors.primary} />
-                                    <Text style={styles.logisticsLoadingText}>Calculating route...</Text>
-                                  </View>
-                                </View>
-                              )}
+                                )}
+                              </View>
                             </React.Fragment>
                           );
                         })}

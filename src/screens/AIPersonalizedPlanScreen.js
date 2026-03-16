@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TextInput, Pressable,
-    ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Modal
+    ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Modal, Switch
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +18,9 @@ export default function AIPersonalizedPlanScreen({ navigation }) {
     // Form State
     const [startLocation, setStartLocation] = useState('');
     const [endLocation, setEndLocation] = useState('');
+    const [placesEnabled, setPlacesEnabled] = useState(true);
+    const [transitModes, setTransitModes] = useState(['Car/Taxi', 'Train']);
+    const [routeOptimization, setRouteOptimization] = useState('optimize');
     const [stops, setStops] = useState([{ location: '', days: '1' }]);
     const [dietary, setDietary] = useState('Non-Veg'); // Veg or Non-Veg
     const [travelers, setTravelers] = useState('2');
@@ -84,7 +87,10 @@ export default function AIPersonalizedPlanScreen({ navigation }) {
         const details = {
             startLocation,
             endLocation,
-            stops,
+            placesEnabled,
+            transitModes,
+            routeOptimization,
+            stops: placesEnabled ? stops : [],
             totalDays,
             budget: `${currency.symbol}${budget}`,
             dietary,
@@ -93,21 +99,26 @@ export default function AIPersonalizedPlanScreen({ navigation }) {
             additionalNotes
         };
 
+        const transitContext = details.transitModes?.length > 0 ? `Preferred inter-city transit: ${details.transitModes.join(', ')}.` : '';
+        const routeContext = details.routeOptimization === 'follow-order' ? 'Follow the exact order of locations provided.' : 'Optimize the route order to minimize travel time between locations.';
+        const stopsContext = details.placesEnabled ? `\n- Intermediate Stops: ${JSON.stringify(details.stops)}` : '';
+
         // Construct the prompt manually so we can offer it as a fallback
         const prompt = `Act as a premium travel concierge. Create a comprehensive, billionaire-level travel plan based on these details:
 - Start Location: ${details.startLocation}
-- End Location: ${details.endLocation}
-- Stops: ${JSON.stringify(details.stops)}
+- End Location / Main Destination: ${details.endLocation}${stopsContext}
 - Total Days: ${details.totalDays}
 - Budget: ${details.budget}
 - Dietary Preference: ${details.dietary}
 - Travelers: ${details.travelers} (Ages: ${details.ages})
 - Additional Notes: ${details.additionalNotes}
+${transitContext ? `- Transit Preferences: ${transitContext}\n` : ''}${routeContext ? `- Routing Logic: ${routeContext}\n` : ''}
 
 PLANNING RULES (MANDATORY):
-1. TRAVEL AS SEPARATE ITEMS: Between EVERY two activities, insert a travel item with type "car". Include distance and time in the description (e.g., "4 km by auto-rickshaw, 15 mins").
-2. TIMING: Travel item starts when previous activity ends. Next activity starts when travel ends. No overlaps.
-3. SPECIFICITY: Use specific restaurant/place names, not generic ones.
+1. STRICT GEOGRAPHIC BOUNDS: You MUST ONLY suggest places physically located IN OR VERY NEAR the requested destination (${details.endLocation}). DO NOT hallucinate places in other states!
+2. TRAVEL AS SEPARATE ITEMS: Between EVERY two activities, insert a travel item with type "car". Include distance and time in the description (e.g., "4 km by auto-rickshaw, 15 mins").
+3. TIMING: Real-world timings. No overlaps. Be generous with travel times.
+4. SPECIFICITY: Use specific restaurant/place names, not generic ones.
 
 Return ONLY a JSON object (no extra text) with this exact structure:
 {
@@ -339,13 +350,23 @@ Return ONLY a JSON object (no extra text) with this exact structure:
                     <View style={styles.divider} />
 
                     <View style={styles.sectionHeaderRow}>
-                        <Text style={styles.sectionTitle}>📍 Intermediate Stops</Text>
-                        <Pressable onPress={addStop} style={styles.addStopBtn}>
-                            <Text style={styles.addStopText}>+ Add Stop</Text>
-                        </Pressable>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.sectionTitle}>📍 Intermediate Stops</Text>
+                            <Switch 
+                                value={placesEnabled} 
+                                onValueChange={setPlacesEnabled} 
+                                style={{ transform: [{ scale: 0.8 }], marginLeft: 8 }}
+                                trackColor={{ false: colors.border, true: colors.primary }}
+                            />
+                        </View>
+                        {placesEnabled && (
+                            <Pressable onPress={addStop} style={styles.addStopBtn}>
+                                <Text style={styles.addStopText}>+ Add Stop</Text>
+                            </Pressable>
+                        )}
                     </View>
 
-                    {stops.map((stop, index) => (
+                    {placesEnabled && stops.map((stop, index) => (
                         <View key={index} style={styles.stopCard}>
                             <View style={styles.stopInputRow}>
                                 <TextInput
@@ -371,6 +392,62 @@ Return ONLY a JSON object (no extra text) with this exact structure:
                             </View>
                         </View>
                     ))}
+
+                    <View style={styles.divider} />
+
+                    <Text style={styles.sectionTitle}>🚗 Transit & Routing</Text>
+                    
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Inter-city Travel Modes</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                            {['Flight', 'Train', 'Bus', 'Car/Taxi'].map(mode => (
+                                <Pressable
+                                    key={mode}
+                                    style={{
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 8,
+                                        borderRadius: 20,
+                                        borderWidth: 1,
+                                        borderColor: transitModes.includes(mode) ? colors.primary : colors.border,
+                                        backgroundColor: transitModes.includes(mode) ? colors.primary : colors.cardLight,
+                                        marginRight: 8,
+                                        marginBottom: 8
+                                    }}
+                                    onPress={() => {
+                                        if (transitModes.includes(mode)) {
+                                            setTransitModes(transitModes.filter(m => m !== mode));
+                                        } else {
+                                            setTransitModes([...transitModes, mode]);
+                                        }
+                                    }}
+                                >
+                                    <Text style={{
+                                        fontSize: 14,
+                                        fontWeight: '600',
+                                        color: transitModes.includes(mode) ? '#FFF' : colors.text
+                                    }}>{mode}</Text>
+                                </Pressable>
+                            ))}
+                        </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Routing Strategy</Text>
+                         <View style={styles.toggleRow}>
+                            <Pressable
+                                onPress={() => setRouteOptimization('optimize')}
+                                style={[styles.toggleBtn, routeOptimization === 'optimize' && styles.toggleActive]}
+                            >
+                                <Text style={[styles.toggleText, routeOptimization === 'optimize' && styles.toggleTextActive]}>AI Best Route</Text>
+                            </Pressable>
+                            <Pressable
+                                onPress={() => setRouteOptimization('follow-order')}
+                                style={[styles.toggleBtn, routeOptimization === 'follow-order' && styles.toggleActive]}
+                            >
+                                <Text style={[styles.toggleText, routeOptimization === 'follow-order' && styles.toggleTextActive]}>Follow My Order</Text>
+                            </Pressable>
+                        </View>
+                    </View>
 
                     <View style={styles.divider} />
 
