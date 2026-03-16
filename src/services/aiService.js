@@ -142,76 +142,6 @@ const callGemini = async (prompt, isJson = true) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// SIMPLE OVERLAP FIXER — No API calls, no geocoding, just math.
-// Only adjusts activities that start BEFORE the previous one ends.
-// ═══════════════════════════════════════════════════════════════
-const parseTime = (t) => {
-    if (!t) return null;
-    const m = t.toString().match(/(\d+):(\d+)\s*(AM|PM)/i);
-    if (!m) return null;
-    let h = parseInt(m[1]);
-    const mins = parseInt(m[2]);
-    const p = m[3].toUpperCase();
-    if (p === 'PM' && h !== 12) h += 12;
-    if (p === 'AM' && h === 12) h = 0;
-    return h * 60 + mins;
-};
-
-const toTimeStr = (total) => {
-    let h = Math.floor(total / 60) % 24;
-    const mins = total % 60;
-    const p = h >= 12 ? 'PM' : 'AM';
-    if (h > 12) h -= 12;
-    if (h === 0) h = 12;
-    return `${h.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')} ${p}`;
-};
-
-const parseDuration = (d) => {
-    if (!d) return 60;
-    const s = d.toString().toLowerCase();
-    const hm = s.match(/(\d+\.?\d*)\s*h/i);
-    if (hm) {
-        const extraM = s.match(/(\d+)\s*m/i);
-        return Math.round(parseFloat(hm[1]) * 60) + (extraM ? parseInt(extraM[1]) : 0);
-    }
-    const mo = s.match(/(\d+)\s*m/i);
-    if (mo) return parseInt(mo[1]);
-    const n = s.match(/(\d+\.?\d*)/);
-    if (n) { const v = parseFloat(n[1]); return v < 5 ? Math.round(v * 60) : Math.round(v); }
-    return 60;
-};
-
-const TRAVEL_BUFFER = 15; // 15 min buffer for travel between activities
-
-const fixOverlappingActivities = (itinerary) => {
-    if (!itinerary || !Array.isArray(itinerary)) return itinerary;
-
-    return itinerary.map(day => {
-        if (!day.activities || day.activities.length <= 1) return day;
-
-        const acts = [...day.activities];
-        for (let i = 1; i < acts.length; i++) {
-            const prevStart = parseTime(acts[i - 1].time);
-            const prevDur = parseDuration(acts[i - 1].duration);
-            const currStart = parseTime(acts[i].time);
-            if (prevStart == null || currStart == null) continue;
-
-            const prevEnd = prevStart + prevDur;
-
-            // Only fix if current starts BEFORE previous ends (overlap)
-            if (currStart < prevEnd) {
-                const fixed = prevEnd + TRAVEL_BUFFER;
-                // Safety: don't push past 10 PM
-                if (fixed <= 22 * 60) {
-                    acts[i] = { ...acts[i], time: toTimeStr(fixed) };
-                }
-            }
-        }
-        return { ...day, activities: acts };
-    });
-};
-
-// ═══════════════════════════════════════════════════════════════
 // 1. PREMIUM ITINERARY GENERATION
 // ═══════════════════════════════════════════════════════════════
 export const generateTripItinerary = async (destination, days, budget, travelers, interests, preferences = {}) => {
@@ -254,54 +184,44 @@ ${locationContext}
 PLANNING RULES (MANDATORY)
 ═══════════════════════════════════════
 
-1. TRAVEL LOGISTICS & GAPS (STRICT)
-   - Calculate REALISTIC travel time between every two consecutive activities using your knowledge of Google Maps distances.
-   - TRAVEL TIME IS NOT TELEPORTATION. You MUST leave a gap in the timeline for transit.
-   - Rule: Activity B "time" MUST = (Activity A "time" + Activity A "duration") + (Calculated Travel Time) + (15-30 min buffer).
-   - IMPORTANT: If Activity A ends at 10:00 AM and is 5km away, Activity B CANNOT start at 10:00 AM. It should start at 10:30 AM or later.
-   - Optimize route to MINIMIZE backtracking — group nearby attractions together.
+1. TRAVEL AS SEPARATE ITEMS (MOST IMPORTANT RULE)
+   - Between EVERY two consecutive activities, you MUST insert a TRAVEL item.
+   - The travel item MUST have type "car" and include the estimated distance (in km) and travel time.
+   - The travel item's "time" = when the previous activity ends (previous time + previous duration).
+   - The next activity's "time" = travel item's "time" + travel item's "duration".
+   - Example sequence:
+     Activity A at 09:00 AM (1 hour) → Travel at 10:00 AM (20 mins, 4km) → Activity B at 10:20 AM (2 hours)
+   - This is MANDATORY. An itinerary without travel items between activities is INVALID.
 
-2. DAILY TIME PLANNING
-   - Structure each day into clear time blocks: Morning → Afternoon → Evening → Night.
-   - Events MUST be in STRICT CHRONOLOGICAL order with gaps for travel.
-   - WRONG: Activity 1 (09:00-10:00), Activity 2 (10:00-11:00) <- NO! This allows 0 mins for travel.
-   - RIGHT: Activity 1 (09:00-10:00), Travel gap (10:00-10:30), Activity 2 (10:30-11:30) <- YES!
-   - STRICT JSON RULE: The "time" value of an activity MUST account for the duration AND travel time of the previous activity.
-   - Use realistic durations: 1.5-2 hrs for major attractions, 45 min-1 hr for meals, 30 min for quick stops.
-   - NO redundant activities — do not suggest similar cafes/snack stops multiple times on the same day.
+2. TIME PLANNING
+   - Structure each day: Morning → Afternoon → Evening → Night.
+   - Events in STRICT CHRONOLOGICAL order. No overlaps.
+   - Realistic durations: 1.5-2 hrs for major attractions, 45 min-1 hr for meals, 30 min for quick stops.
+   - Travel durations: estimate based on your knowledge of real Google Maps distances for that area.
 
 3. SMART ACTIVITY SELECTION
-   - Select activities based on: traveler interests, seasonal weather suitability, crowd patterns (avoid peak tourist hours where possible), location proximity
-   - PRIORITIZE in this order:
-     a) Must-see landmarks and iconic experiences
-     b) Hidden gems and local-only experiences (from Atlas Obscura, Culture Trip)
-     c) Cultural immersion activities (cooking classes, art walks, local festivals)
-     d) Nature and scenic spots
-   - Include at least 1 "hidden gem" or unique local experience per day that most tourists miss
+   - Select based on: traveler interests, weather, crowd patterns, location proximity
+   - PRIORITIZE: Must-see landmarks > Hidden gems > Cultural immersion > Nature
+   - Include at least 1 "hidden gem" per day
+   - Group nearby attractions together to minimize travel
 
 4. FOOD INTEGRATION
-   - Include breakfast, lunch, and dinner as activities with specific restaurant/food spot suggestions
-   - Recommend REAL, well-known restaurants or food streets — not generic "Local Restaurant"
-   - Mention the signature dish to try at each food spot
-   - Match food spots to the area being explored that day (no backtracking just for food)
+   - Include breakfast, lunch, and dinner with specific restaurant names
+   - Recommend REAL restaurants — not generic "Local Restaurant"
+   - Mention the signature dish to try
 
-5. PRACTICAL DETAILS PER ACTIVITY
-   - "cost": Estimated cost per person in local currency (INR for India, USD for USA, EUR for Europe, etc.)
-   - "duration": Realistic time including the activity itself
-   - "description": 1-2 sentences explaining WHY this activity is special, what makes it worth visiting, and any pro tips
-   - "location": Specific area/neighborhood name, not just city name
-
-6. DAY THEMING
-   - Give each day a clear thematic title that captures the essence of the day's plan
-   - Example: "Heritage Walk & Street Food Trail", "Coastal Bliss & Sunset Cruise", "Cultural Deep Dive & Night Markets"
-
-7. ALTERNATIVE SUGGESTIONS
-   - For each day, include 1-2 optional alternative activities in the description of the main activity (e.g., "Alternative: If raining, visit XYZ indoor gallery instead")
+5. PRACTICAL DETAILS
+   - "cost": Estimated cost per person in local currency
+   - "duration": Realistic time for the activity
+   - "description": Why this is special + pro tips
+   - "location": Specific place name, not just city name
 
 ═══════════════════════════════════════
 ACTIVITY TYPES (use these exact strings)
 ═══════════════════════════════════════
 Must be one of: 'flight', 'train', 'bus', 'car', 'hotel', 'checkin', 'checkout', 'breakfast', 'lunch', 'dinner', 'cafe', 'attraction', 'tour', 'shopping', 'nature', 'beach', 'museum', 'nightlife'
+
+USE 'car' FOR ALL TRAVEL/TRANSIT ITEMS between activities.
 
 ═══════════════════════════════════════
 OUTPUT FORMAT (Return ONLY this JSON)
@@ -314,13 +234,49 @@ OUTPUT FORMAT (Return ONLY this JSON)
       "title": "Descriptive Day Theme",
       "activities": [
         {
-          "time": "09:00 AM",
-          "title": "Specific Activity Name",
-          "type": "attraction",
+          "time": "08:00 AM",
+          "title": "Breakfast at Prema Restaurant",
+          "type": "breakfast",
+          "duration": "45 minutes",
+          "description": "Famous South Indian breakfast spot. Try the Masala Dosa.",
+          "location": "Prema Restaurant, Gokarna Main Road",
+          "cost": 150
+        },
+        {
+          "time": "08:45 AM",
+          "title": "Travel to Om Beach",
+          "type": "car",
+          "duration": "20 minutes",
+          "description": "4.5 km by auto-rickshaw via Om Beach Road",
+          "location": "En route",
+          "cost": 100
+        },
+        {
+          "time": "09:05 AM",
+          "title": "Explore Om Beach",
+          "type": "beach",
           "duration": "2 hours",
-          "description": "Why this is special. Pro tip: arrive early to beat crowds. Alternative: Visit XYZ if weather is bad.",
-          "location": "Specific Area/Neighborhood, City",
-          "cost": 500
+          "description": "Relax on the famous Om-shaped beach. Try water sports.",
+          "location": "Om Beach, Gokarna",
+          "cost": 0
+        },
+        {
+          "time": "11:05 AM",
+          "title": "Travel to Half Moon Beach",
+          "type": "car",
+          "duration": "30 minutes",
+          "description": "2 km trek along the coastal trail from Om Beach",
+          "location": "En route",
+          "cost": 0
+        },
+        {
+          "time": "11:35 AM",
+          "title": "Half Moon Beach Visit",
+          "type": "beach",
+          "duration": "1.5 hours",
+          "description": "Secluded beach accessible by trek. Pack water.",
+          "location": "Half Moon Beach, Gokarna",
+          "cost": 0
         }
       ]
     }
@@ -330,14 +286,7 @@ OUTPUT FORMAT (Return ONLY this JSON)
 IMPORTANT: Return ONLY the JSON. No markdown, no code blocks, no explanations outside the JSON.`;
 
     try {
-        const result = await callGemini(prompt, true);
-
-        // Simple overlap fix: only adjust activities that start before the previous one ends
-        if (result.success && result.itinerary) {
-            result.itinerary = fixOverlappingActivities(result.itinerary);
-        }
-
-        return result;
+        return await callGemini(prompt, true);
     } catch (error) {
         console.error("AI Error:", error);
         return { success: false, error: error.message };

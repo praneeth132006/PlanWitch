@@ -105,11 +105,9 @@ export default function AIPersonalizedPlanScreen({ navigation }) {
 - Additional Notes: ${details.additionalNotes}
 
 PLANNING RULES (MANDATORY):
-1. TRAVEL LOGISTICS: Calculate REALISTIC travel time between every two consecutive activities. TRAVEL TIME IS NOT TELEPORTATION. You MUST leave a gap in the timeline for transit.
-2. Rule: Activity B "time" MUST = (Activity A "time" + Activity A "duration") + (Calculated Travel Time) + (15-30 min buffer).
-3. NO BACK-TO-BACK: An activity MUST NOT start at the same time the previous one ends if they are at different locations.
-   - WRONG: Activity 1 (10:00 AM - 11:00 AM), Activity 2 (11:00 AM)
-   - RIGHT: Activity 1 (10:00 AM - 11:00 AM), Travel gap (30 mins), Activity 2 (11:30 AM)
+1. TRAVEL AS SEPARATE ITEMS: Between EVERY two activities, insert a travel item with type "car". Include distance and time in the description (e.g., "4 km by auto-rickshaw, 15 mins").
+2. TIMING: Travel item starts when previous activity ends. Next activity starts when travel ends. No overlaps.
+3. SPECIFICITY: Use specific restaurant/place names, not generic ones.
 
 Return ONLY a JSON object (no extra text) with this exact structure:
 {
@@ -119,7 +117,9 @@ Return ONLY a JSON object (no extra text) with this exact structure:
       "day": 1,
       "title": "Day Title",
       "activities": [
-        { "time": "hh:mm AM/PM", "title": "Activity Name", "description": "Brief description", "duration": "e.g. 2 hours", "cost": "est cost" }
+        { "time": "08:00 AM", "title": "Breakfast at Place", "type": "breakfast", "duration": "45 minutes", "description": "Details", "location": "Place, Area", "cost": 150 },
+        { "time": "08:45 AM", "title": "Travel to Next Place", "type": "car", "duration": "20 minutes", "description": "4 km by auto-rickshaw", "location": "En route", "cost": 100 },
+        { "time": "09:05 AM", "title": "Next Activity", "type": "attraction", "duration": "2 hours", "description": "Details", "location": "Place, Area", "cost": 0 }
       ]
     }
   ],
