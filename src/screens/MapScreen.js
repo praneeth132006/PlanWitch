@@ -392,6 +392,9 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10, backgroundColor: colors.bg, zIndex: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={onBackToHome} style={{ marginRight: 15 }}>
+            <Icon name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
           <Icon name="itinerary" size={24} color={colors.text} style={{ marginRight: 8 }} />
           <Text style={styles.headerTitle}>Itinerary</Text>
         </View>

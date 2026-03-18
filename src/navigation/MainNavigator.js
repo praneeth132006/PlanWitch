@@ -26,54 +26,7 @@ import Icon from '../components/Icon';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import AdminScreen from '../screens/AdminScreen';
 
-const Tab = createBottomTabNavigator();
 
-// Tab Bar Icon Component
-function TabIcon({ name, focused, color }) {
-  return (
-    <View style={styles.tabIconContainer}>
-      <Icon name={name} size={24} color={color} />
-      {focused && <View style={[styles.activeDot, { backgroundColor: color }]} />}
-    </View>
-  );
-}
-
-// Main Tab Navigator
-function TabNavigator({ onBackToHome, onSetScreen }) {
-  const { colors } = useTheme();
-
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.primaryBorder,
-          borderTopWidth: 1,
-          height: 70,
-          paddingBottom: 10,
-          paddingTop: 10,
-        },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
-      }}
-    >
-      <Tab.Screen
-        name="Home"
-        options={{
-          tabBarLabel: 'Home',
-          tabBarIcon: ({ focused, color }) => <TabIcon name="home" focused={focused} color={color} />,
-        }}
-      >
-        {(props) => <HomeScreen {...props} onBackToHome={onBackToHome} onSetScreen={onSetScreen} />}
-      </Tab.Screen>
-    </Tab.Navigator>
-  );
-}
 
 // Main Navigator
 export default function MainNavigator() {
@@ -249,7 +202,7 @@ export default function MainNavigator() {
   }
 
   if (currentScreen === 'TripDashboard') {
-    return <TabNavigator onBackToHome={handleBackToHome} onSetScreen={setCurrentScreen} />;
+    return <HomeScreen onBackToHome={handleBackToHome} onSetScreen={setCurrentScreen} />;
   }
 
   // Standalone Access for previously tabbed screens
@@ -307,15 +260,4 @@ export default function MainNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
-  tabIconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 2,
-  },
-});
+const styles = StyleSheet.create({});

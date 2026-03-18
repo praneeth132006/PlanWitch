@@ -941,12 +941,6 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
             </View>
             <View style={styles.headerActions}>
               <PremiumBackButton
-                onPress={() => setShowSettingsModal(true)}
-                style={{ backgroundColor: colors.card, borderColor: colors.primaryBorder }}
-              >
-                <Icon name="settings" size={24} color={colors.text} />
-              </PremiumBackButton>
-              <PremiumBackButton
                 onPress={onBackToHome}
                 style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
               >
@@ -1036,6 +1030,13 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                   <Icon name="food" size={22} color="#8B5CF6" />
                 </View>
                 <Text style={styles.quickAccessText}>Food</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickAccessBtn} onPress={() => setShowSettingsModal(true)}>
+                <View style={[styles.quickAccessIconBg, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+                  <Icon name="settings" size={22} color={colors.text} />
+                </View>
+                <Text style={styles.quickAccessText}>Settings</Text>
               </TouchableOpacity>
             </View>
 
@@ -2813,10 +2814,12 @@ const createStyles = (colors) => StyleSheet.create({
   },
   quickAccessRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     alignItems: 'center',
     marginTop: 16,
     marginBottom: 8,
+    gap: 16,
     paddingHorizontal: 4,
   },
   quickAccessBtn: {

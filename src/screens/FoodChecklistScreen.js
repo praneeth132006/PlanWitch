@@ -9,7 +9,7 @@ import { useTravelContext } from '../context/TravelContext';
 import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
 
-export default function FoodChecklistScreen({ onSetScreen }) {
+export default function FoodChecklistScreen({ onBackToHome, onSetScreen }) {
     const { colors } = useTheme();
     // Destructure new Context methods for persistence
     const { tripInfo, foodItems, addFoodItem, toggleFoodItem, deleteFoodItem, checkFeatureAccess } = useTravelContext();
@@ -127,6 +127,9 @@ export default function FoodChecklistScreen({ onSetScreen }) {
             {/* Header */}
             <View style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity onPress={onBackToHome} style={{ marginRight: 15 }}>
+                        <Icon name="arrow-back" size={24} color={colors.text} />
+                    </TouchableOpacity>
                     <Icon name="food" size={24} color={colors.text} style={{ marginRight: 8 }} />
                     <Text style={styles.headerTitle}>Food Checklist</Text>
                 </View>

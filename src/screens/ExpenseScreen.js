@@ -16,7 +16,7 @@ const DEFAULT_CATEGORIES = [
   { key: 'transport', label: 'Transport', icon: 'transport', color: '#3B82F6' },
 ];
 
-export default function ExpenseScreen() {
+export default function ExpenseScreen({ onBackToHome, onSetScreen }) {
   const {
     tripInfo, budget, setBudget, expenses = [], addExpense, updateExpense, deleteExpense,
     getTotalExpenses, formatCurrency, currency, getAllTravelers, localParticipantId, customCategories
@@ -296,6 +296,9 @@ export default function ExpenseScreen() {
       {/* Header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={onBackToHome} style={{ marginRight: 15 }}>
+            <Icon name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
           <Icon name="expenses" size={24} color={colors.text} style={{ marginRight: 8 }} />
           <Text style={styles.headerTitle}>Expenses</Text>
         </View>

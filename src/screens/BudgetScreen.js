@@ -12,7 +12,7 @@ import { CustomAlert } from '../components/CustomAlert';
 const ICON_OPTIONS = ['hotel', 'car', 'food', 'shopping', 'packing', 'airplane', 'train', 'beach', 'nature', 'ticket', 'hospital', 'mobile', 'task', 'like', 'heart', 'budget'];
 const COLOR_OPTIONS = ['#8B5CF6', '#3B82F6', '#F59E0B', '#10B981', '#EC4899', '#6B7280', '#EF4444', '#06B6D4', '#84CC16', '#F97316'];
 
-export default function BudgetScreen({ onSetScreen }) {
+export default function BudgetScreen({ onBackToHome, onSetScreen }) {
   const {
     budget = { total: 0, categories: {} },
     setBudget,
@@ -149,6 +149,9 @@ export default function BudgetScreen({ onSetScreen }) {
       {/* Header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={onBackToHome} style={{ marginRight: 15 }}>
+            <Icon name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
           <Icon name="budget" size={24} color={colors.text} style={{ marginRight: 8 }} />
           <Text style={styles.headerTitle}>Budget Planner</Text>
         </View>

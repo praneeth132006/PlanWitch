@@ -211,6 +211,9 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
       {/* Header */}
       <View style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={onBackToHome} style={{ marginRight: 15 }}>
+            <Icon name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
           <Icon name="packing" size={24} color={colors.text} style={{ marginRight: 8 }} />
           <View>
             <Text style={styles.headerTitle}>Packing List</Text>
