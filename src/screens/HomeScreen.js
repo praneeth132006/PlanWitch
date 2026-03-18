@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Animated, Pressable, Modal, Alert, ActivityIndicator, Image, Platform } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Animated, Pressable, Modal, Alert, ActivityIndicator, Image, Platform, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTravelContext } from '../context/TravelContext';
 import { useTheme } from '../context/ThemeContext';
@@ -102,16 +102,20 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
 
   // AI State
   const [aiModalVisible, setAiModalVisible] = useState(false);
-  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [isAiGenerating, setIsAiGenerating] = useState(false); // AI Flow State
   const [aiPreferences, setAiPreferences] = useState({
-    pace: 'Moderate',
     interests: [],
+    pace: null,
+    transport_modes: [],
+    budget_preference: null,
+    routeOptimization: 'optimize',
+    startLocation: '',
+    placesEnabled: true,
     startTime: '09:00 AM',
     endTime: '09:00 PM',
     locationDurations: {},
     budget_min: '',
     budget_max: '',
-    budget_preference: 'Mid',
     budget_priority: ['Experiences'],
     accommodation_type: 'Hotel',
     hotel_price: '2000 - 5000',
@@ -640,6 +644,10 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
             ...aiPreferences,
             startTime: useTimings ? aiPreferences.startTime : undefined,
             endTime: useTimings ? aiPreferences.endTime : undefined,
+            startLocation: aiPreferences.startLocation,
+            placesEnabled: aiPreferences.placesEnabled,
+            transitModes: aiPreferences.transport_modes,
+            routeOptimization: aiPreferences.routeOptimization
           }
         );
 
@@ -1815,9 +1823,17 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                   </View>
 
                   {/* 2. Detailed Places Duration */}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>Places & Duration</Text>
-                    {(() => {
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>Places & Duration</Text>
+                      <Switch
+                        value={aiPreferences.placesEnabled !== false}
+                        onValueChange={(val) => setAiPreferences(prev => ({ ...prev, placesEnabled: val }))}
+                        style={{ transform: [{ scale: 0.8 }], marginLeft: 8 }}
+                        trackColor={{ false: colors.border, true: colors.primary }}
+                      />
+                    </View>
+                    {aiPreferences.placesEnabled !== false && (() => {
                       const totalDays = generateDaysForAi(tripInfo.startDate, tripInfo.endDate).length || 1;
                       const plannedDays = Object.values(aiPreferences.locationDurations || {}).reduce((sum, d) => sum + (parseInt(d) || 0), 0);
                       const remaining = totalDays - plannedDays;
@@ -1841,12 +1857,14 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                       );
                     })()}
                   </View>
-                  <View style={{ marginBottom: 24, gap: 10 }}>
-                    {tripInfo.stops && tripInfo.stops.length > 0 ? (
-                      tripInfo.stops.map((stop, index) => {
-                        const stopName = typeof stop === 'object' ? (stop.name || `Stop ${index + 1}`) : stop;
-                        const durationKey = `stop_${index}`;
-                        const totalDays = generateDaysForAi(tripInfo.startDate, tripInfo.endDate).length || 1;
+                  
+                  {aiPreferences.placesEnabled !== false && (
+                    <View style={{ marginBottom: 24, gap: 10 }}>
+                      {tripInfo.stops && tripInfo.stops.length > 0 ? (
+                        tripInfo.stops.map((stop, index) => {
+                          const stopName = typeof stop === 'object' ? (stop.name || `Stop ${index + 1}`) : stop;
+                          const durationKey = `stop_${index}`;
+                          const totalDays = generateDaysForAi(tripInfo.startDate, tripInfo.endDate).length || 1;
 
                         return (
                           <View key={index} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, padding: 12, borderRadius: 12 }}>
@@ -1878,6 +1896,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                       <Text style={{ color: colors.textMuted, fontSize: 14 }}>No main stops added yet. Add stops in settings to plan per location.</Text>
                     )}
                   </View>
+                  )}
 
                   {/* 3. Pace */}
                   <Text style={styles.aiSectionHeader}>Trip Pace</Text>
@@ -1901,6 +1920,43 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                         ]}>{pace}</Text>
                       </TouchableOpacity>
                     ))}
+                  </View>
+
+                  {/* 4. Routing Strategy */}
+                  <Text style={styles.aiSectionHeader}>Routing Strategy</Text>
+                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.aiSelectionPill,
+                        {
+                          flex: 1,
+                          backgroundColor: aiPreferences.routeOptimization === 'optimize' ? colors.primary : colors.bg,
+                          borderColor: aiPreferences.routeOptimization === 'optimize' ? colors.primary : colors.border
+                        }
+                      ]}
+                      onPress={() => setAiPreferences(prev => ({ ...prev, routeOptimization: 'optimize' }))}
+                    >
+                      <Text style={[
+                        styles.aiSelectionText,
+                        { color: aiPreferences.routeOptimization === 'optimize' ? '#000000' : colors.textMuted }
+                      ]}>AI Best Route</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.aiSelectionPill,
+                        {
+                          flex: 1,
+                          backgroundColor: aiPreferences.routeOptimization === 'follow-order' ? colors.primary : colors.bg,
+                          borderColor: aiPreferences.routeOptimization === 'follow-order' ? colors.primary : colors.border
+                        }
+                      ]}
+                      onPress={() => setAiPreferences(prev => ({ ...prev, routeOptimization: 'follow-order' }))}
+                    >
+                      <Text style={[
+                        styles.aiSelectionText,
+                        { color: aiPreferences.routeOptimization === 'follow-order' ? '#000000' : colors.textMuted }
+                      ]}>Follow My Order</Text>
+                    </TouchableOpacity>
                   </View>
 
                   {/* 4. Interests */}

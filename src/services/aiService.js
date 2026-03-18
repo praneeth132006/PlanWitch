@@ -144,6 +144,47 @@ const callGemini = async (prompt, isJson = true) => {
 // ═══════════════════════════════════════════════════════════════
 // 1. PREMIUM ITINERARY GENERATION
 // ═══════════════════════════════════════════════════════════════
+// Helper to rigidly enforce travel items between activities (Fallback for AI memory lapses)
+const addMissingTravelItems = (itinerary) => {
+    if (!itinerary || !Array.isArray(itinerary)) return itinerary;
+
+    return itinerary.map(day => {
+        if (!day.activities || !Array.isArray(day.activities)) return day;
+        
+        let newActivities = [];
+        for (let i = 0; i < day.activities.length; i++) {
+            const currentAct = day.activities[i];
+            newActivities.push(currentAct);
+
+            // If this is not the last activity, check if a travel item follows
+            if (i < day.activities.length - 1) {
+                const nextAct = day.activities[i + 1];
+                
+                // If neither current nor next is a travel step ('car', 'flight', 'train', 'bus'), inject a default one
+                const isTravel = (type) => ['car', 'flight', 'train', 'bus'].includes(type?.toLowerCase());
+                
+                if (!isTravel(currentAct.type) && !isTravel(nextAct.type)) {
+                    // Try to guess start time based on current activity's end time if possible (basic string manipulation usually fails, so keep it simple)
+                    newActivities.push({
+                        time: nextAct.time ? nextAct.time.replace(/([0-9]+):([0-9]+)\s*(AM|PM)/i, (m, h, min, a) => {
+                            let hh = parseInt(h); let mm = parseInt(min) - 20;
+                            if(mm < 0) { mm += 60; hh -= 1; if(hh === 0) hh = 12; }
+                            return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')} ${a}`;
+                        }) : '--:--',
+                        title: `Travel to ${nextAct.location ? nextAct.location.split(',')[0] : 'Next Stop'}`,
+                        type: 'car',
+                        duration: '20 mins',
+                        description: 'Transit (Auto-calculated fallback)',
+                        location: 'En route',
+                        cost: 0
+                    });
+                }
+            }
+        }
+        return { ...day, activities: newActivities };
+    });
+};
+
 export const generateTripItinerary = async (destination, days, budget, travelers, interests, preferences = {}) => {
     if (!AI_CONFIG.geminiKey) {
         console.warn('Using MOCK itinerary data (No API Key)');
@@ -308,7 +349,11 @@ OUTPUT FORMAT (Return ONLY this JSON)
 IMPORTANT: Return ONLY the JSON. No markdown, no code blocks, no explanations outside the JSON.`;
 
     try {
-        return await callGemini(prompt, true);
+        const rawResult = await callGemini(prompt, true);
+        if (rawResult && rawResult.success && rawResult.itinerary) {
+            rawResult.itinerary = addMissingTravelItems(rawResult.itinerary);
+        }
+        return rawResult;
     } catch (error) {
         console.error("AI Error:", error);
         return { success: false, error: error.message };
@@ -749,5 +794,14 @@ Return ONLY a JSON object (no extra text) with this exact structure:
   }
 }`;
 
-    return callGemini(prompt, true);
+    try {
+        const rawResult = await callGemini(prompt, true);
+        if (rawResult && rawResult.success && rawResult.itinerary) {
+            rawResult.itinerary = addMissingTravelItems(rawResult.itinerary);
+        }
+        return rawResult;
+    } catch (error) {
+        console.error("AI Error:", error);
+        return { success: false, error: error.message };
+    }
 };
