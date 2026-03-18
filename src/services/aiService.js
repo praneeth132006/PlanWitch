@@ -150,7 +150,7 @@ const addMissingTravelItems = (itinerary) => {
 
     return itinerary.map(day => {
         if (!day.activities || !Array.isArray(day.activities)) return day;
-        
+
         let newActivities = [];
         for (let i = 0; i < day.activities.length; i++) {
             const currentAct = day.activities[i];
@@ -159,16 +159,16 @@ const addMissingTravelItems = (itinerary) => {
             // If this is not the last activity, check if a travel item follows
             if (i < day.activities.length - 1) {
                 const nextAct = day.activities[i + 1];
-                
+
                 // If neither current nor next is a travel step ('car', 'flight', 'train', 'bus'), inject a default one
                 const isTravel = (type) => ['car', 'flight', 'train', 'bus'].includes(type?.toLowerCase());
-                
+
                 if (!isTravel(currentAct.type) && !isTravel(nextAct.type)) {
                     // Try to guess start time based on current activity's end time if possible (basic string manipulation usually fails, so keep it simple)
                     newActivities.push({
                         time: nextAct.time ? nextAct.time.replace(/([0-9]+):([0-9]+)\s*(AM|PM)/i, (m, h, min, a) => {
                             let hh = parseInt(h); let mm = parseInt(min) - 20;
-                            if(mm < 0) { mm += 60; hh -= 1; if(hh === 0) hh = 12; }
+                            if (mm < 0) { mm += 60; hh -= 1; if (hh === 0) hh = 12; }
                             return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')} ${a}`;
                         }) : '--:--',
                         title: `Travel to ${nextAct.location ? nextAct.location.split(',')[0] : 'Next Stop'}`,
@@ -191,10 +191,10 @@ export const generateTripItinerary = async (destination, days, budget, travelers
         return new Promise(resolve => setTimeout(() => resolve(MOCK_ITINERARY), 2000));
     }
 
-    const { 
-        pace = 'Moderate', 
-        startTime = '09:00 AM', 
-        endTime = '09:00 PM', 
+    const {
+        pace = 'Moderate',
+        startTime = '09:00 AM',
+        endTime = '09:00 PM',
         locationDurations = {},
         startLocation = '',
         transitModes = [],

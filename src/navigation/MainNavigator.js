@@ -71,51 +71,6 @@ function TabNavigator({ onBackToHome, onSetScreen }) {
       >
         {(props) => <HomeScreen {...props} onBackToHome={onBackToHome} onSetScreen={onSetScreen} />}
       </Tab.Screen>
-      <Tab.Screen
-        name="Itinerary"
-        options={{
-          tabBarLabel: 'Itinerary',
-          tabBarIcon: ({ focused, color }) => <TabIcon name="itinerary" focused={focused} color={color} />,
-        }}
-      >
-        {(props) => <MapScreen {...props} onBackToHome={onBackToHome} onSetScreen={onSetScreen} />}
-      </Tab.Screen>
-      <Tab.Screen
-        name="Expenses"
-        options={{
-          tabBarLabel: 'Expenses',
-          tabBarIcon: ({ focused, color }) => <TabIcon name="expenses" focused={focused} color={color} />,
-        }}
-      >
-        {(props) => <ExpenseScreen {...props} onBackToHome={onBackToHome} onSetScreen={onSetScreen} />}
-      </Tab.Screen>
-      <Tab.Screen
-        name="Budget"
-        options={{
-          tabBarLabel: 'Budget',
-          tabBarIcon: ({ focused, color }) => <TabIcon name="budget" focused={focused} color={color} />,
-        }}
-      >
-        {(props) => <BudgetScreen {...props} onBackToHome={onBackToHome} onSetScreen={onSetScreen} />}
-      </Tab.Screen>
-      <Tab.Screen
-        name="Packing"
-        options={{
-          tabBarLabel: 'Packing',
-          tabBarIcon: ({ focused, color }) => <TabIcon name="packing" focused={focused} color={color} />,
-        }}
-      >
-        {(props) => <PackingScreen {...props} onBackToHome={onBackToHome} onSetScreen={onSetScreen} />}
-      </Tab.Screen>
-      <Tab.Screen
-        name="Food"
-        options={{
-          tabBarLabel: 'Food',
-          tabBarIcon: ({ focused, color }) => <TabIcon name="food" focused={focused} color={color} />,
-        }}
-      >
-        {(props) => <FoodChecklistScreen {...props} onBackToHome={onBackToHome} onSetScreen={onSetScreen} />}
-      </Tab.Screen>
     </Tab.Navigator>
   );
 }
@@ -295,6 +250,23 @@ export default function MainNavigator() {
 
   if (currentScreen === 'TripDashboard') {
     return <TabNavigator onBackToHome={handleBackToHome} onSetScreen={setCurrentScreen} />;
+  }
+
+  // Standalone Access for previously tabbed screens
+  if (currentScreen === 'Itinerary') {
+    return <MapScreen onBackToHome={() => setCurrentScreen('TripDashboard')} onSetScreen={setCurrentScreen} />;
+  }
+  if (currentScreen === 'Expenses') {
+    return <ExpenseScreen onBackToHome={() => setCurrentScreen('TripDashboard')} onSetScreen={setCurrentScreen} />;
+  }
+  if (currentScreen === 'Budget') {
+    return <BudgetScreen onBackToHome={() => setCurrentScreen('TripDashboard')} onSetScreen={setCurrentScreen} />;
+  }
+  if (currentScreen === 'Packing') {
+    return <PackingScreen onBackToHome={() => setCurrentScreen('TripDashboard')} onSetScreen={setCurrentScreen} />;
+  }
+  if (currentScreen === 'Food') {
+    return <FoodChecklistScreen onBackToHome={() => setCurrentScreen('TripDashboard')} onSetScreen={setCurrentScreen} />;
   }
 
   if (currentScreen === 'AIPersonalizedPlan') {

@@ -119,7 +119,6 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
     budget_priority: ['Experiences'],
     accommodation_type: 'Hotel',
     hotel_price: '2000 - 5000',
-    transport_modes: ['Flight', 'Car'],
     local_transport: ['Cab']
   });
   const [regenOptions, setRegenOptions] = useState({
@@ -595,6 +594,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
       }
 
       hideAlert();
+      // eslint-disable-next-line no-undef
       setTimeout(() => {
         const parts = [];
         if (regenOptions.itinerary && itineraryCount > 0) parts.push(`${itineraryCount} stops`);
@@ -611,6 +611,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
       }, 500);
     } catch (error) {
       hideAlert();
+      // eslint-disable-next-line no-undef
       setTimeout(() => {
         const failed = [];
         if (regenOptions.packing) failed.push('packing');
@@ -1000,6 +1001,44 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               {tripInfo.aiDescription || `Get ready for an unforgettable journey to ${tripInfo.destination || 'your destination'}. You're all set to explore ${mainLocationsCount} amazing places.`}
             </Text>
 
+            {/* Quick Access Icons */}
+            <View style={styles.quickAccessRow}>
+              <TouchableOpacity style={styles.quickAccessBtn} onPress={() => onSetScreen('Itinerary')}>
+                <View style={[styles.quickAccessIconBg, { backgroundColor: '#4682B420' }]}>
+                  <Icon name="itinerary" size={22} color="#4682B4" />
+                </View>
+                <Text style={styles.quickAccessText}>Itinerary</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.quickAccessBtn} onPress={() => onSetScreen('Expenses')}>
+                <View style={[styles.quickAccessIconBg, { backgroundColor: '#EF444420' }]}>
+                  <Icon name="expenses" size={22} color="#EF4444" />
+                </View>
+                <Text style={styles.quickAccessText}>Expenses</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickAccessBtn} onPress={() => onSetScreen('Budget')}>
+                <View style={[styles.quickAccessIconBg, { backgroundColor: '#10B98120' }]}>
+                  <Icon name="budget" size={22} color="#10B981" />
+                </View>
+                <Text style={styles.quickAccessText}>Budget</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickAccessBtn} onPress={() => onSetScreen('Packing')}>
+                <View style={[styles.quickAccessIconBg, { backgroundColor: '#F59E0B20' }]}>
+                  <Icon name="packing" size={22} color="#F59E0B" />
+                </View>
+                <Text style={styles.quickAccessText}>Packing</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickAccessBtn} onPress={() => onSetScreen('Food')}>
+                <View style={[styles.quickAccessIconBg, { backgroundColor: '#8B5CF620' }]}>
+                  <Icon name="food" size={22} color="#8B5CF6" />
+                </View>
+                <Text style={styles.quickAccessText}>Food</Text>
+              </TouchableOpacity>
+            </View>
+
 
 
             {/* Stats Grid */}
@@ -1256,7 +1295,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                 <Icon name="calendar" size={24} color={colors.primary} style={{ marginRight: 10 }} />
                 <Text style={{ fontSize: 24, fontWeight: '800', color: colors.text }}>Interactive Timeline</Text>
               </View>
-              <TouchableOpacity onPress={() => onSetScreen('MapScreen')}>
+              <TouchableOpacity onPress={() => onSetScreen('Itinerary')}>
                 <Text style={styles.viewMoreText}>View Map →</Text>
               </TouchableOpacity>
             </View>
@@ -1269,8 +1308,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                     key={index}
                     style={styles.timelineVerticalCard}
                     onPress={() => {
-                      setSelectedItineraryDay(index);
-                      onSetScreen('MapScreen');
+                      onSetScreen('Itinerary');
                     }}
                   >
                     <View style={styles.timelineVerticalBadge}>
@@ -1683,6 +1721,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                           }}
                           onPress={() => {
                             if (Platform.OS !== 'web') {
+                              // eslint-disable-next-line no-undef
                               LayoutAnimation.configureNext({
                                 duration: 400,
                                 create: { type: 'spring', springDamping: 0.7, property: 'scaleXY' },
@@ -1857,7 +1896,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                       );
                     })()}
                   </View>
-                  
+
                   {aiPreferences.placesEnabled !== false && (
                     <View style={{ marginBottom: 24, gap: 10 }}>
                       {tripInfo.stops && tripInfo.stops.length > 0 ? (
@@ -1866,36 +1905,36 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                           const durationKey = `stop_${index}`;
                           const totalDays = generateDaysForAi(tripInfo.startDate, tripInfo.endDate).length || 1;
 
-                        return (
-                          <View key={index} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, padding: 12, borderRadius: 12 }}>
-                            <Text style={{ flex: 1, color: colors.text, fontSize: 14, fontWeight: '500' }}>{stopName}</Text>
-                            <TextInput
-                              style={[styles.aiInputSmall, { outlineStyle: 'none' }]}
-                              placeholder="Days"
-                              placeholderTextColor={colors.textMuted}
-                              keyboardType="numeric"
-                              value={aiPreferences.locationDurations?.[durationKey] || ''}
-                              onChangeText={(t) => {
-                                const val = parseInt(t) || 0;
-                                // Basic validation: can't be more than total trip days by itself
-                                if (val > totalDays) {
-                                  showAlert('Invalid Duration', `Duration for one stop cannot exceed total trip days (${totalDays}).`, 'warning', () => hideAlert());
-                                  return;
-                                }
+                          return (
+                            <View key={index} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardLight, padding: 12, borderRadius: 12 }}>
+                              <Text style={{ flex: 1, color: colors.text, fontSize: 14, fontWeight: '500' }}>{stopName}</Text>
+                              <TextInput
+                                style={[styles.aiInputSmall, { outlineStyle: 'none' }]}
+                                placeholder="Days"
+                                placeholderTextColor={colors.textMuted}
+                                keyboardType="numeric"
+                                value={aiPreferences.locationDurations?.[durationKey] || ''}
+                                onChangeText={(t) => {
+                                  const val = parseInt(t) || 0;
+                                  // Basic validation: can't be more than total trip days by itself
+                                  if (val > totalDays) {
+                                    showAlert('Invalid Duration', `Duration for one stop cannot exceed total trip days (${totalDays}).`, 'warning', () => hideAlert());
+                                    return;
+                                  }
 
-                                setAiPreferences(prev => ({
-                                  ...prev,
-                                  locationDurations: { ...prev.locationDurations, [durationKey]: t }
-                                }));
-                              }}
-                            />
-                          </View>
-                        );
-                      })
-                    ) : (
-                      <Text style={{ color: colors.textMuted, fontSize: 14 }}>No main stops added yet. Add stops in settings to plan per location.</Text>
-                    )}
-                  </View>
+                                  setAiPreferences(prev => ({
+                                    ...prev,
+                                    locationDurations: { ...prev.locationDurations, [durationKey]: t }
+                                  }));
+                                }}
+                              />
+                            </View>
+                          );
+                        })
+                      ) : (
+                        <Text style={{ color: colors.textMuted, fontSize: 14 }}>No main stops added yet. Add stops in settings to plan per location.</Text>
+                      )}
+                    </View>
                   )}
 
                   {/* 3. Pace */}
@@ -2520,7 +2559,6 @@ const createStyles = (colors) => StyleSheet.create({
   participantsCard: { backgroundColor: colors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.primaryBorder },
   participantsList: {
     padding: 8,
-    padding: 8,
     gap: 12,
   },
   familyGroupItem: {
@@ -2771,6 +2809,32 @@ const createStyles = (colors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     fontSize: 13,
+    textAlign: 'center',
+  },
+  quickAccessRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  quickAccessBtn: {
+    alignItems: 'center',
+    width: 60,
+  },
+  quickAccessIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  quickAccessText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.text,
     textAlign: 'center',
   }
 });
