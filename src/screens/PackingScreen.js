@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
-  Modal, Animated, ActivityIndicator, Pressable
+  Modal, Animated, ActivityIndicator, Pressable, Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -39,13 +39,19 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
     deletePackingItem,
     setPackingItems,
     tripInfo = {},
-    checkFeatureAccess
+    checkFeatureAccess,
+    amazonAffiliateTag,
+    amazonDomain,
+    saveAmazonSettings
   } = useTravelContext();
   const { colors } = useTheme();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
   const [newItem, setNewItem] = useState({ name: '', category: 'essentials', quantity: '1', notes: '' });
+  const [showAmazonModal, setShowAmazonModal] = useState(false);
+  const [tempTag, setTempTag] = useState(amazonAffiliateTag || '');
+  const [tempDomain, setTempDomain] = useState(amazonDomain || 'amazon.com');
 
   // Custom Alert State
   const [alertConfig, setAlertConfig] = useState({
@@ -96,6 +102,13 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
   };
 
   const getCategoryInfo = (key) => PACKING_CATEGORIES.find(c => c.key === key) || PACKING_CATEGORIES[7];
+
+  const handleShopOnAmazon = (itemName) => {
+    const domain = amazonDomain || 'amazon.com';
+    const tag = amazonAffiliateTag ? `&tag=${amazonAffiliateTag}` : '';
+    const url = `https://www.${domain}/s?k=${encodeURIComponent(itemName)}${tag}`;
+    Linking.openURL(url).catch(err => console.error('Error opening Amazon:', err));
+  };
 
   // Filter and group items (removed showPacked filter)
   const filteredItems = packingItems.filter(item => {
@@ -220,36 +233,48 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
             <Text style={styles.headerSubtitle}>Ready for {tripInfo.destination || 'your trip'}</Text>
           </View>
         </View>
-        {packingItems.length > 0 && !tripInfo.isCompleted && (
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => {
-              showAlert(
-                'Clear All Items?',
-                'This will permanently remove all items from your packing list. This cannot be undone.',
-                'warning',
-                async () => {
-                  try {
-                    hideAlert();
-                    await setPackingItems([]);
-                    setTimeout(() => {
-                      showAlert('Cleared!', 'All packing items have been removed.', 'success', () => hideAlert());
-                    }, 500);
-                  } catch (error) {
-                    console.error('Error clearing packing items:', error);
-                    showAlert('Error', 'Failed to clear items. Please check your connection or permissions.', 'error', () => hideAlert());
-                  }
-                },
-                () => hideAlert(),
-                null,
-                'Clear All',
-                'Cancel'
-              );
+              setTempTag(amazonAffiliateTag);
+              setTempDomain(amazonDomain);
+              setShowAmazonModal(true);
             }}
-            style={styles.clearAllButton}
+            style={[styles.clearAllButton, { marginRight: 8, backgroundColor: 'rgba(255, 153, 0, 0.1)', borderColor: 'rgba(255, 153, 0, 0.2)' }]}
           >
-            <Text style={styles.clearAllText}>Clear All</Text>
+            <Icon name="shopping" size={16} color="#FF9900" />
           </TouchableOpacity>
-        )}
+          {packingItems.length > 0 && !tripInfo.isCompleted && (
+            <TouchableOpacity
+              onPress={() => {
+                showAlert(
+                  'Clear All Items?',
+                  'This will permanently remove all items from your packing list. This cannot be undone.',
+                  'warning',
+                  async () => {
+                    try {
+                      hideAlert();
+                      await setPackingItems([]);
+                      setTimeout(() => {
+                        showAlert('Cleared!', 'All packing items have been removed.', 'success', () => hideAlert());
+                      }, 500);
+                    } catch (error) {
+                      console.error('Error clearing packing items:', error);
+                      showAlert('Error', 'Failed to clear items. Please check your connection or permissions.', 'error', () => hideAlert());
+                    }
+                  },
+                  () => hideAlert(),
+                  null,
+                  'Clear All',
+                  'Cancel'
+                );
+              }}
+              style={styles.clearAllButton}
+            >
+              <Text style={styles.clearAllText}>Clear All</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -450,6 +475,17 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
                             <Text style={styles.itemNotes}>{item.notes}</Text>
                           )}
                         </View>
+                        {!tripInfo.isCompleted && !item.packed && (
+                          <TouchableOpacity
+                            style={styles.itemShop}
+                            onPress={(e) => {
+                              e?.stopPropagation();
+                              handleShopOnAmazon(item.name);
+                            }}
+                          >
+                            <Icon name="shopping" size={16} color="#FF9900" />
+                          </TouchableOpacity>
+                        )}
                         {!tripInfo.isCompleted && (
                           <TouchableOpacity
                             style={styles.itemDelete}
@@ -629,6 +665,68 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
         cancelText={alertConfig.cancelText}
         neutralText={alertConfig.neutralText}
       />
+
+      <Modal visible={showAmazonModal} animationType="slide" transparent onRequestClose={() => setShowAmazonModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Amazon Affiliate Settings</Text>
+              <TouchableOpacity onPress={() => setShowAmazonModal(false)} style={styles.modalClose}>
+                <Icon name="close" size={20} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Amazon Associate Tag</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g., yourname-21"
+                  placeholderTextColor={colors.textMuted}
+                  value={tempTag}
+                  onChangeText={setTempTag}
+                />
+                <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 4 }}>
+                  This tag will be added to all Amazon search links for your packing list.
+                </Text>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Amazon Domain</Text>
+                <View style={[styles.categoryGrid, { gap: 10 }]}>
+                  {['amazon.com', 'amazon.in', 'amazon.co.uk', 'amazon.ca', 'amazon.de'].map((domain) => (
+                    <TouchableOpacity
+                      key={domain}
+                      style={[
+                        styles.categoryOption,
+                        tempDomain === domain && { backgroundColor: '#FF9900', borderColor: '#FF9900' }
+                      ]}
+                      onPress={() => setTempDomain(domain)}
+                    >
+                      <Text style={[styles.categoryOptionText, tempDomain === domain && { color: '#FFF' }]}>
+                        {domain}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.submitBtn, { backgroundColor: '#FF9900' }]}
+                onPress={() => {
+                  saveAmazonSettings(tempTag, tempDomain);
+                  setShowAmazonModal(false);
+                }}
+              >
+                <Text style={styles.submitBtnText}>Save Settings</Text>
+              </TouchableOpacity>
+
+              <View style={{ height: 30 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -779,6 +877,7 @@ const createStyles = (colors) => StyleSheet.create({
   itemQuantity: { color: colors.primary, fontSize: 12, marginTop: 2 },
   itemNotes: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
   itemDelete: { padding: 6 },
+  itemShop: { padding: 6, marginRight: 4, backgroundColor: 'rgba(255, 153, 0, 0.1)', borderRadius: 6 },
   itemDeleteText: { fontSize: 14 },
 
   // Suggestions

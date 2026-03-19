@@ -93,6 +93,8 @@ export const TravelProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [tripOwnerId, setTripOwnerId] = useState(null);
   const [selectedItineraryDay, setSelectedItineraryDay] = useState(null);
+  const [amazonAffiliateTag, setAmazonAffiliateTag] = useState('');
+  const [amazonDomain, setAmazonDomain] = useState('amazon.com');
 
   // Ref to store real-time listener unsubscribe functions
   const unsubscribersRef = useRef({});
@@ -435,12 +437,14 @@ export const TravelProvider = ({ children }) => {
       setIsLoading(true);
       // console.log('Loading user data from Firebase...');
 
-      // Load user settings (Currency)
+      // Load user settings (Currency, Amazon)
       const settings = await DB.getUserSettings();
       if (settings?.currency) {
         const savedCurrency = currencies.find(c => c.code === settings.currency);
         if (savedCurrency) setCurrencyState(savedCurrency);
       }
+      if (settings?.amazonAffiliateTag) setAmazonAffiliateTag(settings.amazonAffiliateTag);
+      if (settings?.amazonDomain) setAmazonDomain(settings.amazonDomain);
 
       // Load current trip info
       const currentTrip = await DB.getCurrentTripInfo();
@@ -1297,6 +1301,18 @@ export const TravelProvider = ({ children }) => {
     }
   };
 
+  const saveAmazonSettings = async (tag, domain) => {
+    setAmazonAffiliateTag(tag);
+    setAmazonDomain(domain);
+    if (isAuthenticated) {
+      try {
+        await DB.saveUserSettings({ amazonAffiliateTag: tag, amazonDomain: domain });
+      } catch (error) {
+        console.error('Error saving Amazon settings:', error);
+      }
+    }
+  };
+
   // Update trip info in DB
   const updateTripInfo = async (updates) => {
     const newInfo = { ...tripInfo, ...updates };
@@ -1307,6 +1323,9 @@ export const TravelProvider = ({ children }) => {
   return (
     <TravelContext.Provider value={{
       selectedItineraryDay, setSelectedItineraryDay,
+      amazonAffiliateTag, setAmazonAffiliateTag,
+      amazonDomain, setAmazonDomain,
+      saveAmazonSettings,
       tripInfo: tripInfo || { // Fallback if tripInfo somehow becomes null
         destination: '', startDate: '', endDate: '', name: '',
         participants: [], tripCode: '', tripType: '', isCompleted: false,
