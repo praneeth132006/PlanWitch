@@ -146,7 +146,7 @@ export const TravelProvider = ({ children }) => {
     });
 
     // F. Subscribe to packing items
-    unsubscribersRef.current.packingItems = DB.subscribeToPackingItems(id, owner, (data) => {
+    unsubscribersRef.current.packingItems = DB.subscribeToPackingItems(id, null, (data) => {
       setPackingItems(data || []);
     });
   };
@@ -635,7 +635,7 @@ export const TravelProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        await DB.savePackingItem(newItem, tripInfo.id, tripOwnerId);
+        await DB.savePackingItem(newItem, tripInfo.id);
       } catch (error) {
         console.error('Error saving packing item:', error);
       }
@@ -651,7 +651,7 @@ export const TravelProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        await DB.updatePackingItem(id, { packed: !item.packed }, tripInfo.id, tripOwnerId);
+        await DB.updatePackingItem(id, { packed: !item.packed }, tripInfo.id);
       } catch (error) {
         console.error('Error updating packing item:', error);
       }
@@ -664,7 +664,7 @@ export const TravelProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        await DB.deletePackingItemFromDB(id, tripInfo.id, tripOwnerId);
+        await DB.deletePackingItemFromDB(id, tripInfo.id);
       } catch (error) {
         console.error('Error deleting packing item:', error);
       }
@@ -807,7 +807,7 @@ export const TravelProvider = ({ children }) => {
     setPackingItems(newPackingItems);
     if (isAuthenticated) {
       try {
-        await DB.savePackingItems(newPackingItems, tripInfo.id, tripOwnerId);
+        await DB.savePackingItems(newPackingItems, tripInfo.id);
       } catch (error) {
         console.error('Error saving packing items list:', error);
       }
