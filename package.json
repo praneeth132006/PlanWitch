@@ -23,7 +23,7 @@
     "@react-navigation/native": "^7.0.0",
     "@react-navigation/native-stack": "^7.8.2",
     "expo": "~52.0.0",
-    "expo-build-properties": "~0.13.3",
+    "expo-build-properties": "~55.0.10",
     "expo-calendar": "~14.0.6",
     "expo-clipboard": "~7.0.1",
     "expo-linear-gradient": "~14.0.2",
