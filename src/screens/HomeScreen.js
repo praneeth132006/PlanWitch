@@ -1167,7 +1167,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               </View>
               <View style={styles.gridItem}>
                 <Text style={styles.gridLabel}>TRAVELERS</Text>
-                <Text style={styles.gridValue}>{travelers.length}</Text>
+                <Text style={styles.gridValue}>{getAllTravelers().length}</Text>
               </View>
               <TouchableOpacity
                 style={styles.gridItem}
