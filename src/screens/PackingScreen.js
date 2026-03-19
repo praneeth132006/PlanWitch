@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useTravelContext } from '../context/TravelContext';
 import Icon from '../components/Icon';
 import { CustomAlert } from '../components/CustomAlert';
+import { getAmazonAffiliateURL } from '../utils/amazonUtils';
 
 const PACKING_CATEGORIES = [
   { key: 'essentials', label: 'Essentials', icon: 'passport', color: '#EF4444', emoji: '📋' },
@@ -39,19 +40,13 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
     deletePackingItem,
     setPackingItems,
     tripInfo = {},
-    checkFeatureAccess,
-    amazonAffiliateTag,
-    amazonDomain,
-    saveAmazonSettings
+    checkFeatureAccess
   } = useTravelContext();
   const { colors } = useTheme();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
   const [newItem, setNewItem] = useState({ name: '', category: 'essentials', quantity: '1', notes: '' });
-  const [showAmazonModal, setShowAmazonModal] = useState(false);
-  const [tempTag, setTempTag] = useState(amazonAffiliateTag || '');
-  const [tempDomain, setTempDomain] = useState(amazonDomain || 'amazon.com');
 
   // Custom Alert State
   const [alertConfig, setAlertConfig] = useState({
@@ -104,9 +99,7 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
   const getCategoryInfo = (key) => PACKING_CATEGORIES.find(c => c.key === key) || PACKING_CATEGORIES[7];
 
   const handleShopOnAmazon = (itemName) => {
-    const domain = amazonDomain || 'amazon.com';
-    const tag = amazonAffiliateTag ? `&tag=${amazonAffiliateTag}` : '';
-    const url = `https://www.${domain}/s?k=${encodeURIComponent(itemName)}${tag}`;
+    const url = getAmazonAffiliateURL(itemName);
     Linking.openURL(url).catch(err => console.error('Error opening Amazon:', err));
   };
 
@@ -223,27 +216,19 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           <TouchableOpacity onPress={onBackToHome} style={{ marginRight: 15 }}>
             <Icon name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Icon name="packing" size={24} color={colors.text} style={{ marginRight: 8 }} />
-          <View>
-            <Text style={styles.headerTitle}>Packing List</Text>
-            <Text style={styles.headerSubtitle}>Ready for {tripInfo.destination || 'your trip'}</Text>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Icon name="packing" size={20} color={colors.text} style={{ marginRight: 8 }} />
+              <Text style={styles.headerTitle} numberOfLines={1}>Packing List</Text>
+            </View>
+            <Text style={styles.headerSubtitle} numberOfLines={1}>Ready for {tripInfo.destination || 'your trip'}</Text>
           </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity
-            onPress={() => {
-              setTempTag(amazonAffiliateTag);
-              setTempDomain(amazonDomain);
-              setShowAmazonModal(true);
-            }}
-            style={[styles.clearAllButton, { marginRight: 8, backgroundColor: 'rgba(255, 153, 0, 0.1)', borderColor: 'rgba(255, 153, 0, 0.2)' }]}
-          >
-            <Icon name="shopping" size={16} color="#FF9900" />
-          </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
           {packingItems.length > 0 && !tripInfo.isCompleted && (
             <TouchableOpacity
               onPress={() => {
@@ -665,68 +650,6 @@ export default function PackingScreen({ onBackToHome, onSetScreen }) {
         cancelText={alertConfig.cancelText}
         neutralText={alertConfig.neutralText}
       />
-
-      <Modal visible={showAmazonModal} animationType="slide" transparent onRequestClose={() => setShowAmazonModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Amazon Affiliate Settings</Text>
-              <TouchableOpacity onPress={() => setShowAmazonModal(false)} style={styles.modalClose}>
-                <Icon name="close" size={20} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Amazon Associate Tag</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g., yourname-21"
-                  placeholderTextColor={colors.textMuted}
-                  value={tempTag}
-                  onChangeText={setTempTag}
-                />
-                <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 4 }}>
-                  This tag will be added to all Amazon search links for your packing list.
-                </Text>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Amazon Domain</Text>
-                <View style={[styles.categoryGrid, { gap: 10 }]}>
-                  {['amazon.com', 'amazon.in', 'amazon.co.uk', 'amazon.ca', 'amazon.de'].map((domain) => (
-                    <TouchableOpacity
-                      key={domain}
-                      style={[
-                        styles.categoryOption,
-                        tempDomain === domain && { backgroundColor: '#FF9900', borderColor: '#FF9900' }
-                      ]}
-                      onPress={() => setTempDomain(domain)}
-                    >
-                      <Text style={[styles.categoryOptionText, tempDomain === domain && { color: '#FFF' }]}>
-                        {domain}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={[styles.submitBtn, { backgroundColor: '#FF9900' }]}
-                onPress={() => {
-                  saveAmazonSettings(tempTag, tempDomain);
-                  setShowAmazonModal(false);
-                }}
-              >
-                <Text style={styles.submitBtnText}>Save Settings</Text>
-              </TouchableOpacity>
-
-              <View style={{ height: 30 }} />
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
