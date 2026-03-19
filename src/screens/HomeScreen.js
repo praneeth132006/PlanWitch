@@ -12,6 +12,7 @@ import TripMap from '../components/TripMap';
 import PremiumBackButton from '../components/PremiumBackButton';
 import PlacesAutocomplete from '../components/PlacesAutocomplete';
 import { generateDestinationInfo, generateTripItinerary, generateFoodRecommendations, generatePackingList, generateBudgetPlan } from '../services/aiService';
+import { CalendarService } from '../services/calendarService';
 import BannerAd from '../components/BannerAd';
 import { CustomAlert } from '../components/CustomAlert';
 import DatePicker12 from '../components/ui/DatePicker12';
@@ -130,6 +131,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
   const [useTimings, setUseTimings] = useState(false); // New state for optional timings
   const [hasExistingContent, setHasExistingContent] = useState(false);
   const [showAllTimelineDays, setShowAllTimelineDays] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Custom Alert State
   const [alertConfig, setAlertConfig] = useState({
@@ -153,6 +155,33 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         ? prev.budget_priority.filter(p => p !== priority)
         : [...prev.budget_priority, priority]
     }));
+  };
+
+  const handleCalendarSync = async () => {
+    const access = checkFeatureAccess('calendar_sync');
+    if (!access.allowed) {
+      showAlert(
+        'Premium Feature',
+        access.reason,
+        'premium',
+        () => navigation.navigate('Subscription'),
+        () => hideAlert(),
+        null,
+        'Go Pro',
+        'Later'
+      );
+      return;
+    }
+
+    try {
+      setIsSyncing(true);
+      await CalendarService.syncTripToCalendar(tripInfo, itinerary);
+      showAlert('Sync Complete', 'Your trip and itinerary have been synced to your calendar! 📅', 'info');
+    } catch (error) {
+      showAlert('Sync Failed', error.message || 'Make sure you have granted calendar permissions.', 'error');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handleToggleInterest = (interest) => {
@@ -1031,6 +1060,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                 </View>
                 <Text style={styles.quickAccessText}>Food</Text>
               </TouchableOpacity>
+
 
               <TouchableOpacity style={styles.quickAccessBtn} onPress={() => setShowSettingsModal(true)}>
                 <View style={[styles.quickAccessIconBg, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>

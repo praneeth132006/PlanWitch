@@ -11,6 +11,7 @@ import Icon from '../components/Icon';
 import { getTravelLogistics, geocodeAddress, getPlaceSuggestions } from '../services/transitService';
 import { getLogistics, saveLogistics } from '../services/databaseService';
 import { CustomAlert } from '../components/CustomAlert';
+import { CalendarService } from '../services/calendarService';
 
 const { width } = Dimensions.get('window');
 
@@ -128,6 +129,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
   const [timePickerVisible, setTimePickerVisible] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [activeDay, setActiveDay] = useState(1);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -380,7 +382,32 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
     };
   };
 
-  const totalStops = itinerary.length;
+  const handleCalendarSync = async () => {
+    const access = checkFeatureAccess('calendar_sync');
+    if (!access.allowed) {
+      showAlert(
+        'Premium Feature',
+        access.reason,
+        'premium'
+      );
+      return;
+    }
+
+    try {
+      setIsSyncing(true);
+      await CalendarService.syncTripToCalendar(tripInfo, itinerary);
+      showAlert('Sync Complete', 'Your trip and itinerary have been synced! 📅', 'info');
+    } catch (error) {
+      showAlert('Sync Failed', error.message || 'Make sure you have granted calendar permissions.', 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const totalStops = itinerary.filter(item => {
+    const type = STOP_TYPES.find(t => t.key === item.type);
+    return type?.category !== 'transport';
+  }).length;
   const travelers = getAllTravelers();
   const participantCount = travelers.length;
 
@@ -439,6 +466,23 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
               </Text>
             </View>
           )}
+          
+          <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 15, opacity: 0.3 }} />
+          
+          <TouchableOpacity 
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 5 }} 
+            onPress={handleCalendarSync}
+            disabled={isSyncing}
+          >
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF69B420', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+              {isSyncing ? (
+                <ActivityIndicator size="small" color="#FF69B4" />
+              ) : (
+                <Icon name="calendar" size={22} color="#FF69B4" />
+              )}
+            </View>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>syn with calender</Text>
+          </TouchableOpacity>
         </View>
 
         {totalStops === 0 && (
