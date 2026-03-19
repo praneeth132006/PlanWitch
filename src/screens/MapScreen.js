@@ -135,13 +135,6 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
   const [editingId, setEditingId] = useState(null);
   const [selectedDayIndex, setSelectedDayIndex] = useState(selectedItineraryDay !== null ? selectedItineraryDay : 0);
 
-  useEffect(() => {
-    if (selectedItineraryDay !== null) {
-      setSelectedDayIndex(selectedItineraryDay);
-      const timer = setTimeout(() => setSelectedItineraryDay(null), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [selectedItineraryDay, setSelectedItineraryDay]);
   const [newStop, setNewStop] = useState({
     name: '', type: 'attraction', dayNumber: 1, time: '', notes: '', location: '',
     duration: '', cost: ''
@@ -170,6 +163,27 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
 
   const tripDays = useMemo(() => generateDays(tripInfo.startDate, tripInfo.endDate), [tripInfo.startDate, tripInfo.endDate]);
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  useEffect(() => {
+    if (selectedItineraryDay !== null) {
+      setSelectedDayIndex(selectedItineraryDay);
+      const timer = setTimeout(() => setSelectedItineraryDay(null), 500);
+      return () => clearTimeout(timer);
+    } else if (tripDays.length > 0 && tripInfo.startDate) {
+      // Auto-select current day of trip
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayIndex = tripDays.findIndex(day => {
+        if (!day.date) return false;
+        const d = new Date(day.date);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() === today.getTime();
+      });
+      if (todayIndex !== -1) {
+        setSelectedDayIndex(todayIndex);
+      }
+    }
+  }, [selectedItineraryDay, setSelectedItineraryDay, tripDays, tripInfo.startDate]);
 
   // Load all logistics for this trip once on mount
   useEffect(() => {
@@ -459,6 +473,7 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
               </View>
             </View>
           </View>
+
           {tripInfo.startDate && tripInfo.endDate && (
             <View style={styles.dateRange}>
               <Text style={styles.dateRangeText}>
@@ -466,22 +481,36 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
               </Text>
             </View>
           )}
-          
-          <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 15, opacity: 0.3 }} />
-          
-          <TouchableOpacity 
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 5 }} 
+
+          <TouchableOpacity
+            style={{
+              alignSelf: 'center',
+              alignItems: 'center',
+              marginTop: 15,
+            }}
             onPress={handleCalendarSync}
             disabled={isSyncing}
           >
-            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF69B420', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+            <View style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: '#FF69B415',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: 4
+            }}>
               {isSyncing ? (
                 <ActivityIndicator size="small" color="#FF69B4" />
               ) : (
                 <Icon name="calendar" size={22} color="#FF69B4" />
               )}
             </View>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>syn with calender</Text>
+            <Text style={{
+              fontSize: 12,
+              fontWeight: '600',
+              color: colors.text,
+            }}>Sync with Calendar</Text>
           </TouchableOpacity>
         </View>
 
@@ -503,7 +532,10 @@ export default function MapScreen({ onBackToHome, onSetScreen }) {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daySelectorScroll}>
               {tripDays.map((day, index) => {
                 const isActive = index === selectedDayIndex;
-                const stopsForDay = getStopsForDay(day.dayNumber);
+                const stopsForDay = getStopsForDay(day.dayNumber).filter(item => {
+                  const type = STOP_TYPES.find(t => t.key === item.type);
+                  return type?.category !== 'transport';
+                });
                 const hasStops = stopsForDay.length > 0;
                 return (
                   <TouchableOpacity
