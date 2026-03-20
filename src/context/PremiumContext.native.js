@@ -14,7 +14,8 @@ export const usePremium = () => {
 };
 
 export const PremiumProvider = ({ children }) => {
-    const [isPremium, setIsPremium] = useState(false);
+    // TEMPORARY: Make app free for all users
+    const [isPremium, setIsPremium] = useState(true);
     const [loading, setLoading] = useState(true);
     const [offerings, setOfferings] = useState(null);
 
@@ -44,9 +45,9 @@ export const PremiumProvider = ({ children }) => {
                     Purchases.configure({ apiKey: REVENUE_CAT_CONFIG.apiKey });
                 }
 
-                // Check active entitlements
+                // Check active entitlements (Temporarily overridden to always be true)
                 const customerInfo = await Purchases.getCustomerInfo();
-                setIsPremium(customerInfo.entitlements.active[REVENUE_CAT_CONFIG.entitlementId] !== undefined);
+                setIsPremium(true);
 
                 // Load offerings
                 await fetchOfferings();
@@ -59,9 +60,9 @@ export const PremiumProvider = ({ children }) => {
 
         initPurchases();
 
-        // Listen for customer info updates
+        // Listen for customer info updates (Temporarily overridden to always be true)
         const listener = (customerInfo) => {
-            setIsPremium(customerInfo.entitlements.active[REVENUE_CAT_CONFIG.entitlementId] !== undefined);
+            setIsPremium(true);
         };
 
         Purchases.addCustomerInfoUpdateListener(listener);

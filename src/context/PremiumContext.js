@@ -15,7 +15,8 @@ export const usePremium = () => {
 
 export const PremiumProvider = ({ children }) => {
     const { user } = useAuth();
-    const [isPremium, setIsPremium] = useState(false);
+    // TEMPORARY: Make app free for all users
+    const [isPremium, setIsPremium] = useState(true);
     const [loading, setLoading] = useState(false);
     const [offerings, setOfferings] = useState(null);
 
