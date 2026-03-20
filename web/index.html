@@ -16,18 +16,41 @@
   <link rel="shortcut icon" href="/icon.png" type="image/png">
   <meta name="description" content="Premium Travel Companion & Budget Tracker">
 
-  <!-- Google AdSense - Replace YOUR_PUBLISHER_ID with your ca-pub-XXXXXXXXXX -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1266748452983907"
-    crossorigin="anonymous"></script>
+  <!-- Google AdSense Auto Ads - Conditionally loaded to prevent PWA layout breaks -->
+  <script>
+    if (!window.matchMedia('(display-mode: standalone)').matches && window.navigator.standalone !== true) {
+      var script = document.createElement('script');
+      script.async = true;
+      script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1266748452983907";
+      script.crossOrigin = "anonymous";
+      document.head.appendChild(script);
+    }
+  </script>
 
   <style>
     html,
     body,
     #root {
       height: 100% !important;
+      min-height: 100dvh !important;
       margin: 0 !important;
+      padding: 0 !important;
       background-color: #0D0D0D !important;
       overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      overflow: hidden;
+    }
+    /* Prevent AdSense from taking over layout in standalone mode */
+    .adsbygoogle {
+      max-height: 100px !important;
+      overflow: hidden !important;
+    }
+    @media all and (display-mode: standalone) {
+      .adsbygoogle {
+        display: none !important;
+      }
     }
   </style>
 </head>

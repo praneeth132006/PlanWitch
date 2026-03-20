@@ -16,6 +16,17 @@ const isAdSenseConfigured = ADSENSE_PUBLISHER_ID && !ADSENSE_PUBLISHER_ID.includ
 /**
  * Renders a Google AdSense ad unit inside a React component
  */
+// Detect if running as installed PWA (standalone mode)
+const isStandaloneMode = () => {
+    if (Platform.OS !== 'web') return false;
+    try {
+        return window.matchMedia('(display-mode: standalone)').matches ||
+               window.navigator.standalone === true;
+    } catch (e) {
+        return false;
+    }
+};
+
 const AdSenseUnit = ({ adSlot, adFormat = AD_FORMATS.AUTO, style }) => {
     const adRef = useRef(null);
     const pushed = useRef(false);
@@ -34,16 +45,19 @@ const AdSenseUnit = ({ adSlot, adFormat = AD_FORMATS.AUTO, style }) => {
         }
     }, []);
 
-    if (Platform.OS !== 'web' || !isAdSenseConfigured) return null;
+    // Don't show ads in standalone PWA mode (they don't load and cause layout issues)
+    if (Platform.OS !== 'web' || !isAdSenseConfigured || isStandaloneMode()) return null;
 
     return (
-        <View style={style}>
+        <View style={[style, { maxHeight: 100, overflow: 'hidden' }]}>
             <ins
                 className="adsbygoogle"
                 style={{
                     display: 'block',
                     width: '100%',
                     minHeight: 60,
+                    maxHeight: 100,
+                    overflow: 'hidden',
                 }}
                 data-ad-client={ADSENSE_PUBLISHER_ID}
                 data-ad-slot={adSlot}
@@ -105,6 +119,12 @@ const BannerAd = ({ onPress, adSlot, adFormat }) => {
 
     // Premium users never see ads
     if (isPremium) return null;
+
+    // Don't show ads in standalone PWA mode
+    if (Platform.OS === 'web' && isStandaloneMode()) {
+        // Show the upsell banner instead since ads don't work in standalone mode
+        return <PremiumUpsellBanner onPress={onPress} colors={colors} isDark={isDark} />;
+    }
 
     // If AdSense is configured, show real ads
     if (isAdSenseConfigured) {

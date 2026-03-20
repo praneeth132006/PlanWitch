@@ -867,7 +867,6 @@ const createStyles = (colors) => StyleSheet.create({
     backgroundColor: colors.bg,
   },
   scrollContent: {
-    flexGrow: 1,
     paddingBottom: Platform.OS === 'web' ? 20 : 60, // Reduced on web to avoid black bar
     backgroundColor: colors.bg,
   },

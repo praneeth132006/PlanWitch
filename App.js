@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
       container: {
         width: '100%',
         maxWidth: 500, // Mobile app appearance on desktop
-        height: '100dvh', // Use dynamic viewport height
+        height: '100%', // Use percentage instead of dvh — 100dvh in PWA standalone creates black gaps
         backgroundColor: '#000000',
         alignSelf: 'center',
         paddingBottom: 0, // Force no bottom padding
