@@ -220,7 +220,8 @@ export const claimParticipantIdentity = async (ownerId, tripId, participantId, u
   const sharedSnapshot = await get(sharedParticipantsRef);
 
   if (sharedSnapshot.exists()) {
-    const participants = sharedSnapshot.val();
+    const participantsVal = sharedSnapshot.val();
+    const participants = Array.isArray(participantsVal) ? participantsVal : Object.values(participantsVal);
     const updatedParticipants = participants.map(p =>
       p.id === participantId ? { ...p, userId, photoURL } : p
     );
@@ -234,7 +235,8 @@ export const claimParticipantIdentity = async (ownerId, tripId, participantId, u
     const snapshot = await get(participantsRef);
 
     if (snapshot.exists()) {
-      const participants = snapshot.val();
+      const participantsVal = snapshot.val();
+      const participants = Array.isArray(participantsVal) ? participantsVal : Object.values(participantsVal);
       const updatedParticipants = participants.map(p =>
         p.id === participantId ? { ...p, userId, photoURL } : p
       );

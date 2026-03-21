@@ -10,7 +10,7 @@
             ".read": "auth != null",
             "$tripId": {
                 ".read": "auth != null",
-                ".write": "auth != null && (!data.exists() || data.child('ownerId').val() == auth.uid)"
+                ".write": "auth != null"
             }
         },
         "tripCodes": {
