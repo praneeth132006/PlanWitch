@@ -214,8 +214,8 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                 });
             }
 
-            // visit & end logic...
-            if (visit && (!stops || stops.length === 0)) {
+            // visit & end logic
+            if (visit) {
                 const resolved = await resolveLocation({ ...visit, name: visit.name || 'Visit' });
                 if (currentCallId !== updateCallId.current) return;
                 if (resolved) {
@@ -314,7 +314,12 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
                     });
                 } else {
                     directionsRenderer.current.setDirections({ routes: [] });
-                    if (allPoints.length > 0) mapInstance.current.fitBounds(bounds.current);
+                    if (allPoints.length === 1) {
+                        mapInstance.current.setCenter(allPoints[0].position);
+                        mapInstance.current.setZoom(12);
+                    } else if (allPoints.length > 1) {
+                        mapInstance.current.fitBounds(bounds.current);
+                    }
                 }
             }
         }, 400);
@@ -371,7 +376,7 @@ const TripMap = ({ start, origin, visit, end, destination, stops, mode, style, b
         } else {
             updateNativeMap();
         }
-    }, [start, origin, visit, end, destination, stops]);
+    }, [JSON.stringify(start), JSON.stringify(origin), JSON.stringify(visit), JSON.stringify(end), JSON.stringify(destination), JSON.stringify(stops)]);
 
     const styles = createStyles(colors);
 

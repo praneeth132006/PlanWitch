@@ -392,14 +392,34 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
     return places.size;
   }, [tripInfo.stops, itinerary]);
 
-  // Main Locations Count (Unique Stops only)
+  // Clean route points for map visualization
+  const mapData = useMemo(() => {
+    const sorted = itinerary && itinerary.length > 0 
+      ? [...itinerary].sort((a, b) => {
+          if (a.dayNumber !== b.dayNumber) return a.dayNumber - b.dayNumber;
+          return timeToMinutes(a.time) - timeToMinutes(b.time);
+        })
+      : [];
+    
+    const start = tripInfo.origin || (sorted.length > 0 ? sorted[0] : null);
+    const end = tripInfo.endLocation || (sorted.length > 1 ? sorted[sorted.length - 1] : null);
+    const visit = tripInfo.latitude ? { 
+      latitude: tripInfo.latitude, 
+      longitude: tripInfo.longitude, 
+      name: tripInfo.destination 
+    } : null;
+
+    return { start, visit, end, stops: tripInfo.stops || [] };
+  }, [tripInfo, itinerary]);
+
+  // Main locations count for display
   const mainLocationsCount = useMemo(() => {
-    if (!tripInfo.stops || !Array.isArray(tripInfo.stops)) return 0;
+    if (!tripInfo.stops || !Array.isArray(tripInfo.stops)) return 1;
     const uniqueStops = new Set();
     tripInfo.stops.forEach(s => {
       if (s.name) uniqueStops.add(s.name.trim());
     });
-    return uniqueStops.size;
+    return Math.max(1, uniqueStops.size);
   }, [tripInfo.stops]);
 
   // Last Expense Logic
@@ -983,9 +1003,10 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
         <Animated.View style={[styles.mainSection, { transform: [{ scale: scaleAnim }] }]}>
           {/* Top: Interactive Map (Read-Only visualization) */}
           <TripMap
-            origin={tripInfo.origin || (tripInfo.latitude ? { latitude: Math.fround(tripInfo.latitude), longitude: Math.fround(tripInfo.longitude), name: tripInfo.destination } : null)}
-            stops={tripInfo.stops || []}
-            destination={tripInfo.endLocation}
+            origin={mapData.start}
+            visit={mapData.visit}
+            stops={mapData.stops}
+            destination={mapData.end}
             style={styles.mapContainer}
             borderRadius={24}
             showDetailedMarkers={false}
