@@ -41,7 +41,7 @@
                 ".write": "auth != null"
             }
         },
-        "packing": {
+        "packingItems": {
             "$tripId": {
                 ".read": "auth != null",
                 ".write": "auth != null"

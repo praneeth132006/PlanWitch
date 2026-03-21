@@ -146,7 +146,7 @@ export const TravelProvider = ({ children }) => {
     });
 
     // F. Subscribe to packing items
-    unsubscribersRef.current.packingItems = DB.subscribeToPackingItems(id, null, (data) => {
+    unsubscribersRef.current.packingItems = DB.subscribeToPackingItems(id, owner, (data) => {
       setPackingItems(data || []);
     });
   };
@@ -461,8 +461,8 @@ export const TravelProvider = ({ children }) => {
       const savedExpenses = await DB.getExpenses(currentTrip?.id, currentTrip?.ownerId || user?.uid);
       setExpenses(savedExpenses);
 
-      // Load packing items - ALWAYS local/private, not synced with owner
-      const savedPackingItems = await DB.getPackingItems(currentTrip?.id);
+      // Load packing items
+      const savedPackingItems = await DB.getPackingItems(currentTrip?.id, currentTrip?.ownerId || user?.uid);
       setPackingItems(savedPackingItems);
 
       // Load food items (persisted)
@@ -635,7 +635,7 @@ export const TravelProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        await DB.savePackingItem(newItem, tripInfo.id);
+        await DB.savePackingItem(newItem, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error saving packing item:', error);
       }
@@ -651,7 +651,7 @@ export const TravelProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        await DB.updatePackingItem(id, { packed: !item.packed }, tripInfo.id);
+        await DB.updatePackingItem(id, { packed: !item.packed }, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error updating packing item:', error);
       }
@@ -664,7 +664,7 @@ export const TravelProvider = ({ children }) => {
 
     if (isAuthenticated) {
       try {
-        await DB.deletePackingItemFromDB(id, tripInfo.id);
+        await DB.deletePackingItemFromDB(id, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error deleting packing item:', error);
       }
@@ -807,7 +807,7 @@ export const TravelProvider = ({ children }) => {
     setPackingItems(newPackingItems);
     if (isAuthenticated) {
       try {
-        await DB.savePackingItems(newPackingItems, tripInfo.id);
+        await DB.savePackingItems(newPackingItems, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error saving packing items list:', error);
       }
@@ -932,8 +932,8 @@ export const TravelProvider = ({ children }) => {
 
       // Load shared data for this trip
       if (isAuthenticated) {
-        // Fetch packing items (per-user, not shared)
-        const savedPacking = await DB.getPackingItems(trip.id);
+        // Fetch packing items
+        const savedPacking = await DB.getPackingItems(trip.id, owner);
         setPackingItems(savedPacking || []);
       }
 
