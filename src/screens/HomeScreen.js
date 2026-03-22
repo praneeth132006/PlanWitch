@@ -1844,8 +1844,8 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                         value={useTimings}
                         onValueChange={(val) => setUseTimings(val)}
                         style={{ transform: [{ scale: 0.8 }], marginLeft: 8 }}
-                        trackColor={{ false: colors.border, true: colors.primary }}
-                        thumbColor={Platform.OS === 'ios' ? '#fff' : (useTimings ? colors.cardLight : '#f4f3f4')}
+                        trackColor={{ false: '#3e3e3e', true: colors.primary + '80' }}
+                        thumbColor={Platform.OS === 'ios' ? '#fff' : (useTimings ? colors.primary : '#f4f3f4')}
                       />
                     </View>
                     <View style={{
@@ -1924,7 +1924,8 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                         value={aiPreferences.placesEnabled !== false}
                         onValueChange={(val) => setAiPreferences(prev => ({ ...prev, placesEnabled: val }))}
                         style={{ transform: [{ scale: 0.8 }], marginLeft: 8 }}
-                        trackColor={{ false: colors.border, true: colors.primary }}
+                        trackColor={{ false: '#3e3e3e', true: colors.primary + '80' }}
+                        thumbColor={Platform.OS === 'ios' ? '#fff' : (aiPreferences.placesEnabled !== false ? colors.primary : '#f4f3f4')}
                       />
                     </View>
                     {aiPreferences.placesEnabled !== false && (() => {
