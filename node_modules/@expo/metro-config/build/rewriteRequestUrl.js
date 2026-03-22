@@ -3,7 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRewriteRequestUrl = exports.getRouterDirectory = void 0;
+exports.getRouterDirectory = getRouterDirectory;
+exports.getRewriteRequestUrl = getRewriteRequestUrl;
 // Copyright 2023-present 650 Industries (Expo). All rights reserved.
 const config_1 = require("@expo/config");
 const paths_1 = require("@expo/config/paths");
@@ -31,6 +32,19 @@ function isEnableHermesManaged(expoConfig, platform) {
             return false;
     }
 }
+function getAsyncRoutesFromExpoConfig(exp, mode, platform) {
+    let asyncRoutesSetting;
+    if (exp.extra?.router?.asyncRoutes) {
+        const asyncRoutes = exp.extra?.router?.asyncRoutes;
+        if (['boolean', 'string'].includes(typeof asyncRoutes)) {
+            asyncRoutesSetting = asyncRoutes;
+        }
+        else if (typeof asyncRoutes === 'object') {
+            asyncRoutesSetting = asyncRoutes[platform] ?? asyncRoutes.default;
+        }
+    }
+    return [mode, true].includes(asyncRoutesSetting);
+}
 function getRouterDirectoryModuleIdWithManifest(projectRoot, exp) {
     return exp.extra?.router?.root ?? getRouterDirectory(projectRoot);
 }
@@ -43,7 +57,6 @@ function getRouterDirectory(projectRoot) {
     debug('Using app as the root directory for Expo Router.');
     return 'app';
 }
-exports.getRouterDirectory = getRouterDirectory;
 function getRewriteRequestUrl(projectRoot) {
     function rewriteExpoRequestUrl(url) {
         // Like: `/.expo/.virtual-metro-entry.bundle?platform=ios&dev=true&minify=false&modulesOnly=false&runModule=true&app=com.bacon.test-custom-entry`
@@ -53,6 +66,7 @@ function getRewriteRequestUrl(projectRoot) {
             const ensured = url.startsWith('/') ? new URL(url, 'https://acme.dev') : new URL(url);
             // TODO: Maybe this function could be memoized in some capacity?
             const { searchParams } = ensured;
+            const isDev = searchParams.has('dev') ? searchParams.get('dev') === 'true' : true;
             const platform = searchParams.get('platform') ?? 'web';
             debug('Rewriting magic request url to entry point', { url, platform });
             const entry = (0, paths_1.resolveEntryPoint)(projectRoot, {
@@ -69,6 +83,12 @@ function getRewriteRequestUrl(projectRoot) {
             }
             if (!ensured.searchParams.has('transform.reactCompiler') && exp.experiments?.reactCompiler) {
                 ensured.searchParams.set('transform.reactCompiler', String(!!exp.experiments?.reactCompiler));
+            }
+            if (!ensured.searchParams.has('transform.asyncRoutes')) {
+                const asyncRoutes = getAsyncRoutesFromExpoConfig(exp, isDev ? 'development' : 'production', platform);
+                if (asyncRoutes) {
+                    ensured.searchParams.set('transform.asyncRoutes', String(asyncRoutes));
+                }
             }
             if (!ensured.searchParams.has('transform.engine')) {
                 const isHermesEnabled = isEnableHermesManaged(exp, platform);
@@ -98,5 +118,4 @@ function getRewriteRequestUrl(projectRoot) {
     }
     return rewriteExpoRequestUrl;
 }
-exports.getRewriteRequestUrl = getRewriteRequestUrl;
 //# sourceMappingURL=rewriteRequestUrl.js.map

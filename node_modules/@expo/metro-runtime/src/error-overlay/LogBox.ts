@@ -1,5 +1,5 @@
-import { IgnorePattern, LogData } from './Data/LogBoxData';
-import { ExtendedExceptionData } from './Data/parseLogBoxLog';
+import type { IgnorePattern, LogData } from './Data/LogBoxData';
+import type { ExtendedExceptionData } from './Data/parseLogBoxLog';
 
 export { LogData, ExtendedExceptionData, IgnorePattern };
 
@@ -27,11 +27,11 @@ const LogBox: ILogBox = {
     return false;
   },
 
-  ignoreLogs(patterns: readonly IgnorePattern[]): void {
+  ignoreLogs(_patterns: readonly IgnorePattern[]): void {
     // Do nothing.
   },
 
-  ignoreAllLogs(value?: boolean): void {
+  ignoreAllLogs(_value?: boolean): void {
     // Do nothing.
   },
 
@@ -39,11 +39,11 @@ const LogBox: ILogBox = {
     // Do nothing.
   },
 
-  addLog(log: LogData): void {
+  addLog(_log: LogData): void {
     // Do nothing.
   },
 
-  addException(ex: ExtendedExceptionData): void {
+  addException(_ex: ExtendedExceptionData): void {
     // Do nothing.
   },
 };
