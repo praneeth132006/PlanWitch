@@ -230,8 +230,9 @@ export default function MainNavigator() {
     return <SubscriptionScreen navigation={{ goBack: () => setCurrentScreen('Profile'), navigate: setCurrentScreen }} />;
   }
 
-  if (currentScreen === 'Admin') {
-    return <AdminScreen navigation={{ goBack: () => setCurrentScreen('Profile') }} />;
+  if (currentScreen.startsWith('Admin')) {
+    const tab = currentScreen === 'AdminCoupons' ? 'coupons' : 'feedback';
+    return <AdminScreen navigation={{ goBack: () => setCurrentScreen('Profile') }} initialTab={tab} />;
   }
 
   if (currentScreen === 'JoinSelection') {

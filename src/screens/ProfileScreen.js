@@ -1054,11 +1054,12 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
         {user?.isAdmin && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.primary }]}>Admin Controls</Text>
-            <AnimatedCard delay={380} onPress={() => onNavigate && onNavigate('Admin')}>
+            
+            <AnimatedCard delay={380} onPress={() => onNavigate && onNavigate('AdminFeedback')}>
               <View style={styles.settingItem}>
                 <View style={styles.settingLeft}>
                   <View style={[styles.settingIconBg, { backgroundColor: colors.primary + '20' }]}>
-                    <Icon name="settings" size={20} color={colors.primary} />
+                    <Icon name="message" size={20} color={colors.primary} />
                   </View>
                   <View style={styles.settingInfo}>
                     <Text style={styles.settingLabel}>Admin Dashboard</Text>
@@ -1069,7 +1070,7 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
               </View>
             </AnimatedCard>
 
-            <AnimatedCard delay={390} onPress={() => onNavigate && onNavigate('Admin')}>
+            <AnimatedCard delay={390} onPress={() => onNavigate && onNavigate('AdminCoupons')}>
               <View style={styles.settingItem}>
                 <View style={styles.settingLeft}>
                   <View style={[styles.settingIconBg, { backgroundColor: colors.primary + '20' }]}>

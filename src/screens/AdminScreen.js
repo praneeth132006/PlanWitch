@@ -40,10 +40,10 @@ const formatDate = (timestamp) => {
     });
 };
 
-export default function AdminScreen({ navigation }) {
+export default function AdminScreen({ navigation, initialTab = 'feedback' }) {
     const { colors, isDark } = useTheme();
     const { user: currentUser } = useAuth();
-    const [activeTab, setActiveTab] = useState('feedback'); // feedback, coupons, logs, stats, diagnostics
+    const [activeTab, setActiveTab] = useState(initialTab); // feedback, coupons, logs, stats, diagnostics
     const [feedbackList, setFeedbackList] = useState([]);
     const [couponList, setCouponList] = useState([]);
     const [systemLogs, setSystemLogs] = useState([]);
@@ -69,6 +69,14 @@ export default function AdminScreen({ navigation }) {
     const [selectedCouponForDetails, setSelectedCouponForDetails] = useState(null);
     const [usageDetails, setUsageDetails] = useState([]);
     const [loadingUsage, setLoadingUsage] = useState(false);
+
+    useEffect(() => {
+        if (initialTab) {
+            setActiveTab(initialTab);
+            if (initialTab === 'feedback') setFilter('unread');
+            else setFilter('all');
+        }
+    }, [initialTab]);
 
     useEffect(() => {
         const unsubscribeFeedback = subscribeToFeedback((data) => {
@@ -349,57 +357,63 @@ export default function AdminScreen({ navigation }) {
             </View>
 
             {/* Tab Selector */}
-            <View style={styles.tabContainer}>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'feedback' && styles.activeTab]}
-                    onPress={() => {
-                        setActiveTab('feedback');
-                        setFilter('unread');
-                    }}
+            <View style={{ height: 50, marginBottom: 10 }}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.tabContainer}
                 >
-                    <Icon name="message" size={18} color={activeTab === 'feedback' ? colors.primary : colors.textMuted} />
-                    <Text style={[styles.tabText, { color: activeTab === 'feedback' ? colors.primary : colors.textMuted }]}>Feedback</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'coupons' && styles.activeTab]}
-                    onPress={() => {
-                        setActiveTab('coupons');
-                        setFilter('all');
-                    }}
-                >
-                    <Icon name="link" size={18} color={activeTab === 'coupons' ? colors.primary : colors.textMuted} />
-                    <Text style={[styles.tabText, { color: activeTab === 'coupons' ? colors.primary : colors.textMuted }]}>Coupons</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'logs' && styles.activeTab]}
-                    onPress={() => {
-                        setActiveTab('logs');
-                        setFilter('all');
-                    }}
-                >
-                    <Icon name="notification" size={18} color={activeTab === 'logs' ? colors.primary : colors.textMuted} />
-                    <Text style={[styles.tabText, { color: activeTab === 'logs' ? colors.primary : colors.textMuted }]}>Logs</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'stats' && styles.activeTab]}
-                    onPress={() => {
-                        setActiveTab('stats');
-                        setFilter('all');
-                    }}
-                >
-                    <Icon name="sort" size={18} color={activeTab === 'stats' ? colors.primary : colors.textMuted} />
-                    <Text style={[styles.tabText, { color: activeTab === 'stats' ? colors.primary : colors.textMuted }]}>Stats</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, activeTab === 'diagnostics' && styles.activeTab]}
-                    onPress={() => {
-                        setActiveTab('diagnostics');
-                        setFilter('all');
-                    }}
-                >
-                    <Icon name="settings" size={18} color={activeTab === 'diagnostics' ? colors.primary : colors.textMuted} />
-                    <Text style={[styles.tabText, { color: activeTab === 'diagnostics' ? colors.primary : colors.textMuted }]}>Diag</Text>
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'feedback' && styles.activeTab]}
+                        onPress={() => {
+                            setActiveTab('feedback');
+                            setFilter('unread');
+                        }}
+                    >
+                        <Icon name="message" size={18} color={activeTab === 'feedback' ? colors.primary : colors.textMuted} />
+                        <Text style={[styles.tabText, { color: activeTab === 'feedback' ? colors.primary : colors.textMuted }]}>Feedback</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'coupons' && styles.activeTab]}
+                        onPress={() => {
+                            setActiveTab('coupons');
+                            setFilter('all');
+                        }}
+                    >
+                        <Icon name="link" size={18} color={activeTab === 'coupons' ? colors.primary : colors.textMuted} />
+                        <Text style={[styles.tabText, { color: activeTab === 'coupons' ? colors.primary : colors.textMuted }]}>Coupons</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'logs' && styles.activeTab]}
+                        onPress={() => {
+                            setActiveTab('logs');
+                            setFilter('all');
+                        }}
+                    >
+                        <Icon name="notification" size={18} color={activeTab === 'logs' ? colors.primary : colors.textMuted} />
+                        <Text style={[styles.tabText, { color: activeTab === 'logs' ? colors.primary : colors.textMuted }]}>Logs</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'stats' && styles.activeTab]}
+                        onPress={() => {
+                            setActiveTab('stats');
+                            setFilter('all');
+                        }}
+                    >
+                        <Icon name="sort" size={18} color={activeTab === 'stats' ? colors.primary : colors.textMuted} />
+                        <Text style={[styles.tabText, { color: activeTab === 'stats' ? colors.primary : colors.textMuted }]}>Stats</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'diagnostics' && styles.activeTab]}
+                        onPress={() => {
+                            setActiveTab('diagnostics');
+                            setFilter('all');
+                        }}
+                    >
+                        <Icon name="settings" size={18} color={activeTab === 'diagnostics' ? colors.primary : colors.textMuted} />
+                        <Text style={[styles.tabText, { color: activeTab === 'diagnostics' ? colors.primary : colors.textMuted }]}>Diag</Text>
+                    </TouchableOpacity>
+                </ScrollView>
             </View>
 
             <ScrollView
@@ -1038,7 +1052,7 @@ export default function AdminScreen({ navigation }) {
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView >
+        </SafeAreaView>
     );
 }
 
@@ -1092,8 +1106,8 @@ const styles = StyleSheet.create({
     tabContainer: {
         flexDirection: 'row',
         paddingHorizontal: 20,
-        marginBottom: 10,
         gap: 10,
+        alignItems: 'center',
     },
     tab: {
         flexDirection: 'row',

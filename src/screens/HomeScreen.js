@@ -1838,31 +1838,28 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
                 <>
                   {/* 1. Trip Timings */}
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>Trip Timings</Text>
-                    <TouchableOpacity
-                      onPress={() => setUseTimings(!useTimings)}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: useTimings ? colors.primary + '20' : colors.cardLight,
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 20,
-                        borderWidth: 1,
-                        borderColor: useTimings ? colors.primary : colors.border
-                      }}
-                    >
-                      <View style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: 6,
-                        backgroundColor: useTimings ? colors.primary : colors.textMuted,
-                        marginRight: 8
-                      }} />
-                      <Text style={{ color: useTimings ? colors.primary : colors.textMuted, fontSize: 12, fontWeight: '700' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>Trip Timings</Text>
+                      <Switch
+                        value={useTimings}
+                        onValueChange={(val) => setUseTimings(val)}
+                        style={{ transform: [{ scale: 0.8 }], marginLeft: 8 }}
+                        trackColor={{ false: colors.border, true: colors.primary }}
+                        thumbColor={Platform.OS === 'ios' ? '#fff' : (useTimings ? colors.cardLight : '#f4f3f4')}
+                      />
+                    </View>
+                    <View style={{
+                      backgroundColor: useTimings ? colors.primary + '20' : colors.cardLight,
+                      paddingHorizontal: 12,
+                      paddingVertical: 4,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: useTimings ? colors.primary : colors.border
+                    }}>
+                      <Text style={{ color: useTimings ? colors.primary : colors.textMuted, fontSize: 11, fontWeight: '700' }}>
                         {useTimings ? 'Enabled' : 'Disabled'}
                       </Text>
-                    </TouchableOpacity>
+                    </View>
                   </View>
 
                   <View style={{
