@@ -27,7 +27,7 @@
     "expo-calendar": "~15.0.8",
     "expo-clipboard": "~8.0.8",
     "expo-linear-gradient": "~15.0.8",
-    "expo-location": "~19.0.8",
+    "expo-location": "~55.1.4",
     "expo-status-bar": "~3.0.9",
     "firebase": "^12.10.0",
     "react": "19.1.0",
