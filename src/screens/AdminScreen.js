@@ -8,13 +8,14 @@ import {
     Alert,
     Linking,
     Platform,
-    SafeAreaView,
+    SafeAreaView as RN_SafeAreaView,
     StatusBar,
     Dimensions,
     TextInput,
     Modal,
     ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import Icon from '../components/Icon';
 import PremiumBackButton from '../components/PremiumBackButton';
@@ -444,26 +445,28 @@ export default function AdminScreen({ navigation, initialTab = 'feedback' }) {
 
                         {/* Filters & Actions */}
                         <View style={styles.filterSection}>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
-                                {['all', 'unread', 'read'].map((f) => (
-                                    <TouchableOpacity
-                                        key={f}
-                                        style={[
-                                            styles.filterChip,
-                                            filter === f && { backgroundColor: colors.primary, borderColor: colors.primary }
-                                        ]}
-                                        onPress={() => setFilter(f)}
-                                    >
-                                        <Text style={[
-                                            styles.filterChipText,
-                                            { color: isDark ? '#FFF' : '#000' },
-                                            filter === f && { color: isDark ? '#000' : '#FFF' }
-                                        ]}>
-                                            {f.charAt(0).toUpperCase() + f.slice(1)}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
+                            <View style={{ flex: 1 }}>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+                                    {['all', 'unread', 'read'].map((f) => (
+                                        <TouchableOpacity
+                                            key={f}
+                                            style={[
+                                                styles.filterChip,
+                                                filter === f && { backgroundColor: colors.primary, borderColor: colors.primary }
+                                            ]}
+                                            onPress={() => setFilter(f)}
+                                        >
+                                            <Text style={[
+                                                styles.filterChipText,
+                                                { color: isDark ? '#FFF' : '#000' },
+                                                filter === f && { color: isDark ? '#000' : '#FFF' }
+                                            ]}>
+                                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
 
                             <TouchableOpacity
                                 style={styles.sortToggle}
@@ -513,12 +516,12 @@ export default function AdminScreen({ navigation, initialTab = 'feedback' }) {
                                             </View>
                                             <View>
                                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                    <Text style={[styles.userName, { color: isDark ? '#FFF' : '#111' }]}>{item.userName || 'Anonymous'}</Text>
+                                                    <Text style={[styles.userName, { color: isDark ? '#FFF' : '#111' }]} numberOfLines={1} ellipsizeMode="tail">{item.userName || 'Anonymous'}</Text>
                                                     {!item.isRead && (
                                                         <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]} />
                                                     )}
                                                 </View>
-                                                <Text style={[styles.userEmail, { color: colors.textMuted }]}>{item.userEmail || 'no-email@anonymous.com'}</Text>
+                                                <Text style={[styles.userEmail, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="tail">{item.userEmail || 'no-email@anonymous.com'}</Text>
                                             </View>
                                         </View>
                                         <View style={[styles.ratingContainer, { backgroundColor: '#F59E0B15' }]}>
@@ -704,7 +707,11 @@ export default function AdminScreen({ navigation, initialTab = 'feedback' }) {
                                                         </TouchableOpacity>
                                                         <View>
                                                             <TouchableOpacity onPress={() => handleShowUsageDetails(coupon)}>
-                                                                <Text style={[styles.userName, { color: isDark ? '#FFF' : '#111', fontSize: 18, letterSpacing: 1 }]}>
+                                                                <Text 
+                                                                    style={[styles.userName, { color: isDark ? '#FFF' : '#111', fontSize: 18, letterSpacing: 1 }]}
+                                                                    numberOfLines={1}
+                                                                    ellipsizeMode="tail"
+                                                                >
                                                                     {coupon.code}
                                                                 </Text>
                                                             </TouchableOpacity>
@@ -1129,12 +1136,12 @@ const styles = StyleSheet.create({
     },
     statsRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        gap: 12,
         marginTop: 10,
         marginBottom: 25,
     },
     statItem: {
-        width: (width - 60) / 3,
+        flex: 1,
         height: 100,
         borderRadius: 20,
         padding: 12,

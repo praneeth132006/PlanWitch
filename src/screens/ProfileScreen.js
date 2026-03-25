@@ -1062,8 +1062,8 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
                     <Icon name="message" size={20} color={colors.primary} />
                   </View>
                   <View style={styles.settingInfo}>
-                    <Text style={styles.settingLabel}>Admin Dashboard</Text>
-                    <Text style={styles.settingValue}>Manage feedback and system settings</Text>
+                    <Text style={styles.settingLabel} numberOfLines={1} ellipsizeMode="tail">Admin Dashboard</Text>
+                    <Text style={styles.settingValue} numberOfLines={1} ellipsizeMode="tail">Manage feedback and system settings</Text>
                   </View>
                 </View>
                 <Text style={styles.settingArrow}>›</Text>
@@ -1077,8 +1077,8 @@ export default function ProfileScreen({ onBack, onOpenTrip, onNavigate }) {
                     <Icon name="link" size={20} color={colors.primary} />
                   </View>
                   <View style={styles.settingInfo}>
-                    <Text style={styles.settingLabel}>Coupon Management</Text>
-                    <Text style={styles.settingValue}>Create and track discount coupons</Text>
+                    <Text style={styles.settingLabel} numberOfLines={1} ellipsizeMode="tail">Coupon Management</Text>
+                    <Text style={styles.settingValue} numberOfLines={1} ellipsizeMode="tail">Create and track discount coupons</Text>
                   </View>
                 </View>
                 <Text style={styles.settingArrow}>›</Text>
