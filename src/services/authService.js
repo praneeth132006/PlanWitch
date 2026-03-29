@@ -8,7 +8,13 @@ import {
 } from 'firebase/auth';
 import { ref, set, get, update } from 'firebase/database';
 import { auth, database } from '../config/firebase';
-import crashlytics from '@react-native-firebase/crashlytics';
+// Safe import for crashlytics (crashes in Expo Go)
+let crashlytics = null;
+try {
+  crashlytics = require('@react-native-firebase/crashlytics').default;
+} catch (e) {
+  crashlytics = () => ({ log: () => {}, recordError: () => {} });
+}
 import { Platform } from 'react-native';
 
 // Sign up with email and password

@@ -22,8 +22,19 @@ import PremiumBackButton from '../components/PremiumBackButton';
 import { subscribeToFeedback, deleteFeedback, updateFeedbackReadStatus, markAllFeedbackAsRead } from '../services/databaseService';
 import { createCoupon, subscribeToCoupons, updateCoupon, deleteCoupon, getCouponUsageDetails } from '../services/couponService';
 import { subscribeToLogs, getSystemStats, LogLevel, LogType } from '../services/loggingService';
-import crashlytics from '@react-native-firebase/crashlytics';
-import perf from '@react-native-firebase/perf';
+// Safe imports for native Firebase modules (crash in Expo Go)
+let crashlytics = null;
+let perf = null;
+try {
+  crashlytics = require('@react-native-firebase/crashlytics').default;
+} catch (e) {
+  crashlytics = () => ({ log: () => {}, recordError: () => {}, crash: () => console.warn('Crashlytics not available in Expo Go') });
+}
+try {
+  perf = require('@react-native-firebase/perf').default;
+} catch (e) {
+  perf = () => ({ newTrace: async () => ({ start: async () => {}, stop: async () => {} }) });
+}
 import DatePickerModal from '../components/DatePickerModal';
 import { useAuth } from '../context/AuthContext';
 

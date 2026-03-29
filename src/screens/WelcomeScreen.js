@@ -157,9 +157,12 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
   // 1. Determine the Featured Trip (Dashboard)
   // Priority: 1. Ongoing trip, 2. Nearest upcoming trip, 3. Current context tripInfo
   const featuredTrip = useMemo(() => {
+    // Filter out completed trips from tripInfo fallback
+    const tripInfoIsActive = tripInfo && tripInfo.destination && !tripInfo.isCompleted;
+
     if (!allTrips || allTrips.length === 0) {
-      // No trips at all, fallback to tripInfo if available
-      if (tripInfo && tripInfo.destination) {
+      // No trips at all, fallback to tripInfo if available and active
+      if (tripInfoIsActive) {
         return { ...tripInfo, id: tripInfo.id || 'current', totalExpenses: getTotalExpenses() };
       }
       return null;
@@ -195,7 +198,7 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
 
     if (ongoingTrip) {
       // Merge with tripInfo if it's the same trip (for latest edits)
-      if (tripInfo && (tripInfo.id === ongoingTrip.id || tripInfo.destination === ongoingTrip.destination)) {
+      if (tripInfoIsActive && (tripInfo.id === ongoingTrip.id || tripInfo.destination === ongoingTrip.destination)) {
         return { ...ongoingTrip, ...tripInfo, totalExpenses: getTotalExpenses() };
       }
       return ongoingTrip;
@@ -212,23 +215,23 @@ export default function WelcomeScreen({ onPlanTrip, onJoinTrip, onMyTrip, onProf
 
     if (upcomingTrip) {
       // Merge with tripInfo if it's the same trip
-      if (tripInfo && (tripInfo.id === upcomingTrip.id || tripInfo.destination === upcomingTrip.destination)) {
+      if (tripInfoIsActive && (tripInfo.id === upcomingTrip.id || tripInfo.destination === upcomingTrip.destination)) {
         return { ...upcomingTrip, ...tripInfo, totalExpenses: getTotalExpenses() };
       }
       return upcomingTrip;
     }
 
-    // C. If no ongoing or upcoming, return the first sorted trip (could be past)
+    // C. If no ongoing or upcoming, return the first active trip
     if (sortedByDate.length > 0) {
       const firstTrip = sortedByDate[0];
-      if (tripInfo && (tripInfo.id === firstTrip.id || tripInfo.destination === firstTrip.destination)) {
+      if (tripInfoIsActive && (tripInfo.id === firstTrip.id || tripInfo.destination === firstTrip.destination)) {
         return { ...firstTrip, ...tripInfo, totalExpenses: getTotalExpenses() };
       }
       return firstTrip;
     }
 
-    // D. Last fallback: tripInfo from context
-    if (tripInfo && tripInfo.destination) {
+    // D. Last fallback: tripInfo from context (only if not completed)
+    if (tripInfoIsActive) {
       return { ...tripInfo, id: tripInfo.id || 'current', totalExpenses: getTotalExpenses() };
     }
 

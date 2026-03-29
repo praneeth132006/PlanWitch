@@ -18,8 +18,19 @@ import {
   fetchSignInMethodsForEmail,
   getAdditionalUserInfo,
 } from 'firebase/auth';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import nativeAuth from '@react-native-firebase/auth';
+// Safe imports for native modules (crash in Expo Go)
+let GoogleSignin = null;
+let nativeAuth = null;
+try {
+  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+} catch (e) {
+  // GoogleSignin not available (Expo Go)
+}
+try {
+  nativeAuth = require('@react-native-firebase/auth').default;
+} catch (e) {
+  // Native Firebase Auth not available (Expo Go)
+}
 import { auth, getFunctions, httpsCallable } from '../config/firebase';
 import * as DB from '../services/databaseService';
 import { logEvent, LogType, LogLevel } from '../services/loggingService';
@@ -41,12 +52,16 @@ export function AuthProvider({ children }) {
   const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
-    // Configure Google Sign In (only on native platforms)
-    if (Platform.OS !== 'web') {
-      GoogleSignin.configure({
-        webClientId: '739103871364-8dbqif6ogn8fiiqf4j5gb0h17fj7gdq0.apps.googleusercontent.com',
-        offlineAccess: true,
-      });
+    // Configure Google Sign In (only on native platforms with native module available)
+    if (Platform.OS !== 'web' && GoogleSignin) {
+      try {
+        GoogleSignin.configure({
+          webClientId: '739103871364-8dbqif6ogn8fiiqf4j5gb0h17fj7gdq0.apps.googleusercontent.com',
+          offlineAccess: true,
+        });
+      } catch (e) {
+        console.warn('GoogleSignin.configure failed (likely Expo Go):', e.message);
+      }
     }
     // console.log('AuthProvider: Setting up listener');
 
@@ -261,6 +276,14 @@ export function AuthProvider({ children }) {
         return { success: true, user: result.user, isNewUser: userIsNew };
       } else {
         // Native Google Sign In
+        if (!GoogleSignin || !nativeAuth) {
+          setLoading(false);
+          return {
+            success: false,
+            error: 'Google Sign-In is not available in Expo Go. Please use email/password or run a development build (npx expo run:ios).'
+          };
+        }
+
         await GoogleSignin.hasPlayServices();
         const { data } = await GoogleSignin.signIn();
         const idToken = data.idToken;
@@ -279,8 +302,7 @@ export function AuthProvider({ children }) {
             email: userCredential.user.email || '',
           });
 
-          // Check if it's a new user (Note: native SDK handles this differently, usually via database check)
-          // For now, let's assume if they don't have a profile yet, it's new
+          // Check if it's a new user
           const profile = await DB.getUserProfile(userCredential.user.uid);
           if (!profile || !profile.email) {
             setIsNewUser(true);

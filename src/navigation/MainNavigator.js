@@ -32,7 +32,7 @@ import AdminScreen from '../screens/AdminScreen';
 export default function MainNavigator() {
   const [currentScreen, setCurrentScreen] = React.useState('Welcome');
   const [pendingJoinTrip, setPendingJoinTrip] = React.useState(null);
-  const { setTripInfo, setBudget, tripInfo, saveCurrentTripToList, joinTripByCode, switchToTrip } = useTravelContext();
+  const { setTripInfo, setBudget, tripInfo, saveCurrentTripToList, joinTripByCode, switchToTrip, restoreActiveTrip } = useTravelContext();
   const { user } = useAuth();
   const { isPremium } = usePremium();
 
@@ -76,7 +76,11 @@ export default function MainNavigator() {
     setCurrentScreen('Profile');
   };
 
-  const handleBackToHome = () => {
+  const handleBackToHome = async () => {
+    // If we were viewing a completed trip, restore the actual active trip
+    if (restoreActiveTrip) {
+      await restoreActiveTrip();
+    }
     setCurrentScreen('Welcome');
   };
 

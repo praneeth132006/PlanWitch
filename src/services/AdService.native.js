@@ -1,17 +1,38 @@
 import { Platform } from 'react-native';
-import mobileAds, { InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
 import AD_UNIT_IDS from '../config/admob';
+
+// Safe import for native ads module (crashes in Expo Go)
+let mobileAds = null;
+let InterstitialAd = null;
+let AdEventType = null;
+try {
+    const adsModule = require('react-native-google-mobile-ads');
+    mobileAds = adsModule.default;
+    InterstitialAd = adsModule.InterstitialAd;
+    AdEventType = adsModule.AdEventType;
+} catch (e) {
+    // react-native-google-mobile-ads not available (Expo Go)
+}
 
 class AdService {
     constructor() {
         this.interstitial = null;
         this.isLoaded = false;
+        this.isDisabled = false;
         this.requestOptions = {
             requestNonPersonalizedAdsOnly: true,
         };
     }
 
+    setDisabled(disabled) {
+        this.isDisabled = disabled;
+    }
+
     async init() {
+        if (!mobileAds) {
+            console.log('[AdService] Native ads not available (Expo Go)');
+            return;
+        }
         try {
             await mobileAds().initialize();
             this.loadInterstitial();
@@ -21,6 +42,8 @@ class AdService {
     }
 
     loadInterstitial() {
+        if (!InterstitialAd || !AdEventType) return;
+
         if (this.interstitial) {
             this.interstitial.removeAllListeners();
         }
@@ -49,6 +72,9 @@ class AdService {
     }
 
     showInterstitial() {
+        if (this.isDisabled) {
+            return true;
+        }
         if (this.isLoaded && this.interstitial) {
             this.interstitial.show();
             return true;

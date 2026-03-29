@@ -1,15 +1,28 @@
 import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
-import { BannerAd as AdMobBanner, BannerAdSize } from 'react-native-google-mobile-ads';
+import { View, StyleSheet } from 'react-native';
 import { usePremium } from '../context/PremiumContext';
 import { useTheme } from '../context/ThemeContext';
 import AD_UNIT_IDS from '../config/admob';
+
+// Safe import for native ads module (crashes in Expo Go)
+let AdMobBanner = null;
+let BannerAdSize = null;
+try {
+    const adsModule = require('react-native-google-mobile-ads');
+    AdMobBanner = adsModule.BannerAd;
+    BannerAdSize = adsModule.BannerAdSize;
+} catch (e) {
+    // react-native-google-mobile-ads not available (Expo Go)
+}
 
 const BannerAd = () => {
     const { isPremium } = usePremium();
     const { colors } = useTheme();
 
     if (isPremium) return null;
+
+    // If native ads module not available, render nothing
+    if (!AdMobBanner || !BannerAdSize) return null;
 
     return (
         <View style={styles.container}>

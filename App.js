@@ -12,7 +12,17 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AlertSystem from './src/components/AlertSystem';
 import AppLoading from './src/components/AppLoading';
-import crashlytics from '@react-native-firebase/crashlytics';
+// Safe import for crashlytics (crashes in Expo Go)
+let crashlytics = null;
+try {
+  crashlytics = require('@react-native-firebase/crashlytics').default;
+} catch (e) {
+  // Crashlytics not available (Expo Go) - provide no-op fallback
+  crashlytics = () => ({
+    log: () => {},
+    recordError: () => {},
+  });
+}
 import { Platform } from 'react-native';
 import { PremiumProvider } from './src/context/PremiumContext';
 import AdService from './src/services/AdService';

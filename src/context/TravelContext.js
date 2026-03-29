@@ -61,6 +61,7 @@ export const useTravelContext = () => {
       checkFeatureAccess: () => true,
       selectedItineraryDay: 0,
       setSelectedItineraryDay: () => { },
+      restoreActiveTrip: async () => { },
     };
   }
   return context;
@@ -335,10 +336,16 @@ export const TravelProvider = ({ children }) => {
 
             // If this was the ACTIVE trip, clear it from DB and State
             if (activeTrip && trip.id === activeTrip.id) {
-              // console.log('[Context] The expired trip is currently active. Clearing it.');
+              console.log('[Context] The expired trip is currently active. Clearing it.');
               if (isAuthenticated) {
-                await DB.clearCurrentTripData();
+                try {
+                  await DB.clearCurrentTripData();
+                } catch (clearErr) {
+                  console.warn('[Context] Failed to clear current trip data from DB:', clearErr);
+                }
               }
+              // Clean up real-time listeners
+              cleanupListeners();
               // Clear local active state
               setTripInfoState({
                 destination: '', startDate: '', endDate: '', name: '',
@@ -346,6 +353,8 @@ export const TravelProvider = ({ children }) => {
               });
               setBudgetState({ total: 0, categories: {} });
               setExpenses([]);
+              setPackingItems([]);
+              setFoodItems([]);
               setItinerary([]);
               setTripOwnerId(null);
             }
@@ -418,6 +427,40 @@ export const TravelProvider = ({ children }) => {
     }
   };
 
+  // Restore the actual persisted active trip when navigating back from viewing a completed trip
+  const restoreActiveTrip = async () => {
+    if (tripInfo && tripInfo.isCompleted) {
+      console.log('[Context] Restoring active trip after viewing completed trip.');
+      // Clean up listeners from the completed trip view
+      cleanupListeners();
+
+      if (isAuthenticated) {
+        try {
+          const currentTrip = await DB.getCurrentTripInfo();
+          if (currentTrip && !currentTrip.isCompleted) {
+            setTripInfoState(currentTrip);
+            setTripOwnerId(currentTrip.ownerId || user?.uid);
+            setupRealTimeListeners(currentTrip.id, currentTrip.ownerId || user?.uid);
+          } else {
+            // No active trip — clear state
+            setTripInfoState({
+              destination: '', startDate: '', endDate: '', name: '',
+              participants: [], tripCode: '', tripType: '', isCompleted: false,
+            });
+            setBudgetState({ total: 0, categories: {} });
+            setExpenses([]);
+            setPackingItems([]);
+            setFoodItems([]);
+            setItinerary([]);
+            setTripOwnerId(null);
+          }
+        } catch (err) {
+          console.warn('[Context] Error restoring active trip:', err);
+        }
+      }
+    }
+  };
+
   const getUniqueTripCode = async () => {
     let code = '';
     let exists = true;
@@ -447,10 +490,17 @@ export const TravelProvider = ({ children }) => {
       if (settings?.amazonDomain) setAmazonDomain(settings.amazonDomain);
 
       // Load current trip info
-      const currentTrip = await DB.getCurrentTripInfo();
+      let currentTrip = await DB.getCurrentTripInfo();
       if (currentTrip) {
-        setTripInfoState(currentTrip);
-        setTripOwnerId(currentTrip.ownerId || user?.uid);
+        // If the persisted current trip is already completed, clear it
+        if (currentTrip.isCompleted) {
+          console.log('[Context] Persisted current trip is completed. Clearing it.');
+          await DB.clearCurrentTripData();
+          currentTrip = null;
+        } else {
+          setTripInfoState(currentTrip);
+          setTripOwnerId(currentTrip.ownerId || user?.uid);
+        }
       }
 
       // Load budget
@@ -902,6 +952,40 @@ export const TravelProvider = ({ children }) => {
       console.warn('switchToTrip called with null trip');
       return;
     }
+
+    // If the trip is completed, only view it read-only
+    // Do NOT set it as the active/current trip
+    if (trip.isCompleted) {
+      console.log('[Context] switchToTrip: Trip is completed, opening in read-only mode.');
+      try {
+        setIsLoading(true);
+
+        // Clean up any existing real-time listeners
+        cleanupListeners();
+
+        const owner = trip.ownerId || user?.uid;
+        setTripOwnerId(owner);
+
+        // Setup real-time listeners for viewing data
+        setupRealTimeListeners(trip.id, owner);
+
+        // Set trip info in state for viewing, but do NOT persist as current trip
+        setTripInfoState(trip);
+
+        // Load shared data for this trip
+        if (isAuthenticated) {
+          const savedPacking = await DB.getPackingItems(trip.id, owner);
+          setPackingItems(savedPacking || []);
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error viewing completed trip:', error);
+        setIsLoading(false);
+      }
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -1366,7 +1450,7 @@ export const TravelProvider = ({ children }) => {
       isMultiUserTrip, getAllTravelers, getBalances, getSettlements,
       localParticipantId,
       deleteTripFromHistory, deleteTrip, resetLocalState, findTripByCode,
-      joinTripByCode, joinAsNewTraveler, switchToTrip, tripOwnerId, getUniqueTripCode,
+      joinTripByCode, joinAsNewTraveler, switchToTrip, restoreActiveTrip, tripOwnerId, getUniqueTripCode,
       saveCurrentTripToList,
       tripPreferences,
       userPlan,
