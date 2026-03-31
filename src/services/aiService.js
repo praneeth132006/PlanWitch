@@ -40,10 +40,11 @@ const callGemini = async (prompt, isJson = true) => {
     }
 
     // Using Gemini 2.0 Flash with high token capacity for premium output
+    // Using Gemini 2.0 Flash as primary, with 1.5 Pro and 1.5 Flash as robust fallbacks
     const fallbackModels = [
         { ver: 'v1beta', name: 'gemini-2.0-flash' },
-        { ver: 'v1beta', name: 'gemini-2.0-flash-exp' },
-        { ver: 'v1beta', name: 'gemini-2.0-flash-lite' },
+        { ver: 'v1beta', name: 'gemini-1.5-pro' },
+        { ver: 'v1beta', name: 'gemini-1.5-flash' },
     ];
 
     let lastError = null;
@@ -56,8 +57,7 @@ const callGemini = async (prompt, isJson = true) => {
             const body = {
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
                 generationConfig: {
-                    temperature: 0.8,
-                    maxOutputTokens: 65536,
+                    temperature: 0.7,
                     ...(isJson ? { responseMimeType: "application/json" } : {})
                 }
             };
@@ -99,15 +99,36 @@ const callGemini = async (prompt, isJson = true) => {
             }
 
             let text = firstCandidate.content.parts[0].text;
+            
+            if (!text || text.trim() === '') {
+                throw new Error('AI returned an empty response.');
+            }
+
             if (isJson) {
                 // Clean up common AI formatting issues
-                text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+                // If text somehow doesn't start with { or [, strip leading junk
+                const firstBrace = text.indexOf('{');
+                const firstBracket = text.indexOf('[');
+                const firstChar = (firstBrace !== -1 && firstBracket !== -1) ? Math.min(firstBrace, firstBracket) : Math.max(firstBrace, firstBracket);
+                if (firstChar > 0) {
+                    text = text.substring(firstChar);
+                }
+
+                // If text doesn't end with } or ], strip trailing junk
+                const lastBrace = text.lastIndexOf('}');
+                const lastBracket = text.lastIndexOf(']');
+                const lastChar = Math.max(lastBrace, lastBracket);
+                if (lastChar !== -1 && lastChar < text.length - 1) {
+                    text = text.substring(0, lastChar + 1);
+                }
 
                 // Try to parse, with fallback handling for truncated responses
                 try {
                     return JSON.parse(text);
                 } catch (parseError) {
-                    console.warn('[AI] JSON parse failed, attempting recovery...');
+                    console.warn('[AI] JSON parse failed, raw length:', text.length, 'attempting recovery...');
 
                     // Attempt to fix truncated JSON by closing brackets
                     let fixedText = text;
@@ -256,11 +277,11 @@ PLANNING RULES (MANDATORY)
      Activity A at 09:00 AM (1 hour) → Travel at 10:00 AM (20 mins, 4km) → Activity B at 10:20 AM (2 hours)
    - This is MANDATORY. An itinerary without travel items between activities is INVALID.
 
-2. TIME PLANNING
-   - Structure each day: Morning → Afternoon → Evening → Night.
+2. TIME PLANNING & OPERATING HOURS (CRITICAL)
+   - You MUST verify the real-world opening/closing times of all attractions (e.g. National Parks, Temples, Museums) before scheduling. DO NOT schedule visits when a place is closed (e.g., National Parks closing by 4 PM).
+   - DO NOT default to starting every day at 9:00 AM. Choose the optimal start and end time based on the activities planned (e.g., 6:00 AM for wildlife safaris or sunrise, 10:00 AM for relaxed days).
    - Events in STRICT CHRONOLOGICAL order. No overlaps.
    - Realistic durations: 1.5-2 hrs for major attractions, 45 min-1 hr for meals, 30 min for quick stops.
-   - Travel durations: estimate based on your knowledge of real Google Maps distances for that area.
 
 3. SMART ACTIVITY SELECTION
    - Select based on: traveler interests, weather, crowd patterns, location proximity
@@ -764,7 +785,10 @@ PLANNING RULES (MANDATORY):
      Activity A at 09:00 AM (1 hour) → Travel at 10:00 AM (20 mins, 4km) → Activity B at 10:20 AM (2 hours)
    - This is MANDATORY. An itinerary without travel items between activities is INVALID.
 
-3. TIMING: Real-world timings. No overlaps. Be generous with travel times.
+3. TIMING & OPERATING HOURS (CRITICAL)
+   - You MUST verify the real-world opening/closing times of all attractions (e.g. National Parks, Temples, Museums). DO NOT schedule visits when a place is closed (e.g., Eravikulam National Park closes by 4 PM, so do not schedule it late afternoon).
+   - DO NOT default to starting every day at 8:00 AM or 9:00 AM. Choose the most logical start time for each day based on the activities (e.g., start at 6:00 AM for sunrise or safaris, start at 10:00 AM for relaxed days).
+   - Use real-world travel timings. No overlaps. Be generous with travel times.
 
 4. SPECIFICITY: Use specific restaurant/place names, not generic ones.
 
