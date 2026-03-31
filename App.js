@@ -74,7 +74,6 @@ const errorStyles = StyleSheet.create({
 function AppContent() {
   const { colors, isDark } = useTheme();
   const { isAuthenticated, loading, initializing, isNewUser, clearNewUserFlag } = useAuth();
-  const [showSplash, setShowSplash] = React.useState(true);
   const [showOnboarding, setShowOnboarding] = React.useState(false);
 
   // When isNewUser becomes true, show onboarding
@@ -96,20 +95,8 @@ function AppContent() {
     }
   };
 
-  React.useEffect(() => {
-    // Show splash for at least 2 seconds if initializing or loading
-    if (!initializing && !loading) {
-      const timer = setTimeout(() => {
-        setShowSplash(false);
-      }, 2000); // 2 seconds minimum splash for a premium feel
-      return () => clearTimeout(timer);
-    } else {
-      setShowSplash(true);
-    }
-  }, [initializing, loading]);
-
-  // Show premium loading screen
-  if (showSplash || initializing) {
+  // Show premium loading screen immediately while initializing
+  if (initializing) {
     return <AppLoading />;
   }
 
