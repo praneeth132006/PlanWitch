@@ -1,4 +1,5 @@
 import { AI_CONFIG } from '../config/aiConfig';
+import { getNearbyPlaces, getDistanceMatrixBatch, getMacroDistanceMatrix } from './transitService';
 
 // Mock data for testing without API key
 const MOCK_ITINERARY = {
@@ -755,6 +756,60 @@ IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
 export const generateFullPersonalizedPlan = async (details) => {
     console.log(`[AI Service] Generating Nuclear Plan for ${details.startLocation} to ${details.endLocation}`);
 
+    // --- PLAN LOGISTICS INJECTION (MACRO & MICRO) ---
+    let localDataText = '';
+    try {
+        // 1. MACRO PLANNING (City to City)
+        console.log(`[AI Service] Fetching MACRO routing graph`);
+        const macroLocations = [details.startLocation];
+        if (details.placesEnabled && details.stops && details.stops.length > 0) {
+            macroLocations.push(...details.stops.map(s => s.location));
+        }
+        macroLocations.push(details.endLocation);
+
+        const macroMatrix = await getMacroDistanceMatrix(macroLocations);
+        if (macroMatrix) {
+            localDataText += `\n\n═══════════════════════════════════════\nMACRO PLANNING (CITY-TO-CITY TRAVEL)\n═══════════════════════════════════════\n`;
+            localDataText += `Distance Matrix (Travel Times between main cities/stops - USE STRICTLY):\n`;
+            for (const [origin, targets] of Object.entries(macroMatrix)) {
+                for (const [dest, info] of Object.entries(targets)) {
+                    localDataText += `- ${origin} to ${dest}: ${info.duration} (${info.distance})\n`;
+                }
+            }
+        }
+
+        // 2. MICRO PLANNING (Inside Cities)
+        console.log(`[AI Service] Fetching MICRO routing data for destinations`);
+        const microDestinations = [];
+        if (details.placesEnabled && details.stops) {
+            microDestinations.push(...details.stops.map(s => s.location));
+        }
+        microDestinations.push(details.endLocation);
+
+        localDataText += `\n═══════════════════════════════════════\nMICRO PLANNING (WITHIN DESTINATIONS)\n═══════════════════════════════════════\n`;
+        for (const dest of microDestinations) {
+            if (!dest || !dest.trim()) continue;
+            console.log(`[AI Service] Micro-planning for ${dest}`);
+            const places = await getNearbyPlaces(dest, 'tourist_attraction', 10);
+            if (places && places.length > 0) {
+                localDataText += `\nTop Nearby Places to consider in ${dest} (Prioritize these over assuming places):\n${places.map(p => `- ${p.name} (Rating: ${p.rating || 'N/A'})`).join('\n')}\n`;
+                
+                const matrix = await getDistanceMatrixBatch(places);
+                if (matrix) {
+                    localDataText += `Micro-Distance Matrix within ${dest} (Travel Times between places - USE STRICTLY for 'car' items):\n`;
+                    for (const [origin, targets] of Object.entries(matrix)) {
+                        for (const [destName, info] of Object.entries(targets)) {
+                            localDataText += `- ${origin} to ${destName}: ${info.duration} (${info.distance})\n`;
+                        }
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn(`[AI Service] Logistics data fetch failed:`, e);
+    }
+    // ------------------------------------
+
     const transitContext = details.transitModes?.length > 0 ? `Preferred inter-city transit: ${details.transitModes.join(', ')}.` : '';
     const routeContext = details.routeOptimization === 'follow-order' ? 'Follow the exact order of locations provided.' : 'Optimize the route order to minimize travel time between locations.';
     const stopsContext = details.placesEnabled ? `\n- Intermediate Stops: ${JSON.stringify(details.stops)}` : '';
@@ -766,7 +821,7 @@ export const generateFullPersonalizedPlan = async (details) => {
 - Budget: ${details.budget}
 - Dietary Preference: ${details.dietary}
 - Travelers: ${details.travelers} (Ages: ${details.ages})
-- Additional Notes: ${details.additionalNotes}
+- Additional Notes: ${details.additionalNotes}${localDataText}
 ${transitContext ? `- Transit Preferences: ${transitContext}\n` : ''}${routeContext ? `- Routing Logic: ${routeContext}\n` : ''}
 
 PLANNING RULES (MANDATORY):

@@ -333,3 +333,154 @@ export const getPlaceSuggestions = async (query, biasLocation = null) => {
         return [];
     }
 };
+
+/**
+ * Fetch top nearby places for a given location to feed into AI micro-planning
+ */
+export const getNearbyPlaces = async (locationName, types = 'tourist_attraction', limit = 12) => {
+    try {
+        const coords = await geocodeAddress(locationName);
+        if (!coords || coords.error) return [];
+
+        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${coords.lat},${coords.lng}&radius=30000&type=${types}&key=${GOOGLE_MAPS_CONFIG.apiKey}&rankby=prominence`;
+
+        let res = await fetchWithTimeout(getWrappedUrl(url));
+        if (!res.ok) {
+            res = await fetchWithTimeout(getWrappedUrl(url, true));
+        }
+
+        const text = await res.text();
+        let data = JSON.parse(text);
+        if (data.contents && typeof data.contents === 'string') {
+            data = JSON.parse(data.contents);
+        }
+
+        // Clean up common proxy noise if any
+        if (data.status === 'OK' && data.results) {
+            return data.results.slice(0, limit).map(p => ({
+                name: p.name,
+                place_id: p.place_id,
+                rating: p.rating,
+                user_ratings_total: p.user_ratings_total,
+                types: p.types,
+                location: p.geometry?.location
+            }));
+        }
+        return [];
+    } catch (e) {
+        console.warn('[Logistics] Fetch Nearby Places error:', e.message);
+        return [];
+    }
+};
+
+/**
+ * Fetch a distance matrix for a list of places
+ */
+export const getDistanceMatrixBatch = async (places) => {
+    if (!places || places.length < 2) return null;
+    
+    // To save API costs, limiting to 10 places max for matrix calculation
+    const matrixPlaces = places.slice(0, 10);
+    
+    // We will build a pipe-separated string for origins and destinations
+    const coordsStr = matrixPlaces.map(p => `${p.location.lat},${p.location.lng}`).join('|');
+
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${coordsStr}&destinations=${coordsStr}&mode=driving&key=${GOOGLE_MAPS_CONFIG.apiKey}`;
+
+    try {
+        let res = await fetchWithTimeout(getWrappedUrl(url));
+        if (!res.ok) {
+            res = await fetchWithTimeout(getWrappedUrl(url, true));
+        }
+
+        const text = await res.text();
+        let data = JSON.parse(text);
+        if (data.contents && typeof data.contents === 'string') {
+            data = JSON.parse(data.contents);
+        }
+
+        if (data.status === 'OK' && data.rows) {
+            // Map it into a usable graph for AI
+            const distanceGraph = {};
+            matrixPlaces.forEach((origin, i) => {
+                distanceGraph[origin.name] = {};
+                matrixPlaces.forEach((dest, j) => {
+                    if (i !== j) {
+                        const element = data.rows[i].elements[j];
+                        if (element.status === 'OK') {
+                            distanceGraph[origin.name][dest.name] = {
+                                distance: element.distance.text,
+                                duration: element.duration.text
+                            };
+                        }
+                    }
+                });
+            });
+            return distanceGraph;
+        }
+        return null;
+    } catch (e) {
+        console.warn('[Logistics] Fetch Distance Matrix error:', e.message);
+        return null;
+    }
+};
+
+/**
+ * Fetch a distance matrix for city-to-city macro planning using strings
+ */
+export const getMacroDistanceMatrix = async (locations) => {
+    if (!locations || locations.length < 2) return null;
+    
+    try {
+        const validLocations = [];
+        for (const loc of locations) {
+            if (loc && typeof loc === 'string' && loc.trim() !== '') {
+                validLocations.push(loc.trim());
+            } else if (loc && loc.location) {
+                 validLocations.push(loc.location);
+            } else if (loc && loc.name) {
+                 validLocations.push(loc.name);
+            }
+        }
+        if (validLocations.length < 2) return null;
+
+        // Pipe-separated strings. Distance Matrix API natively accepts string addresses and geocodes them internaly
+        const locsStr = validLocations.map(l => encodeURIComponent(l)).join('|');
+
+        const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${locsStr}&destinations=${locsStr}&mode=driving&key=${GOOGLE_MAPS_CONFIG.apiKey}`;
+
+        let res = await fetchWithTimeout(getWrappedUrl(url));
+        if (!res.ok) {
+            res = await fetchWithTimeout(getWrappedUrl(url, true));
+        }
+
+        const text = await res.text();
+        let data = JSON.parse(text);
+        if (data.contents && typeof data.contents === 'string') {
+            data = JSON.parse(data.contents);
+        }
+
+        if (data.status === 'OK' && data.rows) {
+            const distanceGraph = {};
+            validLocations.forEach((origin, i) => {
+                distanceGraph[origin] = {};
+                validLocations.forEach((dest, j) => {
+                    if (i !== j) {
+                        const element = data.rows[i].elements[j];
+                        if (element.status === 'OK') {
+                            distanceGraph[origin][dest] = {
+                                distance: element.distance.text,
+                                duration: element.duration.text
+                            };
+                        }
+                    }
+                });
+            });
+            return distanceGraph;
+        }
+        return null;
+    } catch (e) {
+        console.warn('[Logistics] Fetch Macro Distance Matrix error:', e.message);
+        return null;
+    }
+};
