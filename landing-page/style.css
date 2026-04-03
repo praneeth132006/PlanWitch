@@ -28,19 +28,6 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* Premium Noise Texture Overlay */
-.noise-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none;
-    z-index: 9999;
-    opacity: 0.03;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-}
-
 /* Ambient Subtle Glows for depth */
 .ambient-glow {
     position: absolute;
@@ -534,9 +521,123 @@ h1, h2, h3, h4 {
     font-weight: 300;
 }
 
+/* About Section */
+.about-section {
+    background: #000000;
+    position: relative;
+    border-top: 1px solid var(--border-color);
+}
+
+.about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5rem;
+    align-items: center;
+}
+
+.about-content h2 {
+    font-size: 3rem;
+    line-height: 1.1;
+    margin-bottom: 2rem;
+    letter-spacing: -1px;
+}
+
+.about-content p {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    line-height: 1.8;
+}
+
+.about-image {
+    position: relative;
+    height: 400px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.abstract-orb {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+    border: 1px solid var(--border-glow);
+    box-shadow: 0 0 80px rgba(255, 255, 255, 0.05), inset 0 0 40px rgba(255, 255, 255, 0.02);
+    animation: pulse-orb 8s infinite alternate ease-in-out;
+}
+
+@keyframes pulse-orb {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(1.05); opacity: 1; }
+}
+
+/* Team Section */
+.team-section {
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-color);
+}
+
+.team-grid {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    flex-wrap: wrap;
+}
+
+.team-member {
+    background: #050505;
+    border: 1px solid var(--border-color);
+    padding: 3rem 2.5rem;
+    border-radius: 16px;
+    text-align: center;
+    max-width: 380px;
+    transition: transform 0.4s ease;
+}
+
+.team-member:hover {
+    transform: translateY(-8px);
+    border-color: var(--border-glow);
+}
+
+.member-avatar {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 1.5rem;
+    background: #111111;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+}
+
+.team-member h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #fff;
+}
+
+.member-role {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 1.5rem;
+}
+
+.team-member p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
 /* CTA */
 .cta-section {
     padding-bottom: 8rem;
+    background: #000000;
 }
 
 .cta-container {
@@ -632,7 +733,7 @@ h1, h2, h3, h4 {
 }
 
 @media (max-width: 968px) {
-    .hero, .footer-content {
+    .hero, .footer-content, .about-grid {
         grid-template-columns: 1fr;
         text-align: center;
         gap: 3rem;
