@@ -2,7 +2,7 @@
     --bg-dark: #000000;
     --bg-elevated: #050505;
     --text-main: #f5f5f5;
-    --text-muted: #a1a1aa; /* Softer, highly readable grey */
+    --text-muted: #a1a1aa;
     --border-color: rgba(255, 255, 255, 0.12);
     --border-glow: rgba(255, 255, 255, 0.25);
     --accent: #ffffff;
@@ -28,20 +28,6 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* Ambient Subtle Glows for depth */
-.ambient-glow {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    max-width: 1200px;
-    height: 800px;
-    background: radial-gradient(ellipse at top, rgba(255, 255, 255, 0.04) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-}
-
 h1, h2, h3, h4 {
     font-family: 'Outfit', sans-serif;
 }
@@ -62,10 +48,10 @@ h1, h2, h3, h4 {
     justify-content: space-between;
     align-items: center;
     padding: 1.5rem 5%;
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 0, 0, 0.6); /* increased transparency for cinematic feel */
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -123,7 +109,7 @@ h1, h2, h3, h4 {
 /* Buttons */
 .btn {
     padding: 0.8rem 2rem;
-    border-radius: 50px; /* Fully rounded buttons for premium Apple aesthetic */
+    border-radius: 50px;
     font-weight: 500;
     font-size: 1rem;
     text-decoration: none;
@@ -151,11 +137,12 @@ h1, h2, h3, h4 {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-color);
     color: var(--text-main);
+    backdrop-filter: blur(8px);
 }
 
 .btn-outline:hover {
     border-color: var(--border-glow);
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .btn-large {
@@ -196,17 +183,58 @@ h1, h2, h3, h4 {
 }
 
 /* ==============================================================
-   BRAND NEW CENTERED HERO
+   CINEMATIC TRAVEL HERO
    ============================================================== */
 .hero {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 8rem 5% 0; /* Huge top padding, 0 bottom padding so image meets next section */
-    min-height: auto; /* Allow content to dictate height */
-    position: relative;
+    justify-content: center;
+    padding: 12rem 5% 10rem; 
+    min-height: 100vh;
     z-index: 10;
     overflow: hidden;
+}
+
+.hero-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('assets/hero_bg.png');
+    background-size: cover;
+    background-position: center;
+    z-index: -2;
+    animation: slowZoom 25s ease-in-out infinite alternate;
+}
+
+.hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background: linear-gradient(to bottom, transparent, #000000);
+    z-index: -1;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4); 
+    z-index: -1;
+}
+
+@keyframes slowZoom {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.08); }
 }
 
 .hero-content-centered {
@@ -219,40 +247,8 @@ h1, h2, h3, h4 {
     z-index: 2;
 }
 
-.badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0.5rem 1.2rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: 50px;
-    color: var(--text-main);
-    font-size: 0.85rem;
-    font-weight: 500;
-    margin-bottom: 2.5rem;
-    backdrop-filter: blur(10px);
-}
-
-.badge-dot {
-    width: 6px;
-    height: 6px;
-    background: #ffffff;
-    border-radius: 50%;
-}
-
-.pulse {
-    animation: pulse-dot 2s infinite;
-}
-
-@keyframes pulse-dot {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
-    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
-}
-
 .gradient-text-dynamic {
-    background: linear-gradient(to right, #ffffff 20%, #888888 40%, #888888 60%, #ffffff 80%);
+    background: linear-gradient(to right, #ffffff 20%, #a0a0a0 40%, #a0a0a0 60%, #ffffff 80%);
     background-size: 200% auto;
     color: #000;
     background-clip: text;
@@ -267,26 +263,27 @@ h1, h2, h3, h4 {
 }
 
 .hero-title {
-    font-size: 6.5rem; /* Massive typography */
+    font-size: 6.5rem;
     line-height: 1.05;
     font-weight: 700;
     margin-bottom: 2rem;
     letter-spacing: -3px;
+    text-shadow: 0 10px 40px rgba(0,0,0,0.8);
 }
 
 .hero-subtitle {
     font-size: 1.3rem;
-    color: var(--text-muted);
+    color: #e5e5e5;
     margin-bottom: 3.5rem;
     max-width: 800px;
-    font-weight: 300;
+    font-weight: 400;
     line-height: 1.7;
+    text-shadow: 0 4px 15px rgba(0,0,0,0.9);
 }
 
 .hero-ctas {
     display: flex;
     gap: 1.5rem;
-    margin-bottom: 5rem; /* Space between buttons and image */
 }
 
 /* Animations */
@@ -303,58 +300,113 @@ h1, h2, h3, h4 {
     }
 }
 
-.hero-visual-centered {
+/* Travel Flight Path Animation Overlay */
+.hero-animations {
+    position: absolute;
     width: 100%;
-    max-width: 1100px;
-    position: relative;
-    display: flex;
-    justify-content: center;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
     z-index: 1;
 }
 
-.mockup-container {
-    position: relative;
-    width: 100%;
-    max-width: 1000px;
-    border-radius: 20px 20px 0 0;
-    background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);
-    border: 1px solid var(--border-color);
-    border-bottom: none;
-    padding: 15px 15px 0 15px;
-    box-shadow: 0 -30px 100px rgba(255, 255, 255, 0.05); /* very soft massive glow underneath */
-}
-
-.app-image {
-    width: 100%;
-    height: auto;
-    border-radius: 12px 12px 0 0;
-    display: block;
-    /* This creates the beautiful fade out at the bottom of the image */
-    mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
-}
-
-/* Background Orbs for Hero */
-.glow-orb {
+.flight-path {
     position: absolute;
-    width: 500px;
-    height: 500px;
-    border-radius: 50%;
-    filter: blur(150px);
-    z-index: 0;
-    pointer-events: none;
+    width: 70vw;
+    height: 40vh;
+    top: 25%;
+    left: 15%;
+    border-top: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 50% 50% 0 0;
+    opacity: 0.8;
 }
 
-.top-left {
-    top: -200px;
-    left: -200px;
-    background: rgba(255, 255, 255, 0.05);
+.plane-icon {
+    position: absolute;
+    top: -16px;
+    left: 0;
+    font-size: 2rem;
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 1));
+    animation: flyPath 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-.top-right {
-    top: 100px;
-    right: -300px;
-    background: rgba(255, 255, 255, 0.03);
+@keyframes flyPath {
+    0% {
+        transform: rotate(35deg);
+        left: -5%;
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    50% {
+        transform: rotate(90deg);
+        top: -6vh;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        transform: rotate(135deg);
+        left: 105%;
+        opacity: 0;
+    }
+}
+
+.floating-ticket {
+    position: absolute;
+    background: rgba(10, 10, 10, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 1.2rem 1.8rem;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.card-1 {
+    top: 25%;
+    left: 8%;
+    animation: floatTicket 6s ease-in-out infinite alternate;
+}
+
+.card-2 {
+    bottom: 20%;
+    right: 12%;
+    animation: floatTicket 8s ease-in-out infinite alternate-reverse;
+}
+
+.ticket-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+}
+
+.ticket-header .arrow {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 1.2rem;
+}
+
+.ticket-status {
+    font-size: 0.8rem;
+    color: #4ade80; /* vibrant green */
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 500;
+}
+
+@keyframes floatTicket {
+    0% { transform: translateY(0) rotate(-2deg); }
+    100% { transform: translateY(-25px) rotate(3deg); }
 }
 
 /* ==============================================================
@@ -363,7 +415,7 @@ h1, h2, h3, h4 {
 .features-section {
     background: #000000;
     position: relative;
-    padding-top: 4rem; /* Bring it up since hero image fades out */
+    padding-top: 4rem; 
 }
 
 .features-grid {
@@ -490,6 +542,17 @@ h1, h2, h3, h4 {
     grid-template-columns: 1fr 1fr;
     gap: 6rem;
     align-items: center;
+}
+
+.badge {
+    display: inline-flex;
+    padding: 0.4rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 50px;
+    color: var(--text-main);
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
 }
 
 .about-content h2 {
@@ -694,7 +757,7 @@ h1, h2, h3, h4 {
 
 @media (max-width: 968px) {
     .nav-links {
-        display: none; /* Hide standard links on very small screens, usually needs a hamburger menu in real apps */
+        display: none; 
     }
 
     .hero-title {
@@ -715,6 +778,10 @@ h1, h2, h3, h4 {
 
     .hero-ctas .btn {
         width: 100%;
+    }
+
+    .flight-path, .floating-ticket {
+        display: none; /* Hide travel animations on mobile to keep it clean */
     }
 
     .footer-content, .about-grid {
