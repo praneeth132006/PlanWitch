@@ -28,37 +28,27 @@
         <div class="hero-background"></div>
         
         <!-- Animated Travel Overlay -->
-        <div class="hero-animations">
-            
-            <!-- Precision Animated SVG Trajectory -->
-            <svg class="flight-trajectory" viewBox="0 0 1000 400" preserveAspectRatio="xMidYMid slice">
-                <path id="flightRoute" d="M -200 450 Q 500 -150 1200 450" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-dasharray="8 8" />
+        <div class="journey-overlay">
+            <svg viewBox="0 0 1920 800" preserveAspectRatio="xMidYMid slice" class="journey-svg">
+                <path id="route1" d="M 200 250 C 600 150 1400 150 1700 700" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3" stroke-dasharray="10 15" />
                 <g>
-                    <g transform="translate(-12, -12) rotate(90 12 12) scale(1.3)">
-                        <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFFFFF" style="filter: drop-shadow(0px 0px 10px rgba(255,255,255,1));"/>
+                    <!-- Plane: Rotate +45 to align nose to right, then scale up -->
+                    <g transform="translate(-20, -20) rotate(45 20 20) scale(1.5)">
+                        <text font-size="30" filter="drop-shadow(0px 0px 8px rgba(255,255,255,1))">✈️</text>
                     </g>
-                    <animateMotion dur="14s" repeatCount="indefinite" rotate="auto">
-                        <mpath href="#flightRoute"/>
+                    <animateMotion dur="8s" repeatCount="indefinite" rotate="auto">
+                        <mpath href="#route1"/>
                     </animateMotion>
-                    <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.1; 0.9; 1" dur="14s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.15; 0.85; 1" dur="8s" repeatCount="indefinite"/>
                 </g>
             </svg>
-            
-            <div class="floating-ticket card-1">
-                <div class="ticket-header">
-                    <span>Tokyo</span>
-                    <span class="arrow">⟶</span>
-                    <span>New York</span>
-                </div>
-                <div class="ticket-status">Route Generated</div>
+            <div class="journey-card" style="top: 25%; left: 8%;">
+                <div class="card-location">Tokyo, JP</div>
+                <div class="card-transport">✈️ Flight Route Generated</div>
             </div>
-
-            <div class="floating-ticket card-2">
-                <div class="ticket-header">
-                    <span class="icon">🏨</span>
-                    <span>Hyatt Regency</span>
-                </div>
-                <div class="ticket-status">Budget Aligned</div>
+            <div class="journey-card" style="bottom: 10%; right: 8%;">
+                <div class="card-location">Singapore, SG</div>
+                <div class="card-transport">🚄 Train Transfer Scheduled</div>
             </div>
         </div>
 
@@ -78,6 +68,27 @@
 
     <!-- Features Section -->
     <section id="features" class="section features-section">
+        <div class="journey-overlay">
+            <svg viewBox="0 0 1920 800" preserveAspectRatio="xMidYMid slice" class="journey-svg">
+                <!-- Curve starting where Hero left off (Right), moving to Left -->
+                <path id="route2" d="M 1700 80 C 1300 400 600 400 200 700" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3" stroke-dasharray="10 15" />
+                <g>
+                    <g transform="translate(-20, -20) scale(1.5)">
+                        <text font-size="30" filter="drop-shadow(0px 0px 8px rgba(255,255,255,0.8))">🚄</text>
+                    </g>
+                    <!-- Left-facing train moving along left-bound path. No auto rotation needed. -->
+                    <animateMotion dur="7s" repeatCount="indefinite" rotate="0">
+                        <mpath href="#route2"/>
+                    </animateMotion>
+                    <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.15; 0.85; 1" dur="7s" repeatCount="indefinite"/>
+                </g>
+            </svg>
+            <div class="journey-card" style="bottom: 5%; left: 8%;">
+                <div class="card-location">Kyoto, JP</div>
+                <div class="card-transport">🚌 Bus Tour Booked</div>
+            </div>
+        </div>
+
         <div class="section-header fade-in-scroll">
             <h2>Flawless Execution.<br><span class="text-muted">Absolute Control.</span></h2>
             <p>Our intelligent system orchestrates every detail of your journey so you can focus on the adventure.</p>
@@ -119,6 +130,25 @@
 
     <!-- How It Works Section -->
     <section id="how-it-works" class="section how-it-works-section">
+        <div class="journey-overlay">
+            <svg viewBox="0 0 1920 800" preserveAspectRatio="xMidYMid slice" class="journey-svg">
+                <path id="route3" d="M 200 80 C 600 400 1300 400 1700 700" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3" stroke-dasharray="10 15" />
+                <g>
+                    <g transform="translate(-20, -20) scale(1.5)">
+                        <text font-size="30" filter="drop-shadow(0px 0px 8px rgba(255,255,255,0.8))" style="transform-origin: 50% 50%; transform: scaleX(-1); display: inline-block;">🚌</text>
+                    </g>
+                    <animateMotion dur="8s" repeatCount="indefinite" rotate="0">
+                        <mpath href="#route3"/>
+                    </animateMotion>
+                    <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.15; 0.85; 1" dur="8s" repeatCount="indefinite"/>
+                </g>
+            </svg>
+            <div class="journey-card" style="bottom: 10%; right: 8%;">
+                <div class="card-location">Paris, FR</div>
+                <div class="card-transport">🚕 Cab Requested</div>
+            </div>
+        </div>
+
         <div class="section-header">
             <h2>Three steps to <span class="gradient-text-dynamic">perfection.</span></h2>
         </div>
@@ -144,6 +174,26 @@
 
     <!-- About Section -->
     <section id="about" class="section about-section">
+        <div class="journey-overlay" style="height: 100%;">
+            <svg viewBox="0 0 1920 500" preserveAspectRatio="xMidYMid slice" class="journey-svg">
+                <!-- Curve starting Right, moving to Left, ending near the middle-left -->
+                <path id="route4" d="M 1700 80 C 1300 300 800 300 300 500" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3" stroke-dasharray="10 15" />
+                <g>
+                    <g transform="translate(-20, -20) scale(1.5)">
+                        <text font-size="30" filter="drop-shadow(0px 0px 8px rgba(255,255,255,0.8))">🚕</text>
+                    </g>
+                    <animateMotion dur="6s" repeatCount="indefinite" rotate="0">
+                        <mpath href="#route4"/>
+                    </animateMotion>
+                    <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.15; 0.85; 1" dur="6s" repeatCount="indefinite"/>
+                </g>
+            </svg>
+            <div class="journey-card" style="bottom: 10%; left: 10%;">
+                <div class="card-location">London, UK</div>
+                <div class="card-transport" style="color: #60a5fa;">✅ Perfect Journey Finished</div>
+            </div>
+        </div>
+
         <div class="about-grid">
             <div class="about-content">
                 <div class="badge fade-in-scroll">Our Mission</div>
@@ -176,49 +226,74 @@
         </div>
     </section>
 
-    <!-- CTA Section -->
-    <section id="download" class="section cta-section">
-        <div class="cta-container">
-            <h2>Ready to transcend your travel?</h2>
-            <p>Join the future of algorithmic travel planning entirely for free today. No credit cards, no friction. Just execution.</p>
-            <div class="hero-ctas justify-center fade-in-scroll">
-                <a href="https://routemate-6a885.web.app/" target="_blank" class="btn btn-primary btn-large">Launch Web App Now</a>
+    <!-- Pricing Section -->
+    <section id="pricing" class="section pricing-section">
+        <div class="section-header">
+            <h2>Pricing</h2>
+            <p>Use TravelWitch for free with your whole team. Upgrade to enable enhanced features.</p>
+        </div>
+        <div class="pricing-container">
+            <div class="pricing-wrapper">
+                <div class="pricing-card">
+                    <div class="card-type">STARTER</div>
+                    <div class="card-price">$0</div>
+                    <div class="card-sub">Free for everyone</div>
+                    <ul class="card-features">
+                        <li><span>✓</span> Unlimited members</li>
+                        <li><span>✓</span> 250 transactions</li>
+                        <li><span>✓</span> No support</li>
+                    </ul>
+                    <a href="https://routemate-6a885.web.app/" target="_blank" class="btn-pricing btn-outline-dark">Start for free &nbsp; &gt;</a>
+                </div>
+                <div class="pricing-card featured">
+                    <div class="card-type">BASIC</div>
+                    <div class="card-price">$29.99</div>
+                    <div class="card-sub">per user per month</div>
+                    <ul class="card-features">
+                        <li><span>✓</span> All free plan features and...</li>
+                        <li><span>✓</span> Gemini 2.0 AI</li>
+                        <li><span>✓</span> Unlimited teams</li>
+                    </ul>
+                    <a href="https://routemate-6a885.web.app/" target="_blank" class="btn-pricing btn-solid-black">7 days free &nbsp; &gt;</a>
+                </div>
+                <div class="pricing-card">
+                    <div class="card-type">ENTERPRISE</div>
+                    <div class="card-price">$ENT</div>
+                    <div class="card-sub">Custom pricing</div>
+                    <ul class="card-features">
+                        <li><span>✓</span> All basic plan features and...</li>
+                        <li><span>✓</span> Advanced security controls</li>
+                        <li><span>✓</span> Migration support</li>
+                    </ul>
+                    <a href="https://routemate-6a885.web.app/" target="_blank" class="btn-pricing btn-outline-dark grey">Book a demo &nbsp; &gt;</a>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-brand">
-                <div class="logo">
-                    <span class="emoji">🗺️</span>
-                    <h2>TravelWitch</h2>
-                </div>
-                <p>The premium AI-powered travel orchestrator. Travel planning mastered.</p>
-            </div>
-            <div class="footer-links">
-                <div class="link-column">
-                    <h4>Platform</h4>
-                    <a href="https://routemate-6a885.web.app/" target="_blank">Web App</a>
-                    <a href="#features">Features</a>
-                    <a href="#how-it-works">Architecture</a>
-                </div>
-                <div class="link-column">
-                    <h4>Company</h4>
-                    <a href="#about">About</a>
-                    <a href="#team">Team</a>
-                    <a href="#">Contact</a>
-                </div>
-                <div class="link-column">
-                    <h4>Legal</h4>
-                    <a href="#">Privacy Policy</a>
-                    <a href="#">Terms of Service</a>
-                </div>
-            </div>
+    <!-- Footer Section -->
+    <footer class="footer-new">
+        <div class="footer-cta">
+            <h2>Start your free trial today</h2>
+            <p>The fit-for-purpose tool for planning and building modern software products.</p>
+            <a href="https://routemate-6a885.web.app/" target="_blank" class="btn-pill-light">Get started</a>
         </div>
-        <div class="footer-bottom">
-            <p>&copy; 2026 Praneeth. All rights reserved.</p>
+        <div class="footer-bottom-new">
+            <div class="footer-nav-row">
+                <a href="#features">Product</a>
+                <a href="#about">About Us</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#how-it-works">FAQ</a>
+                <a href="#team">Contact</a>
+                <a href="#">Twitter ↗</a>
+                <a href="#">LinkedIn ↗</a>
+            </div>
+            <div class="footer-legal">
+                <a href="#">Privacy Policy</a>
+            </div>
+            <div class="footer-brand-huge">
+                travelwitch
+            </div>
         </div>
     </footer>
 
