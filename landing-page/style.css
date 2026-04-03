@@ -1173,6 +1173,8 @@ h4 {
     width: 100%;
     max-width: 480px;
     height: 650px;
+    transform-style: preserve-3d;
+    perspective: 1500px;
 }
 
 .team-card {
@@ -1188,17 +1190,39 @@ h4 {
     display: flex;
     flex-direction: column;
     opacity: 0;
-    transform: scale(0.9) translateY(40px);
+    transform: translate3d(0, 40px, -500px) scale(0.8);
     pointer-events: none;
-    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.9s cubic-bezier(0.16, 1, 0.3, 1);
     box-shadow: 0 50px 100px rgba(0,0,0,0.8);
+    backface-visibility: hidden;
 }
 
 .team-card.active {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translate3d(0, 0, 0) scale(1.1);
     pointer-events: all;
-    z-index: 2;
+    z-index: 10;
+}
+
+.team-card.prev {
+    opacity: 0.3;
+    transform: translate3d(-100%, 0, -400px) rotateY(40deg) scale(0.8);
+    pointer-events: none;
+    filter: blur(2px) grayscale(1);
+    z-index: 5;
+}
+
+.team-card.next {
+    opacity: 0.3;
+    transform: translate3d(100%, 0, -400px) rotateY(-40deg) scale(0.8);
+    pointer-events: none;
+    filter: blur(2px) grayscale(1);
+    z-index: 5;
+}
+
+.team-card.hidden {
+    opacity: 0;
+    transform: translate3d(0, 100px, -1000px) scale(0.5);
 }
 
 .team-image-wrapper {
@@ -1339,6 +1363,39 @@ h4 {
     border-color: #333;
 }
 
+.store-btn.add-to-home {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0 20px;
+    height: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    text-decoration: none;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.store-btn.add-to-home span {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.store-btn.add-to-home small {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.store-btn.add-to-home:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: white;
+    transform: translateY(-3px);
+}
+
 @media (max-width: 968px) {
     .features-floating-container { height: auto; padding: 5rem 0; }
     .floating-gear { position: relative; margin: 2rem auto; width: 300px; height: 300px; }
@@ -1346,4 +1403,6 @@ h4 {
     .download-container h2 { font-size: 3.5rem; }
     .iphone-mockups { transform: scale(0.8); }
     .mockup { width: 300px; }
+    .team-card.prev, .team-card.next { display: none; }
+    .team-card.active { transform: scale(1) translate3d(0,0,0); }
 }

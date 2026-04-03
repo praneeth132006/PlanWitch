@@ -190,18 +190,21 @@
         </div>
     </section>
 
-    <!-- Team Carousel Section -->
+    <!-- Team Carousel Section: 3D Rotating Layout -->
     <section id="team" class="section team-carousel-section">
         <div class="team-carousel-container">
-            <div class="team-card active" data-index="0">
+            <!-- Member 1: Founder -->
+            <div class="team-card" data-index="0">
                 <div class="team-image-wrapper">
-                    <img src="team_member_1_portrait_1775236173138.png" alt="Praneeth">
+                    <!-- ADD YOUR PIC HERE: Replace 'src' with your image path (e.g., 'your_photo.jpg') -->
+                    <img src="team_member_1_portrait_1775236173138.png" alt="Founder">
                 </div>
                 <div class="team-info">
-                    <h3>Praneeth</h3>
-                    <p class="member-role">Founder & Lead Engineer</p>
+                    <h3>Founder</h3>
+                    <p class="member-role">Lead Visionary</p>
                 </div>
             </div>
+            <!-- Member 2 -->
             <div class="team-card" data-index="1">
                 <div class="team-image-wrapper">
                     <img src="team_member_1_portrait_1775236173138.png" alt="Aria" style="filter: saturate(0.5) contrast(1.2);">
@@ -209,6 +212,16 @@
                 <div class="team-info">
                     <h3>Aria Smith</h3>
                     <p class="member-role">Creative Director</p>
+                </div>
+            </div>
+            <!-- Member 3 -->
+            <div class="team-card" data-index="2">
+                <div class="team-image-wrapper">
+                    <img src="team_member_1_portrait_1775236173138.png" alt="Marcus" style="filter: brightness(0.7) sepia(0.2);">
+                </div>
+                <div class="team-info">
+                    <h3>Marcus Thorne</h3>
+                    <p class="member-role">Platform Lead</p>
                 </div>
             </div>
             
@@ -280,6 +293,10 @@
                 <a href="#" class="store-btn">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play">
                 </a>
+                <a href="https://routemate-6a885.web.app/" target="_blank" class="store-btn add-to-home">
+                    <span>Add to Home Screen</span>
+                    <small>Open Web App &nbsp; ↗</small>
+                </a>
             </div>
             <div class="iphone-mockups">
                 <div class="mockup mockup-side mockup-left">
@@ -296,11 +313,7 @@
     </section>
 
     <footer class="footer-new">
-        <div class="footer-cta">
-            <h2>Start your free trial today</h2>
-            <p>The fit-for-purpose tool for planning and building modern software products.</p>
-            <a href="https://routemate-6a885.web.app/" target="_blank" class="btn-pill-light">Get started</a>
-        </div>
+
         <div class="footer-bottom-new">
             <div class="footer-nav-row">
                 <a href="#features">Product</a>
@@ -321,29 +334,41 @@
     </footer>
 
     <script>
-        // Team Carousel Logic
+        // Team Carousel Logic: 3D perspective rotation
         const cards = document.querySelectorAll('.team-card');
         let currentIndex = 0;
 
-        function showCard(index) {
-            cards.forEach(card => card.classList.remove('active'));
-            cards[index].classList.add('active');
+        function updateCarousel() {
+            cards.forEach((card, i) => {
+                card.classList.remove('active', 'prev', 'next', 'hidden');
+                
+                if (i === currentIndex) {
+                    card.classList.add('active');
+                } else if (i === (currentIndex - 1 + cards.length) % cards.length) {
+                    card.classList.add('prev');
+                } else if (i === (currentIndex + 1) % cards.length) {
+                    card.classList.add('next');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
         }
 
         function nextCard() {
             currentIndex = (currentIndex + 1) % cards.length;
-            showCard(currentIndex);
+            updateCarousel();
         }
 
         function prevCard() {
             currentIndex = (currentIndex - 1 + cards.length) % cards.length;
-            showCard(currentIndex);
+            updateCarousel();
         }
 
         document.querySelector('.nav-next').addEventListener('click', nextCard);
         document.querySelector('.nav-prev').addEventListener('click', prevCard);
 
-        setInterval(nextCard, 3000);
+        updateCarousel();
+        setInterval(nextCard, 5000); // Rotating every 5 seconds for visual stability
     </script>
 </body>
 
