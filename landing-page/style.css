@@ -42,36 +42,43 @@ h1, h2, h3, h4 {
     -webkit-text-fill-color: transparent;
 }
 
-/* Navbar */
+/* Navbar - Refined into floating pill */
 .navbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.5rem 5%;
-    background: rgba(0, 0, 0, 0.6); /* increased transparency for cinematic feel */
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    position: sticky;
+    padding: 0.8rem 2.5rem;
+    width: 90%;
+    max-width: 1100px;
+    margin: 2rem auto 0;
+    background: rgba(15, 15, 15, 0.55); 
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 100px; /* Circular curve at ends */
+    position: absolute; /* Not fixed at top, floats inside hero */
+    left: 0;
+    right: 0;
     top: 0;
     z-index: 100;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.08); /* Premium shadow logic */
 }
 
 .logo {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.8rem;
 }
 
 .logo h1, .logo h2 {
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     font-weight: 700;
     letter-spacing: -0.5px;
     color: #ffffff;
 }
 
 .emoji {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
 }
 
 .nav-links {
@@ -83,7 +90,7 @@ h1, h2, h3, h4 {
 .nav-links a {
     color: var(--text-muted);
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-weight: 500;
     transition: color 0.3s ease;
 }
@@ -91,7 +98,7 @@ h1, h2, h3, h4 {
 .nav-links a.nav-link-special {
     color: #000;
     display: inline-block;
-    padding: 0.4rem 1rem;
+    padding: 0.5rem 1.2rem;
     border-radius: 50px;
     background: #ffffff;
     font-weight: 600;
@@ -311,47 +318,13 @@ h1, h2, h3, h4 {
     z-index: 1;
 }
 
-.flight-path {
+.flight-trajectory {
     position: absolute;
-    width: 70vw;
-    height: 40vh;
+    width: 100vw;
+    height: 50vh;
     top: 25%;
-    left: 15%;
-    border-top: 2px dashed rgba(255, 255, 255, 0.3);
-    border-radius: 50% 50% 0 0;
-    opacity: 0.8;
-}
-
-.plane-icon {
-    position: absolute;
-    top: -16px;
     left: 0;
-    font-size: 2rem;
-    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 1));
-    animation: flyPath 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-@keyframes flyPath {
-    0% {
-        transform: rotate(35deg);
-        left: -5%;
-        opacity: 0;
-    }
-    10% {
-        opacity: 1;
-    }
-    50% {
-        transform: rotate(90deg);
-        top: -6vh;
-    }
-    90% {
-        opacity: 1;
-    }
-    100% {
-        transform: rotate(135deg);
-        left: 105%;
-        opacity: 0;
-    }
+    pointer-events: none;
 }
 
 .floating-ticket {
@@ -760,6 +733,11 @@ h1, h2, h3, h4 {
         display: none; 
     }
 
+    .navbar {
+        width: 95%;
+        padding: 0.8rem 1.5rem; /* smaller padding on mobile */
+    }
+
     .hero-title {
         font-size: 4rem;
         letter-spacing: -1.5px;
@@ -780,7 +758,7 @@ h1, h2, h3, h4 {
         width: 100%;
     }
 
-    .flight-path, .floating-ticket {
+    .flight-trajectory, .floating-ticket {
         display: none; /* Hide travel animations on mobile to keep it clean */
     }
 
