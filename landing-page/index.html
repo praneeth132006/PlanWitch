@@ -6,11 +6,13 @@
     <title>TravelWitch | Premium AI Travel Companion</title>
     <meta name="description" content="Your billionaire-level travel companion combining Gemini 2.0 AI with seamless real-time syncing.">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
     
     <div class="ambient-glow"></div>
+    <div class="glow-orb top-left"></div>
+    <div class="glow-orb top-right"></div>
 
     <nav class="navbar">
         <div class="logo">
@@ -21,55 +23,40 @@
             <a href="#features">Features</a>
             <a href="#about">About</a>
             <a href="#team">Team</a>
-            <a href="https://routemate-6a885.web.app/" target="_blank" class="nav-link-special">Web App ↗</a>
+            <a href="https://routemate-6a885.web.app/" target="_blank" class="nav-link-special">Open Web App ↗</a>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <header class="hero">
-        <div class="hero-content">
-            <div class="badge">
-                <span class="badge-dot"></span>
-                Powered by Gemini 2.0 Flash
+    <!-- Hero Section: Centered, Apple-style -->
+    <header class="hero" id="hero">
+        <div class="hero-content-centered">
+            <div class="badge fade-in-up">
+                <span class="badge-dot pulse"></span>
+                Gemini 2.0 AI Integrated
             </div>
-            <h1 class="hero-title">Travel Mastered<br><span class="gradient-text">By Intelligence.</span></h1>
-            <p class="hero-subtitle">Experience a billionaire-level travel companion. Generate flawless itineraries, track your budget flawlessly, and collaborate in real-time. Unveil the magic of the perfect journey.</p>
-            <div class="hero-ctas">
-                <a href="https://routemate-6a885.web.app/" target="_blank" class="btn btn-primary">Launch Web App</a>
-                <a href="#features" class="btn btn-outline">Explore Capabilities</a>
-            </div>
-            <div class="stats">
-                <div class="stat"><span class="stat-number">10x</span><span class="stat-label">Faster Planning</span></div>
-                <div class="stat"><span class="stat-number">Live</span><span class="stat-label">Cloud Sync</span></div>
-                <div class="stat"><span class="stat-number">AI</span><span class="stat-label">Master Plan</span></div>
+            <h1 class="hero-title gradient-text-dynamic fade-in-up" style="animation-delay: 0.1s;">
+                Travel Planning,<br>Perfected.
+            </h1>
+            <p class="hero-subtitle fade-in-up" style="animation-delay: 0.2s;">
+                Meet your billionaire-level travel companion. Generate flawless itineraries, track your budget flawlessly, and collaborate with your entire group in real-time.
+            </p>
+            <div class="hero-ctas justify-center fade-in-up" style="animation-delay: 0.3s;">
+                <a href="https://routemate-6a885.web.app/" target="_blank" class="btn btn-primary btn-large">Launch Web App</a>
+                <a href="#features" class="btn btn-outline btn-large">Explore Platform</a>
             </div>
         </div>
         
-        <div class="hero-visual">
-            <div class="glow-ring"></div>
-            <div class="glass-mockup">
+        <!-- Large Centered Visual with Faded Bottom -->
+        <div class="hero-visual-centered fade-in-up" style="animation-delay: 0.5s;">
+            <div class="mockup-container">
                 <img src="assets/mockup.png" alt="TravelWitch App Interface" class="app-image">
-                <div class="floating-card ai-card">
-                    <div class="icon-wrap">🤖</div>
-                    <div class="info">
-                        <strong>AI Master Plan</strong>
-                        <span>Curating Kyoto Trip...</span>
-                    </div>
-                </div>
-                <div class="floating-card sync-card">
-                    <div class="icon-wrap">⚡</div>
-                    <div class="info">
-                        <strong>Live Sync</strong>
-                        <span>Expenses updated</span>
-                    </div>
-                </div>
             </div>
         </div>
     </header>
 
     <!-- Features Section -->
     <section id="features" class="section features-section">
-        <div class="section-header">
+        <div class="section-header fade-in-scroll">
             <h2>Flawless Execution.<br><span class="text-muted">Absolute Control.</span></h2>
             <p>Our intelligent system orchestrates every detail of your journey so you can focus on the adventure.</p>
         </div>
@@ -83,27 +70,27 @@
             <div class="feature-card">
                 <div class="feature-icon">🏦</div>
                 <h3>Financial Command</h3>
-                <p>Set a total trip budgets, seamlessly track spending by category, with multi-currency support.</p>
+                <p>Set a total trip budget, seamlessly track spending by category, with vast multi-currency support.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">🤝</div>
                 <h3>Real-Time Sync</h3>
-                <p>Invite friends with unique passcodes. Every expense, checklist, and itinerary alteration syncs instantly.</p>
+                <p>Invite friends with unique passcodes. Every expense, checklist, and itinerary alteration syncs instantly to all devices.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">🎒</div>
                 <h3>Smart Packing</h3>
-                <p>Receive categorized packing equipment tailored instantly to your upcoming destination's climate.</p>
+                <p>Receive categorized packing equipment automatically tailored to your destination's climate and duration.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">🍽️</div>
                 <h3>Gastronomic Guide</h3>
-                <p>Discover strictly curated culinary experiences with intelligent dietary and cost filtering.</p>
+                <p>Discover strictly curated culinary experiences with intelligent dietary filters for every stop.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">✈️</div>
                 <h3>Offline Utilities</h3>
-                <p>Retain full access without internet. The moment you reconnect, data merges securely.</p>
+                <p>Retain full access without internet connectivity. The moment you reconnect, data merges securely to the cloud.</p>
             </div>
         </div>
     </section>
@@ -111,24 +98,24 @@
     <!-- How It Works Section -->
     <section id="how-it-works" class="section how-it-works-section">
         <div class="section-header">
-            <h2>Three steps to <span class="gradient-text">perfection.</span></h2>
+            <h2>Three steps to <span class="gradient-text-dynamic">perfection.</span></h2>
         </div>
         
         <div class="steps-container">
             <div class="step">
                 <div class="step-number">01</div>
                 <h3>Input your vision</h3>
-                <p>Tell the AI where you want to go, who you're traveling with, and define your strict budget.</p>
+                <p>Tell the AI exactly where you want to go, who you're traveling with, and strictly define your total budget constraints.</p>
             </div>
             <div class="step">
                 <div class="step-number">02</div>
-                <h3>Review the Master Plan</h3>
-                <p>TravelWitch instantly crafts a dynamic itinerary, budget breakdown, and tailored packing schema.</p>
+                <h3>Review Master Plan</h3>
+                <p>TravelWitch instantly crafts a dynamic timeline, splits the budget breakdown dynamically, and drafts a tailored packing schema.</p>
             </div>
             <div class="step">
                 <div class="step-number">03</div>
                 <h3>Collaborate & Go</h3>
-                <p>Share a code with your circle to let them join, split costs algorithmically, and suggest live edits.</p>
+                <p>Share a code with your circle to let them join, split transaction costs dynamically, and suggest live edits from anywhere.</p>
             </div>
         </div>
     </section>
@@ -137,7 +124,7 @@
     <section id="about" class="section about-section">
         <div class="about-grid">
             <div class="about-content">
-                <div class="badge">Our Mission</div>
+                <div class="badge fade-in-scroll">Our Mission</div>
                 <h2>Redefining travel for the modern explorer.</h2>
                 <p>TravelWitch was born out of a simple frustration: planning a true, frictionless trip across borders, budgets, and friends was archaic. We built our AI orchestrator to bridge the gap between imagination and execution.</p>
                 <p>Gone are the days of scattered spreadsheets and fragmented group chats. We leverage Google Gemini 2.0 to handle the logistical heavy lifting, giving you back the joy of anticipation.</p>
@@ -162,7 +149,7 @@
                 </div>
                 <h3>Praneeth</h3>
                 <span class="member-role">Founder & Lead Engineer</span>
-                <p>Mastermind behind the architecture, AI integration, and the seamless live-sync system that powers the TravelWitch experience.</p>
+                <p>Mastermind behind the frontend architecture, complex AI prompt integrations, and the seamless Firebase live-sync system that powers the TravelWitch experience.</p>
             </div>
         </div>
     </section>
@@ -171,8 +158,8 @@
     <section id="download" class="section cta-section">
         <div class="cta-container">
             <h2>Ready to transcend your travel?</h2>
-            <p>Join the future of algorithmic travel planning today. No credit cards, no friction.</p>
-            <div class="hero-ctas justify-center">
+            <p>Join the future of algorithmic travel planning entirely for free today. No credit cards, no friction. Just execution.</p>
+            <div class="hero-ctas justify-center fade-in-scroll">
                 <a href="https://routemate-6a885.web.app/" target="_blank" class="btn btn-primary btn-large">Launch Web App Now</a>
             </div>
         </div>
@@ -186,7 +173,7 @@
                     <span class="emoji">🗺️</span>
                     <h2>TravelWitch</h2>
                 </div>
-                <p>The premium AI-powered travel orchestrator.</p>
+                <p>The premium AI-powered travel orchestrator. Travel planning mastered.</p>
             </div>
             <div class="footer-links">
                 <div class="link-column">
