@@ -1134,7 +1134,7 @@ h4 {
     overflow: hidden;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border-color);
-    box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6);
     transition: transform 0.5s ease;
 }
 
@@ -1144,15 +1144,42 @@ h4 {
     object-fit: cover;
 }
 
-.gear-1 { top: 0%; left: 5%; animation: float 6s ease-in-out infinite; }
-.gear-2 { top: -10%; right: 5%; animation: float 8s ease-in-out infinite reverse; }
-.gear-3 { bottom: -10%; left: 8%; animation: float 7s ease-in-out infinite; }
-.gear-4 { bottom: 0%; right: 8%; animation: float 9s ease-in-out infinite reverse; }
+.gear-1 {
+    top: 0%;
+    left: 5%;
+    animation: float 6s ease-in-out infinite;
+}
+
+.gear-2 {
+    top: -10%;
+    right: 5%;
+    animation: float 8s ease-in-out infinite reverse;
+}
+
+.gear-3 {
+    bottom: -10%;
+    left: 8%;
+    animation: float 7s ease-in-out infinite;
+}
+
+.gear-4 {
+    bottom: 0%;
+    right: 8%;
+    animation: float 9s ease-in-out infinite reverse;
+}
 
 @keyframes float {
-    0% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(-30px) rotate(3deg); }
-    100% { transform: translateY(0px) rotate(0deg); }
+    0% {
+        transform: translateY(0px) rotate(0deg);
+    }
+
+    50% {
+        transform: translateY(-30px) rotate(3deg);
+    }
+
+    100% {
+        transform: translateY(0px) rotate(0deg);
+    }
 }
 
 /* ==============================================================
@@ -1193,7 +1220,7 @@ h4 {
     transform: translate3d(0, 40px, -500px) scale(0.8);
     pointer-events: none;
     transition: all 0.9s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 50px 100px rgba(0,0,0,0.8);
+    box-shadow: 0 50px 100px rgba(0, 0, 0, 0.8);
     backface-visibility: hidden;
 }
 
@@ -1290,7 +1317,8 @@ h4 {
     text-align: center;
     position: relative;
     z-index: 5;
-    overflow: visible; /* Prevent clipping of mockups */
+    overflow: visible;
+    /* Prevent clipping of mockups */
 }
 
 .download-container h2 {
@@ -1334,7 +1362,7 @@ h4 {
     background: #000;
     border: 12px solid #1a1a1a;
     border-bottom: none;
-    box-shadow: 0 -30px 100px rgba(0,0,0,0.7);
+    box-shadow: 0 -30px 100px rgba(0, 0, 0, 0.7);
     transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -1397,12 +1425,47 @@ h4 {
 }
 
 @media (max-width: 968px) {
-    .features-floating-container { height: auto; padding: 5rem 0; }
-    .floating-gear { position: relative; margin: 2rem auto; width: 300px; height: 300px; }
-    .gear-1, .gear-2, .gear-3, .gear-4 { top: auto; left: auto; right: auto; bottom: auto; animation: none; }
-    .download-container h2 { font-size: 3.5rem; }
-    .iphone-mockups { transform: scale(0.8); }
-    .mockup { width: 300px; }
-    .team-card.prev, .team-card.next { display: none; }
-    .team-card.active { transform: scale(1) translate3d(0,0,0); }
+    .features-floating-container {
+        height: auto;
+        padding: 5rem 0;
+    }
+
+    .floating-gear {
+        position: relative;
+        margin: 2rem auto;
+        width: 300px;
+        height: 300px;
+    }
+
+    .gear-1,
+    .gear-2,
+    .gear-3,
+    .gear-4 {
+        top: auto;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        animation: none;
+    }
+
+    .download-container h2 {
+        font-size: 3.5rem;
+    }
+
+    .iphone-mockups {
+        transform: scale(0.8);
+    }
+
+    .mockup {
+        width: 300px;
+    }
+
+    .team-card.prev,
+    .team-card.next {
+        display: none;
+    }
+
+    .team-card.active {
+        transform: scale(1) translate3d(0, 0, 0);
+    }
 }
