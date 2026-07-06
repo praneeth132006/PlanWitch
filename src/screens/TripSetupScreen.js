@@ -1596,7 +1596,7 @@ const createStyles = (colors) => StyleSheet.create({
     borderColor: colors.primaryBorder,
   },
   tripTypeCheckText: {
-    color: colors.text,
+    color: '#FFF',
     fontSize: 14,
     fontWeight: 'bold',
   },
