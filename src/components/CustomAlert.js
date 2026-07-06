@@ -100,7 +100,7 @@ export const CustomAlert = ({
                                     style={[styles.button, styles.neutralButton, { backgroundColor: colors.secondary || '#4B5563', flex: 1 }]}
                                     onPress={onNeutral}
                                 >
-                                    <Text style={[styles.confirmText, { color: '#fff', fontSize: 13 }]}>{neutralText}</Text>
+                                    <Text style={[styles.confirmText, { color: colors.text, fontSize: 13 }]}>{neutralText}</Text>
                                 </TouchableOpacity>
                             )}
 
