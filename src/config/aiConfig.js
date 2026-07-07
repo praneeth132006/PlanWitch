@@ -12,10 +12,10 @@ export const AI_CONFIG = {
     // Provider: 'gemini' | 'openai'
     provider: 'gemini',
 
-    // API Key - Hardcoded for React Native compatibility
+    // API Key - Read from environment variables for security
     // TODO: In production, move this to a backend service or use expo-constants
-    // The line below updates the hardcoded Gemini API key to a valid credential. This restores AI functionality by authenticating our requests to Google AI Studio.
-    geminiKey: 'AQ.Ab8RN6IJjysGfrMa6Q5NJ3NrTUjexQp0DAWoVFdZvMdstQ1OcQ',
+    // [PRANEETH-RULE] Removed the hardcoded Gemini API key and replaced it with process.env.EXPO_PUBLIC_GEMINI_API_KEY to pass CodeQL Security Scans and prevent credentials from being committed to the repo.
+    geminiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY,
 
     openaiKey: '',
 
