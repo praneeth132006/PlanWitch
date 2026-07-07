@@ -41,11 +41,12 @@ const callGemini = async (prompt, isJson = true) => {
     }
 
     // Using Gemini 2.0 Flash with high token capacity for premium output
-    // Using Gemini 2.0 Flash as primary, with 1.5 Pro and 1.5 Flash as robust fallbacks
+    // Using Gemini 2.5 Flash as primary, with 2.0 Flash Lite as fallback
+    // Updated model names to match current Google AI API availability
+    // The lines below update the fallback models array to use the currently active and supported Google AI models ('gemini-2.5-flash' and 'gemini-2.0-flash-lite'). This resolves the '404 Not Found' errors that occurred when trying to reach older endpoints.
     const fallbackModels = [
-        { ver: 'v1beta', name: 'gemini-2.0-flash' },
-        { ver: 'v1beta', name: 'gemini-1.5-pro' },
-        { ver: 'v1beta', name: 'gemini-1.5-flash' },
+        { ver: 'v1beta', name: 'gemini-2.5-flash' },
+        { ver: 'v1beta', name: 'gemini-2.0-flash-lite' },
     ];
 
     let lastError = null;

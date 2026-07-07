@@ -12,15 +12,17 @@ export const AI_CONFIG = {
     // Provider: 'gemini' | 'openai'
     provider: 'gemini',
 
-    // API Key - Hardcoded for React Native compatibility
+    // API Key - Read from environment variables for security
     // TODO: In production, move this to a backend service or use expo-constants
-    geminiKey: 'AIzaSyBMHuGTA3NYGSV-rhxyNJ9jkInDtB6rB94',
+    // [PRANEETH-RULE] Removed the hardcoded Gemini API key and replaced it with process.env.EXPO_PUBLIC_GEMINI_API_KEY to pass CodeQL Security Scans and prevent credentials from being committed to the repo.
+    geminiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY,
 
     openaiKey: '',
 
     // Model configuration
     models: {
-        gemini: 'gemini-2.0-flash',
+        // The line below updates the default Gemini model from 'gemini-2.0-flash' to 'gemini-2.5-flash'. This fixes the '404 Not Found' error since the older model is no longer available under that name.
+        gemini: 'gemini-2.5-flash',
         openai: 'gpt-3.5-turbo'
     }
 };
