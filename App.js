@@ -6,12 +6,14 @@ import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { TravelProvider } from './src/context/TravelContext';
 import { AlertProvider } from './src/context/AlertContext';
+import { ChatProvider } from './src/context/ChatContext';
 import MainNavigator from './src/navigation/MainNavigator';
 import AuthScreen from './src/screens/AuthScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AlertSystem from './src/components/AlertSystem';
 import AppLoading from './src/components/AppLoading';
+import ChatWidget from './src/components/ChatWidget';
 // Safe import for crashlytics (crashes in Expo Go)
 let crashlytics = null;
 try {
@@ -114,6 +116,7 @@ function AppContent() {
         ) : (
           <MainNavigator />
         )}
+        {isAuthenticated && !showOnboarding && <ChatWidget />}
         <AlertSystem />
       </View>
     </View>
@@ -137,7 +140,9 @@ export default function App() {
               <PremiumProvider>
                 <TravelProvider>
                   <AlertProvider>
-                    <AppContent />
+                    <ChatProvider>
+                      <AppContent />
+                    </ChatProvider>
                   </AlertProvider>
                 </TravelProvider>
               </PremiumProvider>
