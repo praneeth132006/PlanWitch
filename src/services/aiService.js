@@ -753,6 +753,43 @@ IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
     }
 };
 
+// ═══════════════════════════════════════════════════════════════
+// 7. CONVERSATIONAL ASSISTANT (Chat Widget)
+// ═══════════════════════════════════════════════════════════════
+export const chatWithAssistant = async (message, history = [], tripInfo = {}) => {
+    if (!AI_CONFIG.geminiKey) {
+        return `MOCK: I'd love to help with "${message}", but no Gemini API key is configured yet.`;
+    }
+
+    const tripContext = tripInfo?.destination
+        ? `The user currently has an active trip to ${tripInfo.destination}${tripInfo.startDate ? ` from ${tripInfo.startDate} to ${tripInfo.endDate || '?'}` : ''}. Use this context when relevant.`
+        : `The user has no active trip set up yet.`;
+
+    const historyText = history
+        .slice(-10)
+        .map(m => `${m.sender === 'user' ? 'User' : 'Assistant'}: ${m.text}`)
+        .join('\n');
+
+    const prompt = `You are PlanWitch Concierge, a friendly, concise AI travel assistant embedded in a trip-planning app.
+
+${tripContext}
+
+Conversation so far:
+${historyText || '(start of conversation)'}
+
+User: ${message}
+
+Reply as the Assistant. Keep it conversational, helpful, and under 100 words unless the user asks for detail. If you don't have enough information to fully answer, ask a clarifying question instead of guessing.`;
+
+    try {
+        const text = await callGemini(prompt, false);
+        return text.trim();
+    } catch (error) {
+        console.error('AI Chat Error:', error);
+        throw error;
+    }
+};
+
 // Generate comprehensive personalized plan (Full Itinerary + Packing + Food)
 export const generateFullPersonalizedPlan = async (details) => {
     console.log(`[AI Service] Generating Nuclear Plan for ${details.startLocation} to ${details.endLocation}`);
