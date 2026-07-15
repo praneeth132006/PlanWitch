@@ -5,6 +5,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   onAuthStateChanged,
+  deleteUser,
 } from 'firebase/auth';
 import { ref, set, get, update } from 'firebase/database';
 import { auth, database } from '../config/firebase';
@@ -44,7 +45,15 @@ export const signUp = async (email, password, displayName) => {
     return { success: true, user };
   } catch (error) {
     console.error('SignUp error:', error);
-    return { success: false, error: getErrorMessage(error.code) };
+    // If we created an auth user but failed later (e.g. database error), delete the auth user
+    if (auth.currentUser) {
+      try {
+        await deleteUser(auth.currentUser);
+      } catch (deleteError) {
+        console.error('Error cleaning up zombie user:', deleteError);
+      }
+    }
+    return { success: false, error: getErrorMessage(error.code || 'unknown') };
   }
 };
 
@@ -95,7 +104,7 @@ export const createUserProfile = async (userId, profileData) => {
     // console.log('User profile saved to database');
   } catch (error) {
     console.error('Error creating user profile:', error);
-    // Don't throw error, just log it - profile creation failure shouldn't block signup
+    throw error;
   }
 };
 
