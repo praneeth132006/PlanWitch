@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
+import { Alert } from 'react-native';
 import { generateUniqueTripCode } from '../utils/tripCodeGenerator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
@@ -645,28 +646,38 @@ export const TravelProvider = ({ children }) => {
         await DB.saveExpense(newExpense, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error saving expense:', error);
+        setExpenses(prev => prev.filter(e => e.id !== newExpense.id));
+        Alert.alert('Error', 'Failed to save expense. Please try again.');
       }
     }
   };
 
-  // Update expense
   const updateExpense = async (id, updatedData) => {
+    let originalExpense = null;
     setExpenses(prev => {
+      originalExpense = prev.find(e => e.id === id);
       const updated = prev.map(exp => exp.id === id ? { ...exp, ...updatedData } : exp);
       return updated.sort((a, b) => (b.dateTimestamp || b.createdAt) - (a.dateTimestamp || a.createdAt));
     });
 
     if (isAuthenticated) {
       try {
-        await DB.saveExpense({ ...updatedData, id }, tripInfo.id, tripOwnerId);
+        await DB.saveExpense({ ...originalExpense, ...updatedData, id }, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error updating expense:', error);
+        if (originalExpense) {
+          setExpenses(prev => {
+            const updated = prev.map(exp => exp.id === id ? originalExpense : exp);
+            return updated.sort((a, b) => (b.dateTimestamp || b.createdAt) - (a.dateTimestamp || a.createdAt));
+          });
+          Alert.alert('Error', 'Failed to update expense. Please try again.');
+        }
       }
     }
   };
 
-  // Delete expense
   const deleteExpense = async (id) => {
+    const expenseToDelete = expenses.find(e => e.id === id);
     setExpenses(prev => prev.filter(expense => expense.id !== id));
 
     if (isAuthenticated) {
@@ -674,6 +685,13 @@ export const TravelProvider = ({ children }) => {
         await DB.deleteExpenseFromDB(id, tripInfo.id, tripOwnerId);
       } catch (error) {
         console.error('Error deleting expense:', error);
+        if (expenseToDelete) {
+          setExpenses(prev => {
+            const updated = [...prev, expenseToDelete];
+            return updated.sort((a, b) => (b.dateTimestamp || b.createdAt) - (a.dateTimestamp || a.createdAt));
+          });
+          Alert.alert('Error', 'Failed to delete expense. Please try again.');
+        }
       }
     }
   };

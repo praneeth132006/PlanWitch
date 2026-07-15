@@ -148,7 +148,12 @@ const callGemini = async (prompt, isJson = true) => {
                     try {
                         return JSON.parse(fixedText);
                     } catch (e) {
-                        throw new Error(`JSON parse failed: ${parseError.message}`);
+                        // If appending brackets fails, try appending a quote then brackets
+                        try {
+                            return JSON.parse(text + '"' + fixedText.substring(text.length));
+                        } catch (e2) {
+                            throw new Error(`JSON parse failed: ${parseError.message}`);
+                        }
                     }
                 }
             }
@@ -157,7 +162,10 @@ const callGemini = async (prompt, isJson = true) => {
         } catch (error) {
             console.error(`[AI Failed] ${model.name}:`, error.message);
             lastError = error;
-            if (error.message.includes('API Key')) throw error;
+            if (error.message.includes('API Key') || error.message.includes('API key not valid')) {
+                AI_CONFIG.geminiKey = null; // Disable AI for session to trigger mock fallback globally
+                throw new Error('INVALID_API_KEY');
+            }
         }
     }
 
@@ -378,6 +386,10 @@ IMPORTANT: Return ONLY the JSON. No markdown, no code blocks, no explanations ou
         }
         return rawResult;
     } catch (error) {
+        if (error.message === 'INVALID_API_KEY') {
+            console.warn('Using MOCK itinerary data (Invalid API Key)');
+            return MOCK_ITINERARY;
+        }
         console.error("AI Error:", error);
         return { success: false, error: error.message };
     }
@@ -505,6 +517,20 @@ IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
 
         return result;
     } catch (error) {
+        if (error.message === 'INVALID_API_KEY') {
+            console.warn('Using MOCK budget data (Invalid API Key)');
+            return {
+                success: true,
+                feasible: true,
+                total: 50000,
+                per_person: 12500,
+                analysis_message: "MOCK: Budget looks good!",
+                realistic_cost: 50000,
+                deficit: 0,
+                categories: { accommodation: 20000, food: 10000, transport: 10000, activities: 5000, shopping: 2500, other: 2500 },
+                tips: ["Book early", "Eat local"]
+            };
+        }
         console.error("AI Budget Error:", error);
         return { success: false, error: error.message };
     }
@@ -598,6 +624,14 @@ IMPORTANT: The "luggage" field must be "carry" or "checked". Return ONLY the JSO
     try {
         return await callGemini(prompt, true);
     } catch (error) {
+        if (error.message === 'INVALID_API_KEY') {
+            return {
+                success: true,
+                recommendations: [
+                    { category: 'Essentials', items: ['Passport', 'Wallet', 'Phone'] }
+                ]
+            };
+        }
         console.error("AI Packing Error:", error);
         return { success: false, error: error.message };
     }
@@ -661,6 +695,17 @@ export const generateFoodRecommendations = async (places, preferences) => {
     try {
         return await callGemini(prompt, true);
     } catch (error) {
+        if (error.message === 'INVALID_API_KEY') {
+            return {
+                success: true,
+                recommendations: (Array.isArray(locations) ? locations : [locations]).map(place => ({
+                    place,
+                    items: [
+                        { name: 'Local Specialty', type: 'Veg', mustTry: true, bestTime: 'Morning', bestLocation: 'Local Market' }
+                    ]
+                }))
+            };
+        }
         console.error("AI Food Error:", error);
         return { success: false, error: error.message };
     }
@@ -691,6 +736,12 @@ export const generateDestinationInfo = async (destination) => {
     try {
         return await callGemini(prompt, true);
     } catch (error) {
+        if (error.message === 'INVALID_API_KEY') {
+            return {
+                success: true,
+                info: `Get ready for an unforgettable journey to ${destination}.`
+            };
+        }
         console.error("AI Destination Info Error:", error);
         return { success: false, error: error.message };
     }
@@ -748,6 +799,14 @@ IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
     try {
         return await callGemini(prompt, true);
     } catch (error) {
+        if (error.message === 'INVALID_API_KEY') {
+            return {
+                success: true,
+                suggestions: [
+                    { title: "Local Tour", desc: "Try best food", icon: "restaurant" }
+                ]
+            };
+        }
         console.error("AI Suggestions Error:", error);
         return { success: false, error: error.message };
     }
@@ -785,6 +844,9 @@ Reply as the Assistant. Keep it conversational, helpful, and under 100 words unl
         const text = await callGemini(prompt, false);
         return text.trim();
     } catch (error) {
+        if (error.message === 'INVALID_API_KEY') {
+            return `MOCK: I'd love to help with "${message}", but no API key is configured.`;
+        }
         console.error('AI Chat Error:', error);
         throw error;
     }
@@ -918,6 +980,10 @@ Return ONLY a JSON object (no extra text) with this exact structure:
         }
         return rawResult;
     } catch (error) {
+        if (error.message === 'INVALID_API_KEY') {
+            console.warn('Using MOCK personalized plan data (Invalid API Key)');
+            return MOCK_ITINERARY;
+        }
         console.error("AI Error:", error);
         return { success: false, error: error.message };
     }

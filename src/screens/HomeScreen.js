@@ -227,7 +227,7 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
             await handleAutoEndTrip();
           }
         } catch (e) {
-          // console.log('Error checking trip end date:', e);
+          console.error('Error checking trip end date:', e);
         }
       }
     };
@@ -780,12 +780,15 @@ export default function HomeScreen({ onBackToHome, onSetScreen }) {
               // but here we want the SPECIFIC stop to match the AI's "place" field.
               const resultPlaceLower = (placeData.place || '').toLowerCase();
 
-              // Sort uniqueLocations by length descending to match most specific first
               const sortedLocations = [...uniqueLocations].sort((a, b) => b.length - a.length);
-              const targetPlace = sortedLocations.find(p =>
-                resultPlaceLower.includes(p.toLowerCase()) ||
-                p.toLowerCase().includes(resultPlaceLower)
-              ) || uniqueLocations[0];
+              const targetPlace = sortedLocations.find(p => {
+                const lowerP = p.toLowerCase();
+                if (lowerP === resultPlaceLower) return true;
+                return resultPlaceLower.includes(lowerP + ',') || 
+                       resultPlaceLower.includes(lowerP + ' ') ||
+                       lowerP.includes(resultPlaceLower + ',') ||
+                       lowerP.includes(resultPlaceLower + ' ');
+              }) || uniqueLocations[0];
               for (const item of (placeData.items || [])) {
                 const signature = `${targetPlace}:${item.name.trim().toLowerCase()}`;
                 const exists = !isReplace && foodItems.some(f => f.place === targetPlace && f.name.toLowerCase() === item.name.trim().toLowerCase());
