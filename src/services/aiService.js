@@ -33,139 +33,99 @@ const MOCK_ITINERARY = {
     ]
 };
 
-// Helper to call Gemini AI
-const callGemini = async (prompt, isJson = true) => {
-    const apiKey = AI_CONFIG.geminiKey;
+// Helper to call Grok AI
+const callGrok = async (prompt, isJson = true) => {
+    const apiKey = AI_CONFIG.grokKey;
     if (!apiKey) {
-        throw new Error('API Key is missing. Please set GEMINI_API_KEY in your .env file.');
+        throw new Error('API Key is missing. Please set EXPO_PUBLIC_GROK_API_KEY in your .env file.');
     }
 
-    // Using Gemini 2.0 Flash with high token capacity for premium output
-    // Using Gemini 2.5 Flash as primary, with 2.0 Flash Lite as fallback
-    // Updated model names to match current Google AI API availability
-    // The lines below update the fallback models array to use the currently active and supported Google AI models ('gemini-2.5-flash' and 'gemini-2.0-flash-lite'). This resolves the '404 Not Found' errors that occurred when trying to reach older endpoints.
-    const fallbackModels = [
-        { ver: 'v1beta', name: 'gemini-2.5-flash' },
-        { ver: 'v1beta', name: 'gemini-2.0-flash-lite' },
-    ];
-
+    const modelName = AI_CONFIG.models?.grok || 'grok-4.5';
     let lastError = null;
 
-    for (const model of fallbackModels) {
-        try {
-            const cleanName = model.name.replace(/^models\//, '');
-            const url = `https://generativelanguage.googleapis.com/${model.ver}/models/${cleanName}:generateContent?key=${apiKey}`;
+    try {
+        const url = 'https://api.x.ai/v1/chat/completions';
 
-            const body = {
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.7,
-                    ...(isJson ? { responseMimeType: "application/json" } : {})
-                }
-            };
+        const body = {
+            model: modelName,
+            messages: [
+                { role: 'system', content: 'You are a helpful travel assistant.' + (isJson ? ' You must respond in JSON format.' : '') },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 0.7
+        };
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
+        if (isJson) {
+            body.response_format = { type: 'json_object' };
+        }
 
-            if (response.status === 403) {
-                const errText = await response.text();
-                throw new Error(`API Key Invalid or Leaked: ${errText}`);
-            }
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(body)
+        });
 
-            if (!response.ok) {
-                const errText = await response.text();
-                if (response.status === 404) {
-                    console.warn(`[AI] ${cleanName} 404 Not Found`);
-                    lastError = new Error(`Model ${cleanName} not found`);
-                    continue;
-                }
-                throw new Error(`API Error ${response.status}: ${errText}`);
-            }
+        if (response.status === 401 || response.status === 403) {
+            const errText = await response.text();
+            throw new Error(`API Key Invalid or Leaked: ${errText}`);
+        }
 
-            const data = await response.json();
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`API Error ${response.status}: ${errText}`);
+        }
 
-            if (data.promptFeedback && data.promptFeedback.blockReason) {
-                throw new Error(`AI Safety Block: ${data.promptFeedback.blockReason}`);
-            }
+        const data = await response.json();
 
-            if (!data.candidates || data.candidates.length === 0) {
-                throw new Error('No content candidates returned.');
-            }
+        if (!data.choices || data.choices.length === 0) {
+            throw new Error('No content choices returned.');
+        }
 
-            const firstCandidate = data.candidates[0];
-            if (!firstCandidate.content || !firstCandidate.content.parts || !firstCandidate.content.parts[0]) {
-                throw new Error('Malformed AI response.');
-            }
+        const firstChoice = data.choices[0];
+        let text = firstChoice.message.content;
+        
+        if (!text || text.trim() === '') {
+            throw new Error('AI returned an empty response.');
+        }
 
-            let text = firstCandidate.content.parts[0].text;
-            
-            if (!text || text.trim() === '') {
-                throw new Error('AI returned an empty response.');
-            }
+        if (isJson) {
+            // Clean up common AI formatting issues
+            text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
 
-            if (isJson) {
-                // Clean up common AI formatting issues
-                text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-
-                // If text somehow doesn't start with { or [, strip leading junk
-                const firstBrace = text.indexOf('{');
-                const firstBracket = text.indexOf('[');
-                const firstChar = (firstBrace !== -1 && firstBracket !== -1) ? Math.min(firstBrace, firstBracket) : Math.max(firstBrace, firstBracket);
-                if (firstChar > 0) {
-                    text = text.substring(firstChar);
-                }
-
-                // If text doesn't end with } or ], strip trailing junk
-                const lastBrace = text.lastIndexOf('}');
-                const lastBracket = text.lastIndexOf(']');
-                const lastChar = Math.max(lastBrace, lastBracket);
-                if (lastChar !== -1 && lastChar < text.length - 1) {
-                    text = text.substring(0, lastChar + 1);
-                }
-
-                // Try to parse, with fallback handling for truncated responses
+            // Try to parse, with fallback handling for truncated responses
+            try {
+                return JSON.parse(text);
+            } catch (parseError) {
+                console.warn('[AI] JSON parse failed, raw length:', text.length, 'attempting recovery...');
+                let fixedText = text;
+                const openBraces = (fixedText.match(/{/g) || []).length;
+                const closeBraces = (fixedText.match(/}/g) || []).length;
+                const openBrackets = (fixedText.match(/\[/g) || []).length;
+                const closeBrackets = (fixedText.match(/\]/g) || []).length;
+                for (let i = 0; i < openBrackets - closeBrackets; i++) fixedText += ']';
+                for (let i = 0; i < openBraces - closeBraces; i++) fixedText += '}';
                 try {
-                    return JSON.parse(text);
-                } catch (parseError) {
-                    console.warn('[AI] JSON parse failed, raw length:', text.length, 'attempting recovery...');
-
-                    // Attempt to fix truncated JSON by closing brackets
-                    let fixedText = text;
-
-                    // Count open/close brackets
-                    const openBraces = (fixedText.match(/{/g) || []).length;
-                    const closeBraces = (fixedText.match(/}/g) || []).length;
-                    const openBrackets = (fixedText.match(/\[/g) || []).length;
-                    const closeBrackets = (fixedText.match(/\]/g) || []).length;
-
-                    // Add missing closing brackets
-                    for (let i = 0; i < openBrackets - closeBrackets; i++) fixedText += ']';
-                    for (let i = 0; i < openBraces - closeBraces; i++) fixedText += '}';
-
+                    return JSON.parse(fixedText);
+                } catch (e) {
                     try {
-                        return JSON.parse(fixedText);
-                    } catch (e) {
-                        // If appending brackets fails, try appending a quote then brackets
-                        try {
-                            return JSON.parse(text + '"' + fixedText.substring(text.length));
-                        } catch (e2) {
-                            throw new Error(`JSON parse failed: ${parseError.message}`);
-                        }
+                        return JSON.parse(text + '"' + fixedText.substring(text.length));
+                    } catch (e2) {
+                        throw new Error(`JSON parse failed: ${parseError.message}`);
                     }
                 }
             }
-            return text;
+        }
+        return text;
 
-        } catch (error) {
-            console.error(`[AI Failed] ${model.name}:`, error.message);
-            lastError = error;
-            if (error.message.includes('API Key') || error.message.includes('API key not valid')) {
-                AI_CONFIG.geminiKey = null; // Disable AI for session to trigger mock fallback globally
-                throw new Error('INVALID_API_KEY');
-            }
+    } catch (error) {
+        console.error(`[AI Failed] ${modelName}:`, error.message);
+        lastError = error;
+        if (/API key/i.test(error.message) || error.message.includes('401') || error.message.includes('403')) {
+            AI_CONFIG.grokKey = null; // Disable AI for session to trigger mock fallback globally
+            throw new Error('INVALID_API_KEY');
         }
     }
 
@@ -217,7 +177,7 @@ const addMissingTravelItems = (itinerary) => {
 };
 
 export const generateTripItinerary = async (destination, days, budget, travelers, interests, preferences = {}) => {
-    if (!AI_CONFIG.geminiKey) {
+    if (!AI_CONFIG.grokKey) {
         console.warn('Using MOCK itinerary data (No API Key)');
         return new Promise(resolve => setTimeout(() => resolve(MOCK_ITINERARY), 2000));
     }
@@ -380,7 +340,7 @@ OUTPUT FORMAT (Return ONLY this JSON)
 IMPORTANT: Return ONLY the JSON. No markdown, no code blocks, no explanations outside the JSON.`;
 
     try {
-        const rawResult = await callGemini(prompt, true);
+        const rawResult = await callGrok(prompt, true);
         if (rawResult && rawResult.success && rawResult.itinerary) {
             rawResult.itinerary = addMissingTravelItems(rawResult.itinerary);
         }
@@ -400,7 +360,7 @@ IMPORTANT: Return ONLY the JSON. No markdown, no code blocks, no explanations ou
 // ═══════════════════════════════════════════════════════════════
 export const generateBudgetPlan = async (answers) => {
     // If no key, return mock data
-    if (!AI_CONFIG.geminiKey) {
+    if (!AI_CONFIG.grokKey) {
         console.warn('Using MOCK budget data (No API Key)');
         return {
             success: true,
@@ -503,7 +463,7 @@ OUTPUT FORMAT (Return ONLY this JSON)
 IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
 
     try {
-        const result = await callGemini(prompt, true);
+        const result = await callGrok(prompt, true);
 
         // Validate and enforce budget cap
         if (result.total > userMaxBudget) {
@@ -544,7 +504,7 @@ export const submitAiPlan = async (tripInfo, budgetData) => {
 // 3. PREMIUM PACKING LIST
 // ═══════════════════════════════════════════════════════════════
 export const generatePackingList = async (destination, travelDate, duration, tripType) => {
-    if (!AI_CONFIG.geminiKey) {
+    if (!AI_CONFIG.grokKey) {
         return {
             success: true,
             recommendations: [
@@ -622,7 +582,7 @@ OUTPUT FORMAT (Return ONLY this JSON)
 IMPORTANT: The "luggage" field must be "carry" or "checked". Return ONLY the JSON.`;
 
     try {
-        return await callGemini(prompt, true);
+        return await callGrok(prompt, true);
     } catch (error) {
         if (error.message === 'INVALID_API_KEY') {
             return {
@@ -643,7 +603,7 @@ IMPORTANT: The "luggage" field must be "carry" or "checked". Return ONLY the JSO
 export const generateFoodRecommendations = async (places, preferences) => {
     const locationList = Array.isArray(places) ? places.join(', ') : places;
 
-    if (!AI_CONFIG.geminiKey) {
+    if (!AI_CONFIG.grokKey) {
         const mockPlaces = Array.isArray(places) ? places : [places];
         return {
             success: true,
@@ -693,7 +653,7 @@ export const generateFoodRecommendations = async (places, preferences) => {
     Return ONLY JSON. No markdown.`;
 
     try {
-        return await callGemini(prompt, true);
+        return await callGrok(prompt, true);
     } catch (error) {
         if (error.message === 'INVALID_API_KEY') {
             return {
@@ -715,7 +675,7 @@ export const generateFoodRecommendations = async (places, preferences) => {
 // 5. DESTINATION INFO
 // ═══════════════════════════════════════════════════════════════
 export const generateDestinationInfo = async (destination) => {
-    if (!AI_CONFIG.geminiKey) {
+    if (!AI_CONFIG.grokKey) {
         return {
             success: true,
             info: `Get ready for an unforgettable journey to ${destination}. You're all set to explore amazing places and make memories that last a lifetime!`
@@ -734,7 +694,7 @@ export const generateDestinationInfo = async (destination) => {
     }`;
 
     try {
-        return await callGemini(prompt, true);
+        return await callGrok(prompt, true);
     } catch (error) {
         if (error.message === 'INVALID_API_KEY') {
             return {
@@ -751,7 +711,7 @@ export const generateDestinationInfo = async (destination) => {
 // 6. PREMIUM TRIP SUGGESTIONS
 // ═══════════════════════════════════════════════════════════════
 export const generateTripSuggestions = async (destination, duration, travelers, interests) => {
-    if (!AI_CONFIG.geminiKey) {
+    if (!AI_CONFIG.grokKey) {
         return {
             success: true,
             suggestions: [
@@ -797,7 +757,7 @@ Return ONLY this JSON:
 IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
 
     try {
-        return await callGemini(prompt, true);
+        return await callGrok(prompt, true);
     } catch (error) {
         if (error.message === 'INVALID_API_KEY') {
             return {
@@ -816,7 +776,7 @@ IMPORTANT: Return ONLY the JSON. No markdown, no code blocks.`;
 // 7. CONVERSATIONAL ASSISTANT (Chat Widget)
 // ═══════════════════════════════════════════════════════════════
 export const chatWithAssistant = async (message, history = [], tripInfo = {}) => {
-    if (!AI_CONFIG.geminiKey) {
+    if (!AI_CONFIG.grokKey) {
         return `MOCK: I'd love to help with "${message}", but no Gemini API key is configured yet.`;
     }
 
@@ -841,7 +801,7 @@ User: ${message}
 Reply as the Assistant. Keep it conversational, helpful, and under 100 words unless the user asks for detail. If you don't have enough information to fully answer, ask a clarifying question instead of guessing.`;
 
     try {
-        const text = await callGemini(prompt, false);
+        const text = await callGrok(prompt, false);
         return text.trim();
     } catch (error) {
         if (error.message === 'INVALID_API_KEY') {
@@ -974,7 +934,7 @@ Return ONLY a JSON object (no extra text) with this exact structure:
 }`;
 
     try {
-        const rawResult = await callGemini(prompt, true);
+        const rawResult = await callGrok(prompt, true);
         if (rawResult && rawResult.success && rawResult.itinerary) {
             rawResult.itinerary = addMissingTravelItems(rawResult.itinerary);
         }

@@ -37,7 +37,7 @@ flowchart TD
         subgraph Services ["Internal Business Logic Services"]
             AuthSvc[authService.js]:::service
             DatabaseSvc[databaseService.js]:::service
-            AISvc[aiService.js (Gemini Orchestration)]:::service
+            AISvc[aiService.js (Grok Orchestration)]:::service
             TransitSvc[transitService.js (Google Maps)]:::service
             AdSvc[AdService.js (Monetization)]:::service
         end
@@ -55,12 +55,12 @@ flowchart TD
     subgraph ThirdParty ["External APIs & Integrations"]
         RevenueCat[(RevenueCat - Subscriptions)]:::external
         AdMob[Google AdMob]:::external
-        Gemini[Google Gemini 1.5/2.0 API]:::external
+        Grok[xAI Grok API]:::external
         GoogleMaps[Google Route/Places API]:::external
 
         PremiumCtx ==> RevenueCat
         AdSvc ==> AdMob
-        AISvc ==> Gemini
+        AISvc ==> Grok
         TransitSvc ==> GoogleMaps
     end
 ```
@@ -85,7 +85,7 @@ PlanWitch is built on a modern, deeply integrated mobile stack optimized for cro
 * **Telemetry:** Firebase Crashlytics & Performance Monitoring.
 
 ### Third-Party Integrations
-* **Generative AI:** Google Gemini API (used for personalized itinerary generation, smart packing lists, and the conversational Travel Assistant).
+* **Generative AI:** xAI Grok API (used for personalized itinerary generation, smart packing lists, and the conversational Travel Assistant).
 * **Monetization (Ads):** Google AdMob (Banner and Interstitial displays).
 * **Monetization (IAP):** RevenueCat SDK (handles App Store / Google Play subscription logic and entitlement verification).
 * **Mapping & Transit:** Google Maps Platform (Directions API, Places SDK) integrated via `react-native-maps`.
@@ -118,7 +118,7 @@ The project follows a modular, feature-based architecture design within the `src
 │   │   ├── [Setup Screens]  # TripSetupScreen, TripPreferencesScreen, AIPersonalizedPlan
 │   │   └── [Profile Screens]# ProfileScreen, SubscriptionScreen, AdminScreen
 │   ├── services/            # Controller layer for abstracting external API calls
-│   │   ├── aiService.js     # Prompts and parses Gemini AI responses
+│   │   ├── aiService.js     # Prompts and parses Grok AI responses
 │   │   ├── databaseService.js # Firebase RTDB CRUD operations
 │   │   └── transitService.js # Connects to Google Maps routing
 │   └── utils/               # Helper functions, formatting, constants
@@ -138,7 +138,7 @@ PlanWitch relies heavily on the React Context API to prevent prop-drilling and m
 ### 4.2 AI Itinerary Generation Engine
 1. User inputs constraints (Destination, Dates, Budget, Vibe, Pace, Diet).
 2. The UI pushes these constraints to `aiService.js`.
-3. `aiService.js` constructs a highly structured, system-instructed prompt for the Gemini API, requiring a synthesized JSON response.
+3. `aiService.js` constructs a highly structured, system-instructed prompt for the Grok API, requiring a synthesized JSON response.
 4. `AIPersonalizedPlanScreen` parses the generative stream.
 5. Once complete, the parsed JSON is heavily validated, converted into local data models, pushed to Firebase, and the user is dropped into their newly generated dashboard.
 

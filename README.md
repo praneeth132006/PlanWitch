@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/React%20Native-0.76.9-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React Native">
   <img src="https://img.shields.io/badge/Expo-54.0.0-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo">
   <img src="https://img.shields.io/badge/Firebase-10.14-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase">
-  <img src="https://img.shields.io/badge/Google_Gemini-2.0_Flash-blue?style=for-the-badge&logo=google-gemini&logoColor=white" alt="Gemini AI">
+  <img src="https://img.shields.io/badge/Google_Grok-2.0_Flash-blue?style=for-the-badge&logo=google-gemini&logoColor=white" alt="Grok AI">
   <img src="https://img.shields.io/badge/PWA-Enabled-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white" alt="PWA">
 </p>
 
@@ -29,7 +29,7 @@
 
 ## 📖 About
 
-**TravelWitch** is a "billionaire-level" travel management application designed to make trip planning precise, collaborative, and intelligent. Built for the modern traveler, it combines the power of **Google Gemini 2.0 AI** with seamless real-time synchronization to ensure every detail of your journey is perfectly orchestrated.
+**TravelWitch** is a "billionaire-level" travel management application designed to make trip planning precise, collaborative, and intelligent. Built for the modern traveler, it combines the power of **xAI Grok AI** with seamless real-time synchronization to ensure every detail of your journey is perfectly orchestrated.
 
 Whether you're planning a solo backpacking trip through Europe, a luxury family getaway, or a budget-conscious road trip with friends, TravelWitch handles the complexity so you can focus on the adventure.
 
@@ -38,7 +38,7 @@ Whether you're planning a solo backpacking trip through Europe, a luxury family 
 ## ✨ Features
 
 ### 🤖 AI-Powered "Master Plan"
-*   **Intelligent Itineraries**: Generate logical, day-by-day travel plans based on your pace, budget, and interests using Gemini 2.0 Flash.
+*   **Intelligent Itineraries**: Generate logical, day-by-day travel plans based on your pace, budget, and interests using xAI Grok.
 *   **Smart Packing**: Get categorized packing lists tailored to your destination's climate and trip type.
 *   **Local Food Guide**: Discover must-try dishes and restaurants (with Veg/Non-Veg filtering) for every stop on your route.
 *   **Budget Analysis**: AI-driven feasibility checks to ensure your dream trip matches your wallet.
@@ -83,7 +83,7 @@ graph TD
     end
     
     subgraph "AI Brain"
-        Gemini[Google Gemini 2.0 API]
+        Grok[xAI Grok API]
     end
 
     User <--> Expo
@@ -93,7 +93,7 @@ graph TD
     Context <--> Auth
     Context <--> RTDB
     RTDB <--> Host[Real-time Listener]
-    Expo <--> Gemini
+    Expo <--> Grok
     Hosting -.-> Expo
 ```
 
@@ -116,13 +116,13 @@ sequenceDiagram
     participant App
     participant databaseService
     participant aiService
-    participant Gemini API
+    participant Grok API
 
     User->>App: Input Destination, Budget, & Interests
     App->>databaseService: Fetch existing trip context
     App->>aiService: Construct logical prompt
-    aiService->>Gemini API: Send formatted instructions
-    Gemini API-->>aiService: Return structured JSON (Itinerary/Packing)
+    aiService->>Grok API: Send formatted instructions
+    Grok API-->>aiService: Return structured JSON (Itinerary/Packing)
     aiService-->>App: Parse and Validate JSON
     App->>User: Display "Master Plan" Dashboard
 ```
@@ -137,7 +137,7 @@ sequenceDiagram
 | **Language** | JavaScript (ES6+) | Application logic |
 | **Database** | [Firebase Realtime Database](https://firebase.google.com/docs/database) | Persistent data and real-time syncing |
 | **Auth** | [Firebase Auth](https://firebase.google.com/docs/auth) | Google & Email/Password authentication |
-| **AI Engine** | [Google Gemini 2.0 Flash](https://ai.google.dev/) | Itinerary and recommendation generation |
+| **AI Engine** | [xAI Grok](https://x.ai/) | Itinerary and recommendation generation |
 | **State** | React Context API | Global state and provider pattern |
 | **Styling** | Vanilla CSS / StyleSheet | Custom theme system with Dark/Light support |
 | **Monetization**| [RevenueCat](https://www.revenuecat.com/) | Premium subscriptions and purchase tracking |
@@ -150,7 +150,7 @@ sequenceDiagram
 *   [Node.js](https://nodejs.org/) (v18+)
 *   [Expo Go](https://expo.dev/client) app on your mobile device (to test native features)
 *   A Firebase project project with Realtime Database and Auth enabled.
-*   A Google AI (Gemini) API Key.
+*   A Google AI (Grok) API Key.
 
 ### Quick Setup
 
@@ -168,7 +168,7 @@ sequenceDiagram
 3.  **Environment Configuration**:
     Create a `.env` file in the root directory:
     ```env
-    EXPO_PUBLIC_GEMINI_API_KEY=your_gemini_key
+    EXPO_PUBLIC_GROK_API_KEY=your_grok_key
     EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_key
     # ... add other firebase config values
     ```

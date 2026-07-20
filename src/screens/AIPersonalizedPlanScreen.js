@@ -166,7 +166,7 @@ Return ONLY a JSON object (no extra text) with this exact structure:
 
     const copyPrompt = async () => {
         await Clipboard.setStringAsync(lastPrompt);
-        Alert.alert('Copied!', 'Prompt copied to clipboard. You can paste it into Gemini or ChatGPT.');
+        Alert.alert('Copied!', 'Prompt copied to clipboard. You can paste it into Grok or ChatGPT.');
     };
 
     const renderResultModal = () => {
@@ -282,7 +282,7 @@ Return ONLY a JSON object (no extra text) with this exact structure:
                     <View style={styles.manualModal}>
                         <Text style={styles.manualTitle}>AI Connection Timeout 🔌</Text>
                         <Text style={styles.manualDesc}>
-                            I'm having trouble connecting to the AI brain right now. You can copy the custom prompt I created for you and paste it into ChatGPT or Gemini to get your plan instantly!
+                            I'm having trouble connecting to the AI brain right now. You can copy the custom prompt I created for you and paste it into ChatGPT or Grok to get your plan instantly!
                         </Text>
 
                         <View style={styles.promptBox}>

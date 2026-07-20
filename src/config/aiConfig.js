@@ -9,20 +9,20 @@
 // 2. Or use a backend proxy to hide the API key completely
 
 export const AI_CONFIG = {
-    // Provider: 'gemini' | 'openai'
-    provider: 'gemini',
+    // Provider: 'grok' | 'openai'
+    provider: 'grok',
 
     // API Key - Read from environment variables for security
     // TODO: In production, move this to a backend service or use expo-constants
-    // [PRANEETH-RULE] Removed the hardcoded Gemini API key and replaced it with process.env.EXPO_PUBLIC_GEMINI_API_KEY to pass CodeQL Security Scans and prevent credentials from being committed to the repo.
-    geminiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY,
+    // [PRANEETH-RULE] Removed the hardcoded Grok API key and replaced it with process.env.EXPO_PUBLIC_GROK_API_KEY to pass CodeQL Security Scans and prevent credentials from being committed to the repo.
+    grokKey: process.env.EXPO_PUBLIC_GROK_API_KEY,
 
     openaiKey: '',
 
     // Model configuration
     models: {
-        // The line below updates the default Gemini model from 'gemini-2.0-flash' to 'gemini-2.5-flash'. This fixes the '404 Not Found' error since the older model is no longer available under that name.
-        gemini: 'gemini-2.5-flash',
+        // The line below sets the default Grok model to 'grok-4.5' (a compatible fast model).
+        grok: 'grok-4.5',
         openai: 'gpt-3.5-turbo'
     }
 };
