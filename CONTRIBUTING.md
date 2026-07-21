@@ -125,7 +125,7 @@ Understanding the codebase structure is essential before making changes. TravelW
 │   ├── navigation/           # React Navigation stack definitions
 │   ├── screens/              # Top-level screen components (one per route)
 │   ├── services/             # Business logic & external API abstraction
-│   │   ├── aiService.js      # Gemini AI prompt construction & response parsing
+│   │   ├── aiService.js      # Grok AI prompt construction & response parsing
 │   │   ├── databaseService.js# Firebase RTDB CRUD & real-time listeners
 │   │   ├── authService.js    # Authentication helpers
 │   │   ├── transitService.js # Google Maps routing integration
@@ -392,8 +392,8 @@ If you have access to multiple platforms:
 The app requires the following environment variables. Create a `.env` file at the project root:
 
 ```env
-# Required — Google Gemini AI
-EXPO_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
+# Required — Google Grok AI
+EXPO_PUBLIC_GROK_API_KEY=your_grok_api_key
 
 # Required — Firebase Configuration
 EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
@@ -412,7 +412,7 @@ EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_maps_api_key
 
 | Key | Source |
 | :--- | :--- |
-| Gemini API Key | [Google AI Studio](https://aistudio.google.com/) |
+| Grok API Key | [Google AI Studio](https://console.x.ai/) |
 | Firebase Config | [Firebase Console](https://console.firebase.google.com/) → Project Settings |
 | Google Maps Key | [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services |
 

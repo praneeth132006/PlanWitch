@@ -77,7 +77,7 @@ The application features several highly distinct pathways depending on user inte
 ### B. The Generative Travel Planner Journey
 1. **Constraints Input:** User taps "Plan Trip". On `TripSetupScreen.js`, they input rigid constraints: Destination(s), Start/End Dates, and a Total Group Budget.
 2. **AI Preferences Intakes:** Transitioning to `TripPreferencesScreen.js`, the user defines horizontal constraints (Travel Pace: Relaxed/Intense, Vibe: Adventure/Cultural, Dietary Needs).
-3. **The Inference Waiting Room:** The user triggers Generation. They are placed in `AIPersonalizedPlanScreen.js`, a highly vital UX moment. The UI plays magical animations while `aiService.js` routes a massive, strict prompt to the Gemini API.
+3. **The Inference Waiting Room:** The user triggers Generation. They are placed in `AIPersonalizedPlanScreen.js`, a highly vital UX moment. The UI plays magical animations while `aiService.js` routes a massive, strict prompt to the Grok API.
 4. **Data Hydration:** The AI streams back a JSON. Behind the scenes, the app catches this, formats it into native Firebase models (Days, Budget categories, Packing items), pushes it to Realtime Database, and flips the user context to "Active Trip".
 5. **Dashboard Drop:** The user transitions into the newly generated `HomeScreen.js` Trip Dashboard.
 
