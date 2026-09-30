@@ -11,7 +11,9 @@ cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
 [ -f .env ] && set -a && . ./.env && set +a
 REGION="${AWS_REGION:-ap-south-1}"
-eval "$(aws configure export-credentials --format env)" 2>/dev/null || true
+# No credential export here: the aws CLI reads the `aws login` session itself.
+# Exporting a frozen copy made long runs fail as the session rolled over --
+# only the CDK CLI needs that bridge, because its bundled SDK is older.
 
 USER_NAME="planwitch-reviewer"
 GROUP_NAME="planwitch-reviewers"

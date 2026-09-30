@@ -13,7 +13,9 @@ cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
 [ -f .env ] && set -a && . ./.env && set +a
 REGION="${AWS_REGION:-ap-south-1}"
-eval "$(aws configure export-credentials --format env)" 2>/dev/null || true
+# No credential export here: the aws CLI reads the `aws login` session itself.
+# Exporting a frozen copy made long runs fail as the session rolled over --
+# only the CDK CLI needs that bridge, because its bundled SDK is older.
 
 out() { python3 -c "import json;print(json.load(open('cdk-outputs.json'))['PlanWitchAws'].get('$1',''))"; }
 API="$(out ApiUrl)"; API="${API%/}"
@@ -89,12 +91,14 @@ ROUTES
 bold "3  Amazon Polly -> audio guides stored in S3"
 while IFS='|' read -r voice text; do
   [ -z "$voice" ] && continue
-  body=$(python3 -c "import json,sys;print(json.dumps({'text':sys.argv[1],'voice':sys.argv[2]}))" "$text" "$voice")
+  engine="neural"
+  case "$voice" in *:standard) voice="${voice%%:*}"; engine="standard" ;; esac
+  body="{\"text\":\"$text\",\"voice\":\"$voice\",\"engine\":\"$engine\"}"
   kb=$(post /speak "$body" | python3 -c 'import json,sys;print(round(json.load(sys.stdin).get("bytes",0)/1024))' 2>/dev/null)
   [ "${kb:-0}" -gt 0 ] && ok "$voice -> ${kb} KB mp3" || bad "$voice"
 done <<'SPEECH'
 Kajal|Welcome to Jaipur. Begin at Amber Fort before the crowds arrive, then walk down to the Panna Meena stepwell.
-Aditi|Kerala's backwaters are best seen at dawn. Board the houseboat at Alleppey and watch the villages wake up.
+Aditi:standard|Kerala's backwaters are best seen at dawn. Board the houseboat at Alleppey and watch the villages wake up.
 Joanna|Your Goa itinerary starts in the north. Spend the morning at Chapora Fort, then head south for lunch.
 SPEECH
 
@@ -109,7 +113,7 @@ if [ -f "$SAMPLE" ]; then
     URL=$(echo "$P" | python3 -c 'import json,sys;print(json.load(sys.stdin)["uploadUrl"])' 2>/dev/null)
     KEY=$(echo "$P" | python3 -c 'import json,sys;print(json.load(sys.stdin)["key"])' 2>/dev/null)
     if [ -n "$URL" ] && curl -sS -X PUT -H 'content-type: image/jpeg' --data-binary "@$SAMPLE" "$URL" >/dev/null; then
-      L=$(post /media/analyze "$(python3 -c "import json,sys;print(json.dumps({'key':sys.argv[1]}))" "$KEY")" \
+      L=$(post /media/analyze "{\"key\":\"$KEY\"}" \
           | python3 -c 'import json,sys;d=json.load(sys.stdin);print(", ".join(x["name"] for x in (d.get("labels") or [])[:5]))' 2>/dev/null)
       [ -n "$L" ] && ok "photo $n labelled: $L" || bad "photo $n analysis"
     else bad "photo $n upload"; fi
@@ -120,10 +124,10 @@ fi
 
 bold "5  SES + DynamoDB TTL -> email OTP issue and verify"
 for addr in "traveller1@example.com" "traveller2@example.com" "${ALERT_EMAIL:-demo@example.com}"; do
-  R=$(post /auth/otp "$(python3 -c "import json,sys;print(json.dumps({'email':sys.argv[1]}))" "$addr")")
+  R=$(post /auth/otp "{\"email\":\"$addr\"}")
   CODE=$(echo "$R" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("code",""))' 2>/dev/null)
   if [ -n "$CODE" ]; then
-    V=$(post /auth/otp/verify "$(python3 -c "import json,sys;print(json.dumps({'email':sys.argv[1],'code':sys.argv[2]}))" "$addr" "$CODE")")
+    V=$(post /auth/otp/verify "{\"email\":\"$addr\",\"code\":\"$CODE\"}")
     echo "$V" | grep -q '"verified":true' && ok "$addr issued + verified" || bad "$addr verify"
   else bad "$addr issue"; fi
 done
@@ -132,7 +136,7 @@ bold "6  Step Functions -> full itinerary workflows"
 ARNS=""
 while IFS='|' read -r dest lang nights; do
   [ -z "$dest" ] && continue
-  B=$(python3 -c "import json,sys;print(json.dumps({'destination':sys.argv[1],'language':sys.argv[2],'nights':int(sys.argv[3]),'userId':'demo-user-1'}))" "$dest" "$lang" "$nights")
+  B="{\"destination\":\"$dest\",\"language\":\"$lang\",\"nights\":$nights,\"userId\":\"demo-user-1\"}"
   A=$(post /ai/itinerary/async "$B" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("executionArn",""))' 2>/dev/null)
   [ -n "$A" ] && { ARNS="$ARNS$A"$'\n'; ok "started: $dest"; } || bad "start: $dest"
 done <<'FLOWS'

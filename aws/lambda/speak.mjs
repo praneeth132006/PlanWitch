@@ -19,13 +19,29 @@ export const handler = async (event) => {
 
     if (!text) return ok({ ok: false, error: 'text required' }, 400);
 
-    const speech = await polly.send(new SynthesizeSpeechCommand({
+    const synth = (useEngine) => polly.send(new SynthesizeSpeechCommand({
       Text: text.slice(0, 3000),
       OutputFormat: 'mp3',
       VoiceId: voice,
-      Engine: engine,
+      Engine: useEngine,
       LanguageCode: language,
     }));
+
+    // Not every voice has a neural version (Aditi, for one). Rather than fail,
+    // drop to the standard engine and report which one actually ran.
+    let speech;
+    let engineUsed = engine;
+    try {
+      speech = await synth(engine);
+    } catch (e) {
+      if (engine === 'neural') {
+        console.warn('neural_unavailable_falling_back', voice, String(e?.message || e));
+        engineUsed = 'standard';
+        speech = await synth('standard');
+      } else {
+        throw e;
+      }
+    }
 
     const bytes = await speech.AudioStream.transformToByteArray();
     const key = `audio/${id('guide')}.mp3`;
@@ -39,7 +55,7 @@ export const handler = async (event) => {
 
     await metric('SpeechSynthesized');
     await track('speech_synthesized', { voice, chars: text.length });
-    return ok({ ok: true, key, bytes: bytes.length, voice, engine, url, expiresInSeconds: 3600 });
+    return ok({ ok: true, key, bytes: bytes.length, voice, engine: engineUsed, requestedEngine: engine, url, expiresInSeconds: 3600 });
   } catch (e) {
     return fail(e);
   }
