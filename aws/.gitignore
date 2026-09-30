@@ -3,3 +3,5 @@ lambda/node_modules/
 cdk.out/
 cdk-outputs.json
 .env
+iam-user-credentials.txt
+.DS_Store

@@ -1056,6 +1056,21 @@ function handler(event) {
 
     // --- Cost guardrail ------------------------------------------------------
     // This account is disposable, but a runaway loop should still page someone.
+    const budgetAlert = (notificationType: string, threshold: number, comparison = 'GREATER_THAN') => ({
+      notification: {
+        notificationType,
+        comparisonOperator: comparison,
+        threshold,
+        thresholdType: 'PERCENTAGE',
+      },
+      subscribers: [{ subscriptionType: 'EMAIL', address: props.alertEmail }],
+    });
+
+    // Tiered alerts: an early warning long before the cap, then escalating.
+    // Note: editing notificationsWithSubscribers replaces the budget, and the
+    // name is its physical id, so deploy.sh clears old budgets of these names
+    // first -- otherwise CloudFormation fails with "same name but a different
+    // internalId already exists".
     new budgets.CfnBudget(this, 'MonthlyBudget', {
       budget: {
         budgetName: `planwitch-monthly-${suffix}`,
@@ -1065,25 +1080,43 @@ function handler(event) {
       },
       ...(props.alertEmail ? {
         notificationsWithSubscribers: [
-          {
-            notification: {
-              notificationType: 'ACTUAL',
-              comparisonOperator: 'GREATER_THAN',
-              threshold: 50,
-              thresholdType: 'PERCENTAGE',
-            },
-            subscribers: [{ subscriptionType: 'EMAIL', address: props.alertEmail }],
-          },
-          {
-            notification: {
-              notificationType: 'FORECASTED',
-              comparisonOperator: 'GREATER_THAN',
-              threshold: 100,
-              thresholdType: 'PERCENTAGE',
-            },
-            subscribers: [{ subscriptionType: 'EMAIL', address: props.alertEmail }],
-          },
+          budgetAlert('ACTUAL', 25),
+          budgetAlert('ACTUAL', 50),
+          budgetAlert('ACTUAL', 80),
+          budgetAlert('ACTUAL', 100),
+          budgetAlert('FORECASTED', 100),
         ],
+      } : {}),
+    });
+
+    // A daily budget catches a runaway loop within hours rather than at
+    // month end, which is the failure mode that actually burns credits.
+    new budgets.CfnBudget(this, 'DailyBudget', {
+      budget: {
+        budgetName: `planwitch-daily-${suffix}`,
+        budgetType: 'COST',
+        timeUnit: 'DAILY',
+        budgetLimit: { amount: 1, unit: 'USD' },
+      },
+      ...(props.alertEmail ? {
+        notificationsWithSubscribers: [budgetAlert('ACTUAL', 80), budgetAlert('ACTUAL', 100)],
+      } : {}),
+    });
+
+    // Per-service budget: isolates compute spend from everything else, so a
+    // runaway function shows up here before it moves the account total.
+    // (A USAGE budget cannot filter on Service -- Budgets only accepts
+    // dimensions like UsageType and UsageTypeGroup there.)
+    new budgets.CfnBudget(this, 'LambdaCostBudget', {
+      budget: {
+        budgetName: `planwitch-lambda-${suffix}`,
+        budgetType: 'COST',
+        timeUnit: 'MONTHLY',
+        budgetLimit: { amount: 1, unit: 'USD' },
+        costFilters: { Service: ['AWS Lambda'] },
+      },
+      ...(props.alertEmail ? {
+        notificationsWithSubscribers: [budgetAlert('ACTUAL', 80)],
       } : {}),
     });
 

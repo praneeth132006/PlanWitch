@@ -90,6 +90,16 @@ else
   ok "bootstrapped"
 fi
 
+# AWS::Budgets::Budget is replaced (not updated) when its notifications change,
+# and the budget name is its physical id, so a stale budget of the same name
+# blocks the new one. Clear them first; CloudFormation recreates them.
+ACCOUNT_ID="$ACCOUNT"
+for b in $(aws budgets describe-budgets --account-id "$ACCOUNT_ID" \
+    --query 'Budgets[?starts_with(BudgetName, `planwitch-`)].BudgetName' --output text 2>/dev/null); do
+  aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name "$b" >/dev/null 2>&1 \
+    && warn "cleared stale budget $b"
+done
+
 STATUS="$(aws cloudformation describe-stacks --stack-name PlanWitchAws --region "$REGION" \
   --query 'Stacks[0].StackStatus' --output text 2>/dev/null || true)"
 if [ "$STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STATUS" = "CREATE_FAILED" ]; then
