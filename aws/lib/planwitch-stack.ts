@@ -48,6 +48,8 @@ import * as glue from 'aws-cdk-lib/aws-glue';
 import * as athena from 'aws-cdk-lib/aws-athena';
 import * as budgets from 'aws-cdk-lib/aws-budgets';
 import * as ses from 'aws-cdk-lib/aws-ses';
+import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 
@@ -63,6 +65,10 @@ export interface PlanWitchStackProps extends cdk.StackProps {
   freeTierOnly: boolean;
   /** Services this account cannot call, surfaced in the demo console. */
   restrictedServices: string[];
+  /** WAF costs ~$8/month, so it is opt-in. */
+  useWaf: boolean;
+  /** A t3.micro status host. Free-tier eligible; the public IPv4 is not. */
+  useEc2: boolean;
 }
 
 const LAMBDA_DIR = path.join(__dirname, '..', 'lambda');
@@ -871,6 +877,182 @@ function handler(event) {
       prune: false,
     });
 
+    // ---------------------------------------------------------------- 5b. Perimeter
+
+    // Rate limiting at the API stage. HTTP APIs support throttling natively,
+    // which matters because AWS WAF cannot attach to an HTTP API at all --
+    // only to CloudFront, an ALB, a REST API, AppSync or a Cognito user pool.
+    (httpApi.defaultStage!.node.defaultChild as apigw.CfnStage).defaultRouteSettings = {
+      throttlingRateLimit: 100,   // steady-state requests per second
+      throttlingBurstLimit: 200,  // short spikes
+      detailedMetricsEnabled: true,
+    };
+
+    if (props.useWaf) {
+      // Managed rule groups cover the OWASP-style basics without hand-writing
+      // signatures; the rate rule is the one that actually stops credential
+      // stuffing against the sign-in endpoint.
+      const managed = (name: string, priority: number) => ({
+        name,
+        priority,
+        overrideAction: { none: {} },
+        statement: {
+          managedRuleGroupStatement: { vendorName: 'AWS', name },
+        },
+        visibilityConfig: {
+          sampledRequestsEnabled: true,
+          cloudWatchMetricsEnabled: true,
+          metricName: name,
+        },
+      });
+
+      const webAcl = new wafv2.CfnWebACL(this, 'WebAcl', {
+        name: `planwitch-waf-${suffix}`,
+        description: 'Protects the PlanWitch Cognito user pool',
+        scope: 'REGIONAL',
+        defaultAction: { allow: {} },
+        rules: [
+          managed('AWSManagedRulesCommonRuleSet', 1),
+          managed('AWSManagedRulesKnownBadInputsRuleSet', 2),
+          managed('AWSManagedRulesAmazonIpReputationList', 3),
+          {
+            name: 'RateLimitPerIp',
+            priority: 10,
+            action: { block: {} },
+            statement: {
+              rateBasedStatement: { limit: 1000, aggregateKeyType: 'IP' },
+            },
+            visibilityConfig: {
+              sampledRequestsEnabled: true,
+              cloudWatchMetricsEnabled: true,
+              metricName: 'RateLimitPerIp',
+            },
+          },
+        ],
+        visibilityConfig: {
+          sampledRequestsEnabled: true,
+          cloudWatchMetricsEnabled: true,
+          metricName: `planwitch-waf-${suffix}`,
+        },
+      });
+      webAcl.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
+
+      // Cognito is the one thing in this stack WAF can sit in front of.
+      new wafv2.CfnWebACLAssociation(this, 'WebAclCognito', {
+        resourceArn: userPool.userPoolArn,
+        webAclArn: webAcl.attrArn,
+      });
+
+      // WAF only logs to a group whose name starts with aws-waf-logs-.
+      const wafLogs = new logs.LogGroup(this, 'WafLogs', {
+        logGroupName: `aws-waf-logs-planwitch-${suffix}`,
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      });
+
+      new wafv2.CfnLoggingConfiguration(this, 'WafLogging', {
+        resourceArn: webAcl.attrArn,
+        logDestinationConfigs: [cdk.Stack.of(this).formatArn({
+          service: 'logs',
+          resource: 'log-group',
+          resourceName: wafLogs.logGroupName,
+          arnFormat: cdk.ArnFormat.COLON_RESOURCE_NAME,
+        })],
+      });
+
+      new cdk.CfnOutput(this, 'WebAclName', {
+        value: webAcl.name!,
+        description: 'AWS WAF web ACL protecting Cognito',
+      });
+    }
+
+    // ---------------------------------------------------------------- 5c. EC2
+
+    // A small always-on host alongside the serverless stack: it serves a status
+    // page and gives the architecture a conventional compute tier to point at.
+    // It sits in the account's default VPC, so there is no NAT gateway cost.
+    if (props.useEc2) {
+      const vpc = ec2.Vpc.fromLookup(this, 'DefaultVpc', { isDefault: true });
+
+      const instanceRole = new iam.Role(this, 'StatusHostRole', {
+        assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+        description: 'PlanWitch status host: SSM access, read-only on trips',
+        managedPolicies: [
+          // Session Manager replaces SSH: no port 22, no key pair to lose.
+          iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
+        ],
+      });
+      tripsTable.grantReadData(instanceRole);
+
+      const securityGroup = new ec2.SecurityGroup(this, 'StatusHostSg', {
+        vpc,
+        description: 'PlanWitch status host -- inbound HTTP only',
+        allowAllOutbound: true,
+      });
+      securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80), 'Status page');
+      // Deliberately no SSH rule: access is through Session Manager.
+
+      const userData = ec2.UserData.forLinux();
+      userData.addCommands(
+        'set -eux',
+        'dnf install -y nginx',
+        'systemctl enable --now nginx',
+        'TOKEN=$(curl -sS -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 300")',
+        'IID=$(curl -sS -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)',
+        'AZ=$(curl -sS -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone)',
+        'ITYPE=$(curl -sS -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-type)',
+        `cat > /usr/share/nginx/html/index.html <<HTML
+<!doctype html><html><head><meta charset="utf-8"><title>PlanWitch status host</title>
+<style>body{background:#0b1020;color:#e8edf9;font:16px/1.6 -apple-system,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem}
+h1{color:#ff9900}code{background:#121a32;padding:2px 6px;border-radius:4px}
+li{margin:.3rem 0}</style></head><body>
+<h1>PlanWitch &mdash; EC2 status host</h1>
+<p>Amazon Linux 2023 on EC2, serving from nginx. The rest of the backend is
+serverless; this host exists for scheduled checks and operational access.</p>
+<ul>
+<li>Instance: <code>$IID</code></li>
+<li>Type: <code>$ITYPE</code></li>
+<li>Availability zone: <code>$AZ</code></li>
+<li>API: <code>${httpApi.apiEndpoint}</code></li>
+<li>Region: <code>${this.region}</code></li>
+</ul>
+<p>Shell access is through AWS Systems Manager Session Manager. There is no
+inbound SSH rule and no key pair.</p>
+</body></html>
+HTML`,
+        'systemctl restart nginx',
+      );
+
+      const statusHost = new ec2.Instance(this, 'StatusHost', {
+        vpc,
+        vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+        instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
+        machineImage: ec2.MachineImage.latestAmazonLinux2023({ cpuType: ec2.AmazonLinuxCpuType.X86_64 }),
+        securityGroup,
+        role: instanceRole,
+        userData,
+        userDataCausesReplacement: true,
+        instanceName: `planwitch-status-${suffix}`,
+        blockDevices: [{
+          deviceName: '/dev/xvda',
+          volume: ec2.BlockDeviceVolume.ebs(8, {
+            volumeType: ec2.EbsDeviceVolumeType.GP3,
+            encrypted: true,
+            deleteOnTermination: true,
+          }),
+        }],
+      });
+
+      new cdk.CfnOutput(this, 'Ec2StatusPage', {
+        value: `http://${statusHost.instancePublicIp}/`,
+        description: 'EC2 status host (HTTP)',
+      });
+      new cdk.CfnOutput(this, 'Ec2InstanceId', {
+        value: statusHost.instanceId,
+        description: 'EC2 instance id (connect via Session Manager)',
+      });
+    }
+
     // ---------------------------------------------------------------- 6. Governance
 
     // CloudTrail: a single-region management-events trail (free tier).
@@ -1071,9 +1253,9 @@ function handler(event) {
     // name is its physical id, so deploy.sh clears old budgets of these names
     // first -- otherwise CloudFormation fails with "same name but a different
     // internalId already exists".
-    new budgets.CfnBudget(this, 'MonthlyBudget', {
+    new budgets.CfnBudget(this, 'MonthlyBudgetV2', {
       budget: {
-        budgetName: `planwitch-monthly-${suffix}`,
+        budgetName: `planwitch-monthly-v2-${suffix}`,
         budgetType: 'COST',
         timeUnit: 'MONTHLY',
         budgetLimit: { amount: props.monthlyBudgetUsd, unit: 'USD' },
@@ -1091,9 +1273,9 @@ function handler(event) {
 
     // A daily budget catches a runaway loop within hours rather than at
     // month end, which is the failure mode that actually burns credits.
-    new budgets.CfnBudget(this, 'DailyBudget', {
+    new budgets.CfnBudget(this, 'DailyBudgetV2', {
       budget: {
-        budgetName: `planwitch-daily-${suffix}`,
+        budgetName: `planwitch-daily-v2-${suffix}`,
         budgetType: 'COST',
         timeUnit: 'DAILY',
         budgetLimit: { amount: 1, unit: 'USD' },
@@ -1107,9 +1289,9 @@ function handler(event) {
     // runaway function shows up here before it moves the account total.
     // (A USAGE budget cannot filter on Service -- Budgets only accepts
     // dimensions like UsageType and UsageTypeGroup there.)
-    new budgets.CfnBudget(this, 'LambdaCostBudget', {
+    new budgets.CfnBudget(this, 'LambdaCostBudgetV2', {
       budget: {
-        budgetName: `planwitch-lambda-${suffix}`,
+        budgetName: `planwitch-lambda-v2-${suffix}`,
         budgetType: 'COST',
         timeUnit: 'MONTHLY',
         budgetLimit: { amount: 1, unit: 'USD' },

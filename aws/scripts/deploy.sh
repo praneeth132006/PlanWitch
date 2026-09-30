@@ -20,6 +20,8 @@ BUDGET="${MONTHLY_BUDGET_USD:-5}"
 USE_CLOUDFRONT="${USE_CLOUDFRONT:-true}"
 FREE_TIER_ONLY="${FREE_TIER_ONLY:-false}"
 RESTRICTED_SERVICES="${RESTRICTED_SERVICES:-}"
+USE_WAF="${USE_WAF:-false}"
+USE_EC2="${USE_EC2:-false}"
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$*"; }
@@ -90,23 +92,25 @@ else
   ok "bootstrapped"
 fi
 
-# AWS::Budgets::Budget is replaced (not updated) when its notifications change,
-# and the budget name is its physical id, so a stale budget of the same name
-# blocks the new one. Clear them first; CloudFormation recreates them.
-ACCOUNT_ID="$ACCOUNT"
-for b in $(aws budgets describe-budgets --account-id "$ACCOUNT_ID" \
-    --query 'Budgets[?starts_with(BudgetName, `planwitch-`)].BudgetName' --output text 2>/dev/null); do
-  aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name "$b" >/dev/null 2>&1 \
-    && warn "cleared stale budget $b"
-done
-
 STATUS="$(aws cloudformation describe-stacks --stack-name PlanWitchAws --region "$REGION" \
   --query 'Stacks[0].StackStatus' --output text 2>/dev/null || true)"
+
 if [ "$STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STATUS" = "CREATE_FAILED" ]; then
   warn "previous attempt left the stack in $STATUS; deleting it before retrying"
   aws cloudformation delete-stack --stack-name PlanWitchAws --region "$REGION"
   aws cloudformation wait stack-delete-complete --stack-name PlanWitchAws --region "$REGION"
   ok "old stack removed"
+
+  # Only now are planwitch- budgets genuine orphans: the stack that owned them
+  # is gone, but a budget's name is its physical id, so a leftover blocks the
+  # next create. Never clear these while the stack is alive -- that deletes
+  # budgets CloudFormation still owns and it will not recreate them.
+  # Budgets is a global service, reachable only through the us-east-1 endpoint.
+  for b in $(aws budgets describe-budgets --account-id "$ACCOUNT" --region us-east-1 \
+      --query 'Budgets[?starts_with(BudgetName, `planwitch-`)].BudgetName' --output text 2>/dev/null); do
+    aws budgets delete-budget --account-id "$ACCOUNT" --region us-east-1 --budget-name "$b" >/dev/null 2>&1 \
+      && warn "cleared orphaned budget $b"
+  done
 fi
 
 bold "5/7  Deploying PlanWitchAws (this takes 8-12 minutes -- CloudFront is the slow part)"
@@ -120,7 +124,9 @@ npx cdk deploy PlanWitchAws \
   -c "monthlyBudgetUsd=$BUDGET" \
   -c "useCloudFront=$USE_CLOUDFRONT" \
   -c "freeTierOnly=$FREE_TIER_ONLY" \
-  -c "restrictedServices=$RESTRICTED_SERVICES"
+  -c "restrictedServices=$RESTRICTED_SERVICES" \
+  -c "useWaf=$USE_WAF" \
+  -c "useEc2=$USE_EC2"
 
 bold "6/7  Writing the app-side config"
 python3 - "$ROOT" <<'PY'

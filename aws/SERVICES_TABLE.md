@@ -40,7 +40,12 @@ Live app: the PlanWitch PWA is served from S3 over HTTPS.
 | 24 | **CloudWatch** | Logs, 15 custom metrics, 3 alarms, 1 dashboard | CloudWatch → Dashboards → `PlanWitch-…`; Alarms |
 | 25 | **AWS X-Ray** | Trace one request across Lambda, DynamoDB, S3, Location | CloudWatch → X-Ray traces → Service map |
 | 26 | **CloudTrail** | Audit log of every API call in the account | CloudTrail → Event history |
-| 27 | **AWS Budgets** | 3 budgets: monthly $5 tiered, daily $1, Lambda-only $1 | Billing → Budgets |
+| 27 | **Amazon EC2** | A conventional compute tier: t3.micro status host in the default VPC, encrypted gp3 root volume | EC2 → Instances → `planwitch-status-…`; open its public IP |
+| 28 | **AWS Systems Manager Session Manager** | Shell access with no SSH port and no key pair | EC2 → select instance → Connect → Session Manager |
+| 29 | **AWS WAF** | Managed rule groups + per-IP rate limit, protecting the Cognito user pool | WAF → Web ACLs → `planwitch-waf-…` |
+| 30 | **API Gateway throttling** | 100 req/s steady, 200 burst — WAF cannot attach to an HTTP API, so this is the API's own rate limit | API Gateway → stage → Default route settings |
+| 31 | **AWS Trusted Advisor** | Account-level security and limits review (free check set on Basic support) | See `TRUSTED_ADVISOR.md` |
+| 32 | **AWS Budgets** | 3 budgets: monthly $5 tiered, daily $1, Lambda-only $1 | Billing → Budgets |
 
 ## B. Built but blocked by the Free Plan (5 services)
 

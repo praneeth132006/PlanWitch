@@ -24,6 +24,8 @@ new PlanWitchStack(app, 'PlanWitchAws', {
   freeTierOnly: String(app.node.tryGetContext('freeTierOnly')) === 'true',
   restrictedServices: String(app.node.tryGetContext('restrictedServices') || '')
     .split(',').map((s) => s.trim()).filter(Boolean),
+  useWaf: String(app.node.tryGetContext('useWaf')) === 'true',
+  useEc2: String(app.node.tryGetContext('useEc2')) === 'true',
 });
 
 cdk.Tags.of(app).add('Project', 'PlanWitch');
